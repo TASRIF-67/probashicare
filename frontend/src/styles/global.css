@@ -11,9 +11,18 @@
   --text: #16201d;
   --muted: #68756f;
   --border: #dce5e0;
-  --primary: #11624b;
-  --primary-hover: #0b503c;
-  --accent: #b9f2d8;
+  --accent-family: #11624b;
+  --accent-family-hover: #0b503c;
+  --accent-family-soft: #b9f2d8;
+  --accent-caregiver: #a65316;
+  --accent-caregiver-hover: #85400c;
+  --accent-caregiver-soft: #ffead2;
+  --accent-primary: var(--accent-family);
+  --accent-primary-hover: var(--accent-family-hover);
+  --accent-surface: var(--accent-family-soft);
+  --primary: var(--accent-primary);
+  --primary-hover: var(--accent-primary-hover);
+  --accent: var(--accent-surface);
   --danger: #b33b48;
   --shadow: 0 18px 60px rgba(25, 56, 45, 0.09);
 }
@@ -25,23 +34,41 @@
   --text: #edf5f1;
   --muted: #9bada6;
   --border: #263832;
-  --primary: #67d6ad;
-  --primary-hover: #8ce3c2;
-  --accent: #163d31;
+  --accent-family: #67d6ad;
+  --accent-family-hover: #8ce3c2;
+  --accent-family-soft: #163d31;
+  --accent-caregiver: #f0a34a;
+  --accent-caregiver-hover: #f5bc78;
+  --accent-caregiver-soft: #3b2918;
   --danger: #ff929b;
   --shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+.caregiver-theme, .family-theme { min-height: 100vh; }
+.caregiver-theme {
+  --accent-primary: var(--accent-caregiver);
+  --accent-primary-hover: var(--accent-caregiver-hover);
+  --accent-surface: var(--accent-caregiver-soft);
+  --primary: var(--accent-primary);
+  --primary-hover: var(--accent-primary-hover);
+  --accent: var(--accent-surface);
 }
 
 * { box-sizing: border-box; }
 html { background: var(--bg); transition: background-color .25s ease; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text); transition: background-color .25s ease, color .25s ease; }
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
 a { color: var(--primary); font-weight: 600; }
 h1, h2, h3 { font-family: "Manrope", sans-serif; margin-top: 0; }
 h1 { font-size: clamp(2.25rem, 7vw, 4.8rem); line-height: 1.02; letter-spacing: -.045em; }
 p { color: var(--muted); line-height: 1.65; }
 
 .topbar { height: 84px; display: flex; align-items: center; justify-content: space-between; max-width: 1240px; margin: auto; padding: 0 24px; }
+.auth-header-actions { display: flex; align-items: center; gap: 10px; }
+.signup-mode-toggle { display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.signup-mode-toggle__option { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; color: var(--muted); border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: .76rem; font-weight: 700; cursor: pointer; transition: color .18s, background .18s, border-color .18s, box-shadow .18s; }
+.signup-mode-toggle__option:hover { color: var(--text); }
+.signup-mode-toggle__option--active { color: var(--text); border-color: var(--border); background: var(--surface); box-shadow: 0 2px 7px rgba(20, 32, 28, .08); }
 .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-family: "Manrope"; }
 .logo__mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: var(--primary); color: var(--bg); }
 .icon, .lucide { display: block; flex: none; }
@@ -72,6 +99,7 @@ p { color: var(--muted); line-height: 1.65; }
 .input-action { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: transparent; cursor: pointer; }
 .input-action:hover { background: var(--surface-2); }
 .field__error { color: var(--danger); font-weight: 500; }
+.field__hint { color: var(--muted); font-weight: 500; }
 .field-hint { color: var(--muted); margin-top: -12px; }
 .button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 18px; border-radius: 11px; border: 1px solid transparent; text-decoration: none; font-weight: 700; cursor: pointer; transition: transform .18s, background .18s, opacity .18s; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
@@ -84,6 +112,7 @@ p { color: var(--muted); line-height: 1.65; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .google-button { display: flex; justify-content: center; min-height: 44px; }
 .auth-card__footer { text-align: center; margin-top: 24px; }
+.auth-card__footer--secondary { margin-top: 10px; font-size: .86rem; }
 .alert { padding: 12px 14px; border-radius: 10px; margin-bottom: 18px; font-size: .9rem; }
 .alert--error { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .success-panel { display: grid; gap: 10px; }
@@ -240,8 +269,12 @@ p { color: var(--muted); line-height: 1.65; }
 .account-row__records { grid-template-columns: auto 1fr; align-items: baseline; gap: 6px; }
 .account-row__records strong { font: 700 1.1rem "Manrope"; }
 .delete-action { width: 36px; height: 36px; color: var(--danger); background: transparent; border-color: transparent; }
-.status-badge { width: fit-content; padding: 5px 9px; border-radius: 99px; color: var(--muted); background: var(--surface-2); font-size: .75rem; font-weight: 700; }
+.status-badge { width: fit-content; padding: 5px 9px; border-radius: 99px; color: var(--muted); background: var(--surface-2); font-size: .75rem; font-weight: 700; text-transform: capitalize; }
 .status-badge--success { color: var(--primary); background: var(--accent); }
+.status-badge--submitted { color: #956112; background: color-mix(in srgb, #e6a33c 17%, transparent); }
+.status-badge--approved { color: var(--primary); background: var(--accent); }
+.status-badge--rejected, .status-badge--suspended { color: var(--danger); background: color-mix(in srgb, var(--danger) 11%, transparent); }
+.status-badge--draft { color: #596675; background: color-mix(in srgb, #718096 14%, transparent); }
 .live-status { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; color: var(--primary); border: 1px solid var(--border); border-radius: 99px; background: var(--surface); font-size: .75rem; font-weight: 700; }
 .live-status > span { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent); }
 .overview-metrics { display: grid; gap: 14px; margin-bottom: 22px; }
@@ -356,6 +389,89 @@ p { color: var(--muted); line-height: 1.65; }
 .contact-card a, .contact-card > div > span { display: inline-flex; align-items: center; gap: 6px; width: fit-content; color: var(--muted); font-size: .78rem; text-decoration: none; }
 .contact-card a { color: var(--primary); font-weight: 600; }
 
+/* Caregiver application and profile */
+.caregiver-page { width: min(1040px, 100%); margin: 0 auto; padding: 64px 24px 100px; }
+.caregiver-application-form { display: grid; gap: 20px; }
+.application-section { padding: clamp(21px, 4vw, 34px); border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: 0 13px 44px rgba(25, 56, 45, .055); }
+.application-section__heading, .application-section__heading-main { display: flex; align-items: flex-start; gap: 14px; }
+.application-section__heading { margin-bottom: 26px; }
+.application-section__heading--action { justify-content: space-between; }
+.application-section__heading > span, .application-section__heading-main > span { width: 35px; height: 35px; display: grid; place-items: center; flex: none; color: var(--primary); border-radius: 10px; background: var(--accent); font: 700 .72rem "Manrope"; }
+.application-section__heading h2, .application-section__heading p { margin: 0; }
+.application-section__heading h2 { font-size: 1.12rem; }
+.application-section__heading p { font-size: .82rem; }
+.availability-list { display: grid; gap: 10px; }
+.availability-row { display: grid; grid-template-columns: 1.1fr 1fr 1fr auto; align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+.availability-row .icon-button { margin-bottom: 1px; color: var(--danger); background: transparent; }
+.document-drop { min-height: 155px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 22px; color: var(--muted); text-align: center; border: 1px dashed color-mix(in srgb, var(--primary) 42%, var(--border)); border-radius: 15px; background: color-mix(in srgb, var(--accent) 28%, var(--surface)); cursor: pointer; transition: border-color .18s, background .18s; }
+.document-drop:hover { border-color: var(--primary); background: color-mix(in srgb, var(--accent) 48%, var(--surface)); }
+.document-drop .lucide, .document-drop strong { color: var(--primary); }
+.document-drop span { font-size: .77rem; }
+.document-drop input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.document-ready { display: flex; align-items: center; gap: 7px; width: fit-content; margin-top: 12px; color: var(--primary); font-size: .82rem; font-weight: 700; }
+.application-actions { position: sticky; bottom: 14px; z-index: 8; display: flex; justify-content: flex-end; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 15px; background: color-mix(in srgb, var(--surface) 91%, transparent); box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+.rejection-banner { margin-bottom: 22px; padding: 17px 19px; color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 32%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+.rejection-banner p { margin: 5px 0 0; color: inherit; }
+.status-page { min-height: calc(100vh - 84px); display: grid; place-items: center; padding: 40px 24px 90px; }
+.application-status-card { width: min(680px, 100%); padding: clamp(28px, 6vw, 54px); text-align: center; }
+.application-status-card h1 { margin-bottom: 14px; font-size: clamp(2rem, 5vw, 3.4rem); }
+.application-status-card > p { max-width: 530px; margin: 0 auto; }
+.status-orb { width: 66px; height: 66px; display: grid; place-items: center; margin: 0 auto 24px; color: #956112; border-radius: 20px; background: color-mix(in srgb, #e6a33c 17%, transparent); }
+.status-orb--danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.status-orb--approved { margin: 0; color: var(--primary); background: var(--accent); }
+.review-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 36px; }
+.review-step { padding: 10px; color: var(--muted); border-radius: 9px; background: var(--surface-2); font-size: .74rem; font-weight: 700; }
+.review-step--done { color: var(--primary); background: var(--accent); }
+.review-step--active { color: #956112; background: color-mix(in srgb, #e6a33c 17%, transparent); }
+.approved-hero { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; padding: clamp(22px, 4vw, 34px); border: 1px solid var(--border); border-radius: 20px; background: linear-gradient(125deg, var(--surface), color-mix(in srgb, var(--accent) 48%, var(--surface))); }
+.approved-hero h1, .approved-hero p, .approved-hero .eyebrow { margin-bottom: 5px; }
+.approved-hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); }
+.caregiver-dashboard-grid { display: grid; gap: 18px; }
+.caregiver-dashboard-grid .card { box-shadow: none; }
+.caregiver-dashboard-grid h2 { font-size: 1.15rem; }
+
+/* Administrator caregiver review */
+.caregiver-review-panel { padding: 0; overflow: hidden; box-shadow: none; }
+.review-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.review-toolbar .admin-search input { width: 245px; }
+.review-status-tabs { display: flex; gap: 5px; overflow-x: auto; }
+.review-status-tab { min-height: 38px; padding: 0 12px; color: var(--muted); border: 0; border-radius: 9px; background: transparent; font-size: .77rem; font-weight: 700; cursor: pointer; }
+.review-status-tab:hover { color: var(--text); background: var(--surface-2); }
+.review-status-tab--active { color: var(--primary); background: var(--accent); }
+.caregiver-review-list { display: grid; }
+.caregiver-review-row { display: grid; grid-template-columns: auto minmax(180px, 1.3fr) minmax(90px, .65fr) minmax(130px, .8fr) auto auto auto; align-items: center; gap: 14px; min-height: 82px; padding: 13px 20px; color: var(--text); border-bottom: 1px solid var(--border); text-decoration: none; }
+.caregiver-review-row:last-child { border-bottom: 0; }
+.caregiver-review-row:hover { background: color-mix(in srgb, var(--surface-2) 58%, transparent); }
+.caregiver-review-row .profile-avatar { width: 42px; height: 42px; border-radius: 12px; }
+.caregiver-review-row > span:not(.profile-avatar, .status-badge), .caregiver-review-row__identity { display: grid; gap: 3px; min-width: 0; }
+.caregiver-review-row small, .caregiver-review-row time { overflow: hidden; color: var(--muted); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.caregiver-review-row strong { overflow: hidden; font-size: .83rem; text-overflow: ellipsis; white-space: nowrap; }
+.review-page-heading { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; margin-bottom: 28px; }
+.review-page-heading > div { min-width: 0; }
+.review-page-heading h1, .review-page-heading p, .review-page-heading .eyebrow { margin-bottom: 4px; }
+.review-page-heading h1 { font-size: clamp(2rem, 5vw, 3.35rem); }
+.admin-review-grid { display: grid; gap: 18px; }
+.admin-review-main, .admin-review-sidebar { display: grid; align-content: start; gap: 18px; }
+.review-detail-card, .review-document-card, .review-decision-card { box-shadow: none; }
+.review-detail-card__heading { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.review-detail-card__heading > span { width: 42px; height: 42px; display: grid; place-items: center; flex: none; color: var(--primary); border-radius: 12px; background: var(--accent); }
+.review-detail-card__heading h2, .review-detail-card__heading p { margin: 0; }
+.review-detail-card__heading h2 { font-size: 1.08rem; }
+.review-detail-card__heading p { font-size: .76rem; }
+.review-bio { margin: 0 0 22px; padding: 16px; border-left: 3px solid var(--primary); border-radius: 0 10px 10px 0; background: var(--surface-2); }
+.review-detail-grid { display: grid; gap: 16px; margin: 0; }
+.review-detail-grid div { display: grid; gap: 5px; }
+.review-detail-grid dt, .review-tag-group small { color: var(--muted); font-size: .72rem; }
+.review-detail-grid dd { display: flex; align-items: center; gap: 5px; margin: 0; font-weight: 700; }
+.review-tag-group { display: grid; gap: 16px; margin-top: 24px; }
+.review-tag-group > div > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
+.review-tag { padding: 6px 10px; color: var(--primary); border-radius: 99px; background: var(--accent); font-size: .76rem; font-weight: 700; }
+.review-availability { display: grid; gap: 8px; }
+.review-availability > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-size: .82rem; }
+.review-availability span { color: var(--muted); }
+.review-document-card .button, .review-decision-card .button { width: 100%; margin-top: 10px; }
+.document-warning { padding: 12px; color: #956112; border-radius: 10px; background: color-mix(in srgb, #e6a33c 14%, transparent); font-size: .76rem; line-height: 1.5; }
+
 @media (min-width: 820px) {
   .auth-layout { grid-template-columns: 1.2fr .8fr; min-height: calc(100vh - 84px); }
   .app-nav { display: flex; }
@@ -368,6 +484,9 @@ p { color: var(--muted); line-height: 1.65; }
   .profile-overview-grid > .modern-section-card:first-child { grid-row: 1 / span 2; }
   .modern-details-grid { grid-template-columns: repeat(2, 1fr); }
   .health-record-grid, .contact-grid { grid-template-columns: repeat(2, 1fr); }
+  .caregiver-dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-review-grid { grid-template-columns: minmax(0, 1.55fr) minmax(260px, .65fr); }
+  .review-detail-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 819px) {
   .auth-layout { padding-top: 8vh; }
@@ -414,13 +533,36 @@ p { color: var(--muted); line-height: 1.65; }
   .profile-tabs { margin-inline: -16px; padding-inline: 16px; border-right: 0; border-left: 0; border-radius: 0; }
   .modern-section-card { padding: 19px; }
   .health-record-card dl { grid-template-columns: 1fr; }
+  .application-section__heading--action, .review-toolbar { align-items: stretch; flex-direction: column; }
+  .availability-row { grid-template-columns: repeat(2, 1fr); }
+  .availability-row .icon-button { grid-column: 2; justify-self: end; }
+  .application-actions { position: static; }
+  .review-toolbar .admin-search, .review-toolbar .admin-search input { width: 100%; }
+  .caregiver-review-row { grid-template-columns: auto 1fr auto; }
+  .caregiver-review-row > span:not(.profile-avatar, .caregiver-review-row__identity, .status-badge), .caregiver-review-row time { grid-column: 2; }
+  .caregiver-review-row > .lucide { grid-column: 3; grid-row: 1; }
+  .review-page-heading { grid-template-columns: 1fr auto; }
+  .review-page-heading > .button { grid-column: 1 / -1; width: fit-content; }
 }
 @media (max-width: 520px) {
+  .topbar { height: auto; min-height: 84px; padding-block: 12px; }
+  .auth-header-actions { gap: 6px; }
+  .signup-mode-toggle__option { padding-inline: 8px; }
+  .signup-mode-toggle__option .lucide { display: none; }
   .modern-profile-identity { gap: 13px; }
   .modern-profile-identity h1 { font-size: 1.75rem; }
   .identity-labels { gap: 6px; }
   .health-snapshot { grid-template-columns: 1fr; }
   .snapshot-card { padding: 14px 16px; }
+  .caregiver-page { padding-inline: 16px; }
+  .application-section { padding: 19px 16px; }
+  .availability-row { grid-template-columns: 1fr; }
+  .availability-row .icon-button { grid-column: 1; }
+  .application-actions { flex-direction: column-reverse; }
+  .application-actions .button { width: 100%; }
+  .review-steps { grid-template-columns: 1fr; }
+  .approved-hero { align-items: flex-start; }
+  .status-orb--approved { flex: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }

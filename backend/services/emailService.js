@@ -22,7 +22,7 @@ function getTransporter() {
 }
 
 /**
- * Sends a family account verification link.
+ * Sends the shared family or caregiver account verification link.
  * @param {{to: string, name: string, verificationUrl: string}} message - Recipient details and one-time link.
  * @returns {Promise<{messageId: string}>} Mail provider message identifier.
  * @sideEffects Sends an email through the configured SMTP provider.

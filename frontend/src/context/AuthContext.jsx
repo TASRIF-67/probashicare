@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
   }
 
   /**
-   * Authenticates through Google and stores the public user.
+   * Authenticates a family account through Google and stores the user.
    * @param {string} credential - Google ID token.
    * @returns {Promise<object>} Authenticated public user.
    * @sideEffects Calls the API and updates context state.

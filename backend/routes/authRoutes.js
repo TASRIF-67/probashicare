@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getCurrentUser,
+  caregiverSignup,
   googleLogin,
   login,
   logout,
@@ -10,11 +11,13 @@ import {
 } from "../controllers/authController.js";
 import { requireAuth } from "../middleware/auth.js";
 import { validateLogin, validateSignup } from "../middleware/validateAuth.js";
+import { validateCaregiverSignup } from "../middleware/validateCaregiver.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
 
 router.post("/signup", validateSignup, asyncHandler(signup));
+router.post("/caregiver/signup", validateCaregiverSignup, asyncHandler(caregiverSignup));
 router.post("/login", validateLogin, asyncHandler(login));
 router.post("/google", asyncHandler(googleLogin));
 router.get("/verify-email", asyncHandler(verifyEmail));

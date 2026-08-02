@@ -8,15 +8,42 @@ troubleshooting instructions, see [LOCAL_SETUP.md](./LOCAL_SETUP.md).
 ## Included
 
 - Family email/password signup with mandatory email verification
-- Family Google sign-in with server-side ID-token verification
+- Family Google signup with server-side ID-token verification
 - Seeded admin login with no public admin signup
+- Caregiver registration with shared email verification
+- Draft, submission, rejection, resubmission, and approval application states
+- Private Cloudinary verification-document upload scaffold
+- Admin caregiver review queue with approve/reject decisions
+- Approved caregiver dashboard and profile/availability editing
 - HTTP-only JWT session cookies
 - Shared API error handling and reusable auth/role middleware
 - Protected family/admin routes and the elderly-profile onboarding handoff
 - Reusable Button, Card, Input, and Modal components
 - Responsive light/dark interface with a no-flash persisted preference
+- Shared design tokens with a scoped caregiver accent in both light and dark mode
 
-Caregiver and elderly values are reserved in the role enum, but their login flows are intentionally unavailable in this phase.
+The elderly role remains reserved for a future authentication flow. Caregiver
+authentication is now active, but the operational dashboard remains locked until
+an administrator approves the initial professional application.
+
+## Caregiver Verification
+
+Caregivers register separately from families and verify their email through the
+shared verification service. Their application supports a professional bio,
+skills, languages, experience, hourly/monthly rates, service area, repeatable
+availability periods, and one private verification document. Submitted records
+are read-only until an administrator approves them or returns them with a reason.
+
+The shared signup surface includes a neutral Family/Caregiver segment. Both
+direct signup URLs preselect the appropriate mode, while switching modes updates
+the hero, form, and accent in place without a page reload. Google signup remains
+available only in Family mode; caregivers must provide the dedicated application
+registration fields and verify their email.
+
+Cloudinary credentials are optional during initial development. With
+`REQUIRE_CAREGIVER_DOCUMENT=false`, drafts and final submission work without a
+document. The requirement can be enabled later alongside the three
+`CLOUDINARY_*` values described in [LOCAL_SETUP.md](./LOCAL_SETUP.md).
 
 ## Elderly Profile Management
 

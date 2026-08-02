@@ -1,6 +1,6 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AuthLayout } from "../../components/AuthLayout.jsx";
 import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
@@ -10,14 +10,17 @@ import { useToast } from "../../context/ToastContext.jsx";
 import { useAuthRedirect } from "../../hooks/useAuthRedirect.js";
 import { normalizeApiError } from "../../services/api.js";
 import { LogInIcon } from "../../components/Icons.jsx";
+import { CaregiverTheme } from "../../components/caregiver/CaregiverTheme.jsx";
 
 /**
- * Renders family/admin email login and family Google login.
+ * Renders family/caregiver/admin email login and family Google login.
  * @param {void} _unused - This page accepts no props.
  * @returns {import("react").ReactElement} Login route content.
  * @sideEffects Submits authentication requests and redirects on success.
  */
 export function LoginPage() {
+  const [searchParams] = useSearchParams();
+  const isCaregiverMode = searchParams.get("mode") === "caregiver";
   const [form, setForm] = useState({ email: "", password: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -73,16 +76,17 @@ export function LoginPage() {
     }
   }
 
-  return (
+  const content = (
     <AuthLayout
-      eyebrow="Care, across every distance"
-      title="Stay close to the people who raised you."
-      description="Coordinate trusted care in Bangladesh from wherever life has taken you."
+      eyebrow={isCaregiverMode ? "Caregiver access" : "Care, across every distance"}
+      title={isCaregiverMode ? "Continue your care application." : "Stay close to the people who raised you."}
+      description={isCaregiverMode ? "Sign in to complete your professional profile, review your application status, or manage approved caregiver work." : "Coordinate trusted care in Bangladesh from wherever life has taken you."}
+      trustItems={isCaregiverMode ? ["Private by design", "Verified care network"] : undefined}
     >
       <Card className="auth-card">
         <div className="auth-card__heading">
           <h2>Sign in</h2>
-          <p>Continue to your family care space.</p>
+          <p>{isCaregiverMode ? "Continue to your caregiver workspace." : "Continue to your secure care workspace."}</p>
         </div>
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
@@ -90,10 +94,10 @@ export function LoginPage() {
           <Input id="password" name="password" type="password" label="Password" showPasswordToggle autoComplete="current-password" value={form.password} onChange={handleChange} required />
           <Button type="submit" isLoading={isSubmitting}><LogInIcon size={18} /> Sign in</Button>
         </form>
-        <div className="divider"><span>or</span></div>
-        <div className="google-button"><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google sign-in was not completed.")} /></div>
-        <p className="auth-card__footer">New to ProbashiCare? <Link to="/signup">Create a family account</Link></p>
+        {!isCaregiverMode && <><div className="divider"><span>or</span></div><div className="google-button"><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google sign-in was not completed.")} /></div></>}
+        {isCaregiverMode ? <><p className="auth-card__footer">Need a caregiver account? <Link to="/caregiver/signup">Apply as a Caregiver</Link></p><p className="auth-card__footer auth-card__footer--secondary">Signing in as a family member? <Link to="/login">Family sign in</Link></p></> : <><p className="auth-card__footer">New to ProbashiCare? <Link to="/signup">Create a family account</Link></p><p className="auth-card__footer auth-card__footer--secondary">Want to provide care? <Link to="/caregiver/signup">Apply as a Caregiver</Link></p></>}
       </Card>
     </AuthLayout>
   );
+  return isCaregiverMode ? <CaregiverTheme>{content}</CaregiverTheme> : content;
 }

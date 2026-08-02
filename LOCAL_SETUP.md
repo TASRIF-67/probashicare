@@ -87,12 +87,31 @@ SMTP_USER=
 SMTP_PASS=
 MAIL_FROM=ProbashiCare <no-reply@probashicare.local>
 
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+REQUIRE_CAREGIVER_DOCUMENT=false
+
 ADMIN_NAME=Platform Administrator
 ADMIN_EMAIL=admin@probashicare.local
 ADMIN_PASSWORD=your-development-admin-password
 ```
 
 Do not commit `.env`. It contains database credentials and session secrets.
+
+### Cloudinary document storage
+
+Cloudinary is prepared for caregiver ID and verification-document uploads. You
+may leave all three Cloudinary values empty while working on other screens. With
+`REQUIRE_CAREGIVER_DOCUMENT=false`, caregivers can save drafts and submit their
+application without a document. Attempting an upload still returns a clear
+configuration error until Cloudinary credentials are added.
+
+When you are ready, copy the cloud name, API key, and API secret from your
+Cloudinary dashboard into `backend/.env`, change
+`REQUIRE_CAREGIVER_DOCUMENT=true`, then restart the backend. Uploaded documents
+are stored as authenticated assets and admin preview links expire after ten
+minutes.
 
 ### MongoDB Atlas requirements
 
@@ -236,11 +255,25 @@ SMTP is optional in development. When SMTP settings are empty:
 
 Verified families without an active elderly profile are redirected to onboarding.
 
+Caregiver email verification uses the same flow. Start at
+`http://localhost:5173/caregiver/signup`; after verification, login sends the
+caregiver to the application form rather than a family page.
+
+The Family/Caregiver control in the signup header swaps account type without a
+page reload. Google signup is intentionally Family-only. Caregivers must use the
+caregiver form so their phone number, password verification, and mandatory email
+verification are captured before application review.
+
 ## 11. Available application routes
 
 ```text
 /signup                         Family account creation
-/login                          Family and seeded-admin login
+/login                          Family, caregiver, and seeded-admin login
+/caregiver/signup               Caregiver account creation
+/caregiver/application          Draft or rejected application editor
+/caregiver/application-status   Submitted/suspended holding page
+/caregiver/dashboard            Approved caregiver dashboard
+/caregiver/profile              Approved caregiver profile editor
 /verify-email                   Email verification result
 /onboarding                     First elderly-profile prompt
 /elderly-profiles/new           Create an elderly profile
@@ -250,6 +283,8 @@ Verified families without an active elderly profile are redirected to onboarding
 /dashboard                      Family dashboard
 /admin                          Live admin overview
 /admin/accounts                 Family account management
+/admin/caregivers               Caregiver application queue
+/admin/caregivers/:profileId    Caregiver review and decision
 ```
 
 ## 12. Verification commands
@@ -266,21 +301,25 @@ Run the elderly-profile API smoke test while the backend is running:
 npm.cmd run test:elderly-profiles --prefix backend
 ```
 
+That test creates temporary family and profile records, confirms onboarding and
+ownership isolation, archives the profile, and removes its records afterward.
+
 Run the admin family-account management smoke test:
 
 ```powershell
 npm.cmd run test:admin-users --prefix backend
 ```
 
-The smoke test:
+Run the complete caregiver application-state smoke test:
 
-- Creates temporary verified family accounts
-- Creates an elderly profile and owner link
-- Confirms onboarding status
-- Confirms profile listing and updates
-- Confirms another family receives `404`
-- Archives the profile
-- Removes all temporary records
+```powershell
+npm.cmd run test:caregiver-applications --prefix backend
+```
+
+This caregiver test uses an ephemeral local API, creates a temporary verified
+caregiver, and checks draft saving, document-optional submission, admin rejection,
+resubmission, approval, and approved-profile editing. It removes
+its temporary records afterward and does not call Cloudinary.
 
 Check the API health endpoint in PowerShell:
 
@@ -346,6 +385,12 @@ printed in the backend terminal.
 
 Configure the same OAuth Web Client ID in both environment files and restart both
 servers.
+
+### Caregiver document upload says it is not configured
+
+Add all three `CLOUDINARY_*` values to `backend/.env` and restart the backend.
+For the current development phase, leave `REQUIRE_CAREGIVER_DOCUMENT=false` and
+submit without uploading. Set it to `true` after Cloudinary integration is ready.
 
 ## 14. Normal daily workflow
 

@@ -9,10 +9,12 @@
     "seed:admin": "node scripts/seedAdmin.js",
     "db:sync-indexes": "node scripts/syncDatabaseIndexes.js",
     "test:elderly-profiles": "node scripts/smokeElderlyProfiles.js",
-    "test:admin-users": "node scripts/smokeAdminUsers.js"
+    "test:admin-users": "node scripts/smokeAdminUsers.js",
+    "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -21,6 +23,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.1",
+    "multer": "^2.2.0",
     "nodemailer": "^7.0.3",
     "probashicare": "file:.."
   }
