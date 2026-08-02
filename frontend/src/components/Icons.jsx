@@ -1,0 +1,42 @@
+/*
+ * Central icon exports keep naming and library choice consistent across the UI.
+ * To add an icon, re-export its Lucide component here and consume the alias from
+ * feature components instead of importing different icon libraries per page.
+ */
+export {
+  Archive as ArchiveIcon,
+  Activity as ActivityIcon,
+  ArrowLeft as ArrowLeftIcon,
+  ArrowRight as ArrowRightIcon,
+  Check as CheckIcon,
+  ChevronRight as ChevronRightIcon,
+  Clock3 as ClockIcon,
+  CalendarDays as CalendarIcon,
+  CircleAlert as AlertIcon,
+  Droplets as BloodIcon,
+  Eye as EyeIcon,
+  EyeOff as EyeOffIcon,
+  LayoutDashboard as DashboardIcon,
+  FileText as FileTextIcon,
+  HeartPulse as HeartPulseIcon,
+  Languages as LanguagesIcon,
+  LogIn as LogInIcon,
+  LogOut as LogOutIcon,
+  Menu as MenuIcon,
+  Moon as MoonIcon,
+  MapPin as MapPinIcon,
+  Phone as PhoneIcon,
+  Pill as PillIcon,
+  Pencil as PencilIcon,
+  Plus as PlusIcon,
+  RefreshCw as RefreshIcon,
+  Save as SaveIcon,
+  Search as SearchIcon,
+  ShieldCheck as ShieldCheckIcon,
+  Stethoscope as StethoscopeIcon,
+  Sun as SunIcon,
+  Trash2 as TrashIcon,
+  UserPlus as UserPlusIcon,
+  UsersRound as UsersIcon,
+  X as CloseIcon,
+} from "lucide-react";

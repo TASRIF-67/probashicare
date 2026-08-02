@@ -1,0 +1,24 @@
+{
+  "name": "probashicare-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-oauth/google": "^0.12.2",
+    "axios": "^1.9.0",
+    "lucide-react": "^1.27.0",
+    "probashicare": "file:..",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.5.1",
+    "vite": "^6.3.5"
+  }
+}

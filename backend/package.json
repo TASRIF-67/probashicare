@@ -1,0 +1,27 @@
+{
+  "name": "probashicare-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "seed:admin": "node scripts/seedAdmin.js",
+    "db:sync-indexes": "node scripts/syncDatabaseIndexes.js",
+    "test:elderly-profiles": "node scripts/smokeElderlyProfiles.js",
+    "test:admin-users": "node scripts/smokeAdminUsers.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "google-auth-library": "^9.15.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.1",
+    "nodemailer": "^7.0.3",
+    "probashicare": "file:.."
+  }
+}
