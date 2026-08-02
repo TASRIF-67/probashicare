@@ -7,6 +7,7 @@ import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/authRoutes.js";
 import elderlyProfileRoutes from "./routes/elderlyProfileRoutes.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
+import caregiverRoutes from "./routes/caregiverRoutes.js";
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.get("/api/health", healthCheck);
 app.use("/api/auth", authRoutes);
 app.use("/api/elderly-profiles", elderlyProfileRoutes);
 app.use("/api/admin", adminUserRoutes);
+app.use("/api/caregivers", caregiverRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

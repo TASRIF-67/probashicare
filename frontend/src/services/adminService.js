@@ -33,4 +33,57 @@ async function deleteFamilyUser(userId) {
   return response.data.data;
 }
 
-export const adminService = { getOverview, listFamilyUsers, deleteFamilyUser };
+/**
+ * Lists caregiver applications for an admin-selected status.
+ * @param {string} [status="submitted"] - Application status filter.
+ * @returns {Promise<{applications: object[], count: number}>} Matching applications.
+ * @sideEffects Calls GET `/admin/caregiver-applications`.
+ */
+async function listCaregiverApplications(status = "submitted") {
+  const response = await api.get("/admin/caregiver-applications", { params: { status } });
+  return response.data.data;
+}
+
+/**
+ * Retrieves one caregiver application for admin review.
+ * @param {string} profileId - CaregiverProfile identifier.
+ * @returns {Promise<{application: object}>} Detailed application with signed document link.
+ * @sideEffects Calls GET `/admin/caregiver-applications/:profileId`.
+ */
+async function getCaregiverApplication(profileId) {
+  const response = await api.get(`/admin/caregiver-applications/${profileId}`);
+  return response.data.data;
+}
+
+/**
+ * Approves a submitted caregiver application.
+ * @param {string} profileId - CaregiverProfile identifier.
+ * @returns {Promise<{application: object, message: string}>} Approved application and confirmation.
+ * @sideEffects Calls PATCH and writes review state in MongoDB.
+ */
+async function approveCaregiverApplication(profileId) {
+  const response = await api.patch(`/admin/caregiver-applications/${profileId}/approve`);
+  return response.data.data;
+}
+
+/**
+ * Rejects a submitted caregiver application with a required reason.
+ * @param {string} profileId - CaregiverProfile identifier.
+ * @param {string} reason - Actionable feedback for the caregiver.
+ * @returns {Promise<{application: object, message: string}>} Rejected application and confirmation.
+ * @sideEffects Calls PATCH and writes rejection review state in MongoDB.
+ */
+async function rejectCaregiverApplication(profileId, reason) {
+  const response = await api.patch(`/admin/caregiver-applications/${profileId}/reject`, { reason });
+  return response.data.data;
+}
+
+export const adminService = {
+  getOverview,
+  listFamilyUsers,
+  deleteFamilyUser,
+  listCaregiverApplications,
+  getCaregiverApplication,
+  approveCaregiverApplication,
+  rejectCaregiverApplication,
+};

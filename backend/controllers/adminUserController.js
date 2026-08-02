@@ -5,6 +5,7 @@ import { EmailVerificationToken } from "../models/EmailVerificationToken.js";
 import { User } from "../models/User.js";
 import { ApiError } from "../utils/ApiError.js";
 import { toPublicUser } from "../utils/userResponse.js";
+import { CaregiverProfile } from "../models/CaregiverProfile.js";
 
 /**
  * GET /api/admin/overview
@@ -15,7 +16,7 @@ import { toPublicUser } from "../utils/userResponse.js";
  * @param {import("express").Request} _request - Authenticated admin request, otherwise unused.
  * @param {import("express").Response} response - Express response writer.
  * @returns {Promise<void>}
- * @sideEffects Reads aggregate counts and recent family registrations from MongoDB.
+ * @sideEffects Reads family, elderly-profile, and caregiver-application aggregates from MongoDB.
  */
 export async function getAdminOverview(_request, response) {
   const [
@@ -23,12 +24,16 @@ export async function getAdminOverview(_request, response) {
     verifiedFamilies,
     activeElderlyProfiles,
     archivedElderlyProfiles,
+    submittedCaregiverApplications,
+    approvedCaregivers,
     recentRegistrations,
   ] = await Promise.all([
     User.countDocuments({ role: "family" }),
     User.countDocuments({ role: "family", isVerified: true }),
     ElderlyProfile.countDocuments({ status: "active" }),
     ElderlyProfile.countDocuments({ status: "archived" }),
+    CaregiverProfile.countDocuments({ applicationStatus: "submitted" }),
+    CaregiverProfile.countDocuments({ applicationStatus: "approved" }),
     User.find({ role: "family" }).sort({ createdAt: -1 }).limit(5),
   ]);
   const unverifiedFamilies = totalFamilies - verifiedFamilies;
@@ -42,9 +47,12 @@ export async function getAdminOverview(_request, response) {
         unverifiedFamilies,
         activeElderlyProfiles,
         archivedElderlyProfiles,
+        submittedCaregiverApplications,
+        approvedCaregivers,
       },
       attention: {
         unverifiedFamilyAccounts: unverifiedFamilies,
+        submittedCaregiverApplications,
       },
       recentRegistrations: recentRegistrations.map((user) => ({
         ...toPublicUser(user),

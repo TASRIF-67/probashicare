@@ -3,13 +3,14 @@ import { EyeIcon, EyeOffIcon } from "./Icons.jsx";
 
 /**
  * Renders an accessible labeled input with validation feedback.
- * @param {{label: string, error?: string, id: string, showPasswordToggle?: boolean} & import("react").InputHTMLAttributes<HTMLInputElement>} props - Label, error, password toggle, and native attributes.
+ * @param {{label: string, error?: string, hint?: string, id: string, showPasswordToggle?: boolean} & import("react").InputHTMLAttributes<HTMLInputElement>} props - Label, feedback, password toggle, and native attributes.
  * @returns {import("react").ReactElement} Labeled form control.
  * @sideEffects Manages password visibility and invokes supplied native input handlers.
  */
-export function Input({ label, error, id, showPasswordToggle = false, type = "text", ...props }) {
+export function Input({ label, error, hint, id, showPasswordToggle = false, type = "text", ...props }) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
   const canTogglePassword = showPasswordToggle && type === "password";
   return (
     <label className="field" htmlFor={id}>
@@ -20,7 +21,7 @@ export function Input({ label, error, id, showPasswordToggle = false, type = "te
           type={canTogglePassword && isPasswordVisible ? "text" : type}
           className={error ? "input input--error" : "input"}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={[hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined}
           {...props}
         />
         {canTogglePassword && (
@@ -35,6 +36,7 @@ export function Input({ label, error, id, showPasswordToggle = false, type = "te
           </button>
         )}
       </span>
+      {hint && <small id={hintId} className="field__hint">{hint}</small>}
       {error && (
         <small id={errorId} className="field__error">
           {error}

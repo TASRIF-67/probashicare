@@ -22,14 +22,19 @@ export function notFound(request, _response, next) {
  * @sideEffects Logs unexpected errors and sends an HTTP response.
  */
 export function errorHandler(error, _request, response, _next) {
+  const isUploadError = error?.name === "MulterError";
   const isValidationError = error?.name === "ValidationError";
   const isDuplicateKeyError = error?.code === 11000;
   const statusCode =
-    error instanceof ApiError ? error.statusCode : isValidationError ? 422 : isDuplicateKeyError ? 409 : 500;
+    error instanceof ApiError ? error.statusCode : isValidationError || isUploadError ? 422 : isDuplicateKeyError ? 409 : 500;
   const message =
     error instanceof ApiError
       ? error.message
-      : isValidationError
+      : isUploadError
+        ? error.code === "LIMIT_FILE_SIZE"
+          ? "Verification document cannot exceed 5 MB."
+          : "The verification document could not be accepted."
+        : isValidationError
         ? "Please correct the submitted information."
         : isDuplicateKeyError
           ? "A record with that unique information already exists."
@@ -40,7 +45,7 @@ export function errorHandler(error, _request, response, _next) {
       )
     : null;
 
-  if (!(error instanceof ApiError) && !isValidationError && !isDuplicateKeyError) {
+  if (!(error instanceof ApiError) && !isValidationError && !isDuplicateKeyError && !isUploadError) {
     console.error(error);
   }
 

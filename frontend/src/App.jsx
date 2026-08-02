@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
+import { CaregiverApplicationRoute } from "./components/CaregiverApplicationRoute.jsx";
+import { CaregiverThemeRoute } from "./components/caregiver/CaregiverTheme.jsx";
 import { AdminLayout } from "./components/admin/AdminLayout.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { OnboardingPage } from "./pages/OnboardingPage.jsx";
@@ -13,6 +15,12 @@ import { ElderlyProfileDetailPage } from "./pages/elderly/ElderlyProfileDetailPa
 import { ElderlyProfileListPage } from "./pages/elderly/ElderlyProfileListPage.jsx";
 import { AdminAccountsPage } from "./pages/admin/AdminAccountsPage.jsx";
 import { AdminOverviewPage } from "./pages/admin/AdminOverviewPage.jsx";
+import { AdminCaregiverApplicationsPage } from "./pages/admin/AdminCaregiverApplicationsPage.jsx";
+import { AdminCaregiverReviewPage } from "./pages/admin/AdminCaregiverReviewPage.jsx";
+import { CaregiverApplicationPage } from "./pages/caregiver/CaregiverApplicationPage.jsx";
+import { CaregiverApplicationStatusPage } from "./pages/caregiver/CaregiverApplicationStatusPage.jsx";
+import { CaregiverDashboardPage } from "./pages/caregiver/CaregiverDashboardPage.jsx";
+import { CaregiverProfilePage } from "./pages/caregiver/CaregiverProfilePage.jsx";
 
 /**
  * Declares public and role-protected application routes.
@@ -25,7 +33,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/signup" element={<SignupPage initialMode="family" />} />
+      <Route path="/caregiver/signup" element={<SignupPage initialMode="caregiver" />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route element={<ProtectedRoute roles={["family"]} />}>
@@ -42,6 +51,22 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverviewPage />} />
           <Route path="accounts" element={<AdminAccountsPage />} />
+          <Route path="caregivers" element={<AdminCaregiverApplicationsPage />} />
+          <Route path="caregivers/:profileId" element={<AdminCaregiverReviewPage />} />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute roles={["caregiver"]} />}>
+        <Route element={<CaregiverThemeRoute />}>
+          <Route element={<CaregiverApplicationRoute allowedStatuses={["draft", "rejected"]} />}>
+            <Route path="/caregiver/application" element={<CaregiverApplicationPage />} />
+          </Route>
+          <Route element={<CaregiverApplicationRoute allowedStatuses={["submitted", "suspended"]} />}>
+            <Route path="/caregiver/application-status" element={<CaregiverApplicationStatusPage />} />
+          </Route>
+          <Route element={<CaregiverApplicationRoute allowedStatuses={["approved"]} />}>
+            <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
+            <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -4,6 +4,7 @@ import { Card } from "../../components/Card.jsx";
 import {
   ArchiveIcon,
   ArrowRightIcon,
+  BriefcaseIcon,
   ClockIcon,
   ShieldCheckIcon,
   UsersIcon,
@@ -41,19 +42,20 @@ export function AdminOverviewPage() {
   const { metrics, attention, recentRegistrations } = overview;
   return (
     <>
-      <div className="admin-heading"><div><span className="eyebrow">Overview</span><h1>Platform operations</h1><p>A live summary of family access and elderly profile activity.</p></div><span className="live-status"><span /> Live data</span></div>
+      <div className="admin-heading"><div><span className="eyebrow">Overview</span><h1>Platform operations</h1><p>A live summary of family access, elderly profiles, and caregiver verification.</p></div><span className="live-status"><span /> Live data</span></div>
       <section className="overview-metrics" aria-label="Platform metrics">
         <Card className="overview-metric"><span className="metric-card__icon"><UsersIcon /></span><div><small>Family accounts</small><strong>{metrics.totalFamilies}</strong><span>{metrics.verifiedFamilies} verified</span></div></Card>
         <Card className="overview-metric"><span className="metric-card__icon metric-card__icon--success"><ShieldCheckIcon /></span><div><small>Active elderly profiles</small><strong>{metrics.activeElderlyProfiles}</strong><span>Available to linked families</span></div></Card>
         <Card className="overview-metric"><span className="metric-card__icon metric-card__icon--pending"><ClockIcon /></span><div><small>Awaiting verification</small><strong>{metrics.unverifiedFamilies}</strong><span>Family email not confirmed</span></div></Card>
         <Card className="overview-metric"><span className="metric-card__icon overview-metric__archive"><ArchiveIcon /></span><div><small>Archived profiles</small><strong>{metrics.archivedElderlyProfiles}</strong><span>Preserved health records</span></div></Card>
+        <Card className="overview-metric"><span className="metric-card__icon metric-card__icon--pending"><BriefcaseIcon /></span><div><small>Caregiver reviews</small><strong>{metrics.submittedCaregiverApplications}</strong><span>{metrics.approvedCaregivers} approved caregivers</span></div></Card>
       </section>
       <div className="overview-grid">
         <Card className="overview-panel">
           <div className="overview-panel__header"><div><h2>Needs attention</h2><p>Current administrative work from active modules.</p></div></div>
-          {attention.unverifiedFamilyAccounts > 0 ? (
-            <Link className="attention-row" to="/admin/accounts"><span className="attention-row__icon"><ClockIcon size={19} /></span><span><strong>Unverified family accounts</strong><small>{attention.unverifiedFamilyAccounts} registration{attention.unverifiedFamilyAccounts === 1 ? "" : "s"} waiting for email confirmation</small></span><ArrowRightIcon size={18} /></Link>
-          ) : (
+          {attention.submittedCaregiverApplications > 0 && <Link className="attention-row" to="/admin/caregivers"><span className="attention-row__icon"><BriefcaseIcon size={19} /></span><span><strong>Caregiver applications</strong><small>{attention.submittedCaregiverApplications} application{attention.submittedCaregiverApplications === 1 ? "" : "s"} ready for review</small></span><ArrowRightIcon size={18} /></Link>}
+          {attention.unverifiedFamilyAccounts > 0 && <Link className="attention-row" to="/admin/accounts"><span className="attention-row__icon"><ClockIcon size={19} /></span><span><strong>Unverified family accounts</strong><small>{attention.unverifiedFamilyAccounts} registration{attention.unverifiedFamilyAccounts === 1 ? "" : "s"} waiting for email confirmation</small></span><ArrowRightIcon size={18} /></Link>}
+          {!attention.unverifiedFamilyAccounts && !attention.submittedCaregiverApplications && (
             <div className="overview-empty"><ShieldCheckIcon /><strong>Nothing needs attention</strong><span>All registered family emails are verified.</span></div>
           )}
         </Card>

@@ -12,6 +12,17 @@ async function signup(input) {
 }
 
 /**
+ * Creates an unverified caregiver account and draft application profile.
+ * @param {{name: string, email: string, phone: string, password: string, confirmPassword: string}} input - Caregiver signup form values.
+ * @returns {Promise<{message: string, email: string}>} Verification instructions and normalized email.
+ * @sideEffects Calls POST `/auth/caregiver/signup`, creating records and sending verification email.
+ */
+async function caregiverSignup(input) {
+  const response = await api.post("/auth/caregiver/signup", input);
+  return response.data.data;
+}
+
+/**
  * Starts an email/password session.
  * @param {{email: string, password: string}} input - Login credentials.
  * @returns {Promise<{user: object}>} Authenticated public user payload.
@@ -84,6 +95,7 @@ async function resendVerification(email) {
  */
 export const authService = {
   signup,
+  caregiverSignup,
   login,
   loginWithGoogle,
   getCurrentUser,

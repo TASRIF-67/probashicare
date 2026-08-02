@@ -12,6 +12,7 @@ import {
 } from "../utils/authTokens.js";
 import { toPublicUser } from "../utils/userResponse.js";
 import { familyHasActiveElderlyProfiles } from "../services/elderlyProfileAccessService.js";
+import { CaregiverProfile } from "../models/CaregiverProfile.js";
 
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -34,10 +35,13 @@ async function issueVerificationEmail(user) {
     tokenHash,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
+  const verificationUrl = new URL("/verify-email", env.clientUrl);
+  verificationUrl.searchParams.set("token", rawToken);
+  verificationUrl.searchParams.set("mode", user.role === "caregiver" ? "caregiver" : "family");
   return sendVerificationEmail({
     to: user.email,
     name: user.name,
-    verificationUrl: `${env.clientUrl}/verify-email?token=${rawToken}`,
+    verificationUrl: verificationUrl.toString(),
   });
 }
 
@@ -60,10 +64,63 @@ async function hasLinkedElderlyProfiles(userId) {
  */
 async function completeLogin(response, user) {
   const linked = user.role === "family" ? await hasLinkedElderlyProfiles(user._id.toString()) : true;
+  const caregiverProfile =
+    user.role === "caregiver" ? await CaregiverProfile.findOne({ userId: user._id }) : null;
   response
     .cookie("session", createSessionToken(user), SESSION_COOKIE_OPTIONS)
     .status(200)
-    .json({ success: true, data: { user: toPublicUser(user, linked) } });
+    .json({
+      success: true,
+      data: {
+        user: toPublicUser(
+          user,
+          linked,
+          user.role === "caregiver" ? caregiverProfile?.applicationStatus || "draft" : null,
+        ),
+      },
+    });
+}
+
+/**
+ * POST /api/auth/caregiver/signup
+ * Body: `{ name: string, email: string, phone: string, password: string, confirmPassword: string }`.
+ * Success 201: `{ success: true, data: { message: string, email: string } }`.
+ * Failure: standard conflict, validation, mail, or database error shape.
+ * Auth: public; always creates an unverified caregiver User and draft CaregiverProfile.
+ * @param {import("express").Request} request - Validated caregiver signup request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects Creates User/Profile records, hashes a password, and sends verification email.
+ */
+export async function caregiverSignup(request, response) {
+  const { name, email, phone, password } = request.body;
+  const existing = await User.findOne({ email });
+  if (existing) throw new ApiError(409, "An account already exists for this email.");
+
+  const user = await User.create({
+    name,
+    email,
+    password: await bcrypt.hash(password, 12),
+    role: "caregiver",
+    isVerified: false,
+  });
+
+  try {
+    await CaregiverProfile.create({ userId: user._id, phone, applicationStatus: "draft" });
+    await issueVerificationEmail(user);
+  } catch (error) {
+    await Promise.all([
+      User.deleteOne({ _id: user._id }),
+      CaregiverProfile.deleteOne({ userId: user._id }),
+      EmailVerificationToken.deleteMany({ userId: user._id }),
+    ]);
+    throw error;
+  }
+
+  response.status(201).json({
+    success: true,
+    data: { message: "Check your inbox to verify your caregiver account.", email: user.email },
+  });
 }
 
 /**
@@ -71,7 +128,7 @@ async function completeLogin(response, user) {
  * Body: `{ name: string, email: string, password: string }`.
  * Success 201: `{ success: true, data: { message: string, email: string } }`.
  * Failure: `{ success: false, error: { message: string, details: object|null } }`.
- * Auth: public; always creates the `family` role. Admin, caregiver, and elderly signup is forbidden.
+ * Auth: public; always creates the `family` role. Admin and elderly signup is forbidden.
  * @param {import("express").Request} request - Validated signup request.
  * @param {import("express").Response} response - Express response writer.
  * @returns {Promise<void>}
@@ -111,7 +168,7 @@ export async function signup(request, response) {
  * Body: `{ email: string, password: string }`.
  * Success 200: `{ success: true, data: { user: PublicUser } }` plus session cookie.
  * Failure: standard error shape; unverified accounts receive 403.
- * Auth: public; supports verified family accounts and seeded admin accounts only.
+ * Auth: public; supports verified family/caregiver accounts and seeded admin accounts.
  * @param {import("express").Request} request - Validated login request.
  * @param {import("express").Response} response - Express response writer.
  * @returns {Promise<void>}
@@ -124,7 +181,7 @@ export async function login(request, response) {
   if (!user?.password || !(await bcrypt.compare(password, user.password))) {
     throw new ApiError(401, "Email or password is incorrect.");
   }
-  if (!["family", "admin"].includes(user.role)) {
+  if (!["family", "caregiver", "admin"].includes(user.role)) {
     throw new ApiError(403, "Authentication for this role is not available yet.");
   }
   if (!user.isVerified) {
@@ -139,11 +196,11 @@ export async function login(request, response) {
  * Body: `{ credential: string }` from Google Identity Services.
  * Success 200: `{ success: true, data: { user: PublicUser } }` plus session cookie.
  * Failure: standard error shape; rejects malformed/unverified Google identities.
- * Auth: public; signs in or creates family users only and never creates admins.
+ * Auth: public; signs in or creates family users only and never creates caregivers/admins.
  * @param {import("express").Request} request - Request containing a Google ID token.
  * @param {import("express").Response} response - Express response writer.
  * @returns {Promise<void>}
- * @sideEffects Verifies with Google, reads or writes User, and sets a session cookie.
+ * @sideEffects Verifies with Google, reads/writes a family User, and sets a session cookie.
  */
 export async function googleLogin(request, response) {
   if (!request.body?.credential) throw new ApiError(422, "Google credential is required.");
@@ -221,7 +278,11 @@ export async function verifyEmail(request, response) {
 export async function resendVerification(request, response) {
   const email = request.body?.email?.trim().toLowerCase();
   if (!email) throw new ApiError(422, "Email is required.");
-  const user = await User.findOne({ email, isVerified: false, role: "family" });
+  const user = await User.findOne({
+    email,
+    isVerified: false,
+    role: { $in: ["family", "caregiver"] },
+  });
   if (user) await issueVerificationEmail(user);
   response.json({
     success: true,
@@ -234,7 +295,7 @@ export async function resendVerification(request, response) {
  * Body/params/query: none.
  * Success 200: `{ success: true, data: { user: PublicUser } }`.
  * Failure: standard 401 error shape.
- * Auth: any authenticated active role; phase-one clients use family and admin.
+ * Auth: any authenticated active role; current clients use family, caregiver, and admin.
  * @param {import("express").Request} request - Authenticated request with `request.user`.
  * @param {import("express").Response} response - Express response writer.
  * @returns {Promise<void>}
@@ -245,9 +306,21 @@ export async function getCurrentUser(request, response) {
     request.user.role === "family"
       ? await hasLinkedElderlyProfiles(request.user._id.toString())
       : true;
+  const caregiverProfile =
+    request.user.role === "caregiver"
+      ? await CaregiverProfile.findOne({ userId: request.user._id })
+      : null;
   response.json({
     success: true,
-    data: { user: toPublicUser(request.user, linked) },
+    data: {
+      user: toPublicUser(
+        request.user,
+        linked,
+        request.user.role === "caregiver"
+          ? caregiverProfile?.applicationStatus || "draft"
+          : null,
+      ),
+    },
   });
 }
 
