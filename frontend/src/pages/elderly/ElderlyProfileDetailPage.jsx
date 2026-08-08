@@ -19,6 +19,7 @@ import {
   PillIcon,
   StethoscopeIcon,
   UsersIcon,
+  ClipboardListIcon,
 } from "../../components/Icons.jsx";
 import { Modal } from "../../components/Modal.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -231,6 +232,7 @@ export function ElderlyProfileDetailPage() {
             </div>
           </div>
           <div className="modern-profile-actions">
+            <Link className="button button--secondary" to={`/elderly-profiles/${profileId}/wellness`}><ClipboardListIcon size={17} /> Wellness &amp; vitals</Link>
             <Link className="button button--primary" to={`/elderly-profiles/${profileId}/edit`}><PencilIcon size={17} /> Edit profile</Link>
             {profile.familyAccess.permission === "owner" && <Button variant="ghost" onClick={() => setShowArchive(true)}><ArchiveIcon size={17} /> Archive</Button>}
           </div>

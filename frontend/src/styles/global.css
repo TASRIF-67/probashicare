@@ -567,3 +567,104 @@ p { color: var(--muted); line-height: 1.65; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Daily wellness reports and vitals */
+.wellness-editor-page, .wellness-detail-page, .elderly-wellness-page { width: min(1120px, 100%); }
+.wellness-form { display: grid; gap: 18px; }
+.wellness-form-section { padding: clamp(21px, 4vw, 32px); border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: 0 13px 44px rgba(25, 56, 45, .05); }
+.wellness-form-section__heading { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 25px; }
+.wellness-form-section__heading > span, .wellness-section-heading > div > span, .wellness-detail-card__heading > span { width: 40px; height: 40px; display: grid; place-items: center; flex: none; color: var(--primary); border-radius: 12px; background: var(--accent); }
+.wellness-form-section__heading h2, .wellness-form-section__heading p { margin: 0; }
+.wellness-form-section__heading h2 { font-size: 1.08rem; }
+.wellness-form-section__heading p { font-size: .8rem; }
+.wellness-form .field > span { display: inline-flex; align-items: center; gap: 6px; }
+.wellness-vitals-grid { align-items: start; }
+.wellness-form-actions { position: sticky; bottom: 14px; z-index: 8; display: flex; justify-content: flex-end; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 15px; background: color-mix(in srgb, var(--surface) 91%, transparent); box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+.wellness-no-assignment, .wellness-empty { display: grid; justify-items: center; gap: 8px; min-height: 260px; align-content: center; padding: 34px; text-align: center; border: 1px dashed var(--border); border-radius: 20px; background: var(--surface); }
+.wellness-no-assignment > span { width: 54px; height: 54px; display: grid; place-items: center; color: var(--primary); border-radius: 16px; background: var(--accent); }
+.wellness-no-assignment h2, .wellness-no-assignment p, .wellness-empty h2, .wellness-empty p { margin: 0; }
+.wellness-no-assignment p, .wellness-empty p { max-width: 520px; }
+.wellness-toolbar { display: flex; width: fit-content; gap: 4px; margin-bottom: 22px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.wellness-filter { min-height: 36px; padding: 0 13px; color: var(--muted); border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.wellness-filter:hover { color: var(--text); }
+.wellness-filter--active { color: var(--primary); border-color: var(--border); background: var(--surface); }
+.wellness-report-list, .family-wellness-list { display: grid; gap: 11px; }
+.wellness-report-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 16px; min-height: 104px; padding: 18px 20px; color: var(--text); border: 1px solid var(--border); border-radius: 17px; background: var(--surface); text-decoration: none; transition: transform .18s, border-color .18s; }
+.wellness-report-row:hover, .family-wellness-row:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.wellness-report-row > div { min-width: 0; }
+.wellness-report-row h2, .wellness-report-row p { overflow: hidden; margin: 2px 0; text-overflow: ellipsis; white-space: nowrap; }
+.wellness-report-row h2 { font-size: 1rem; }
+.wellness-report-row p { font-size: .78rem; }
+.wellness-report-row__date { color: var(--primary); font-size: .72rem; font-weight: 700; }
+.wellness-detail-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 26px; padding: clamp(23px, 4vw, 34px); border: 1px solid var(--border); border-radius: 21px; background: linear-gradient(125deg, var(--surface), color-mix(in srgb, var(--accent) 45%, var(--surface))); }
+.wellness-detail-hero h1, .wellness-detail-hero p, .wellness-detail-hero .eyebrow { margin-bottom: 5px; }
+.wellness-detail-hero h1 { font-size: clamp(2rem, 5vw, 3.3rem); }
+.wellness-detail-grid { display: grid; gap: 16px; }
+.wellness-detail-card { box-shadow: none; }
+.wellness-detail-card__heading { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
+.wellness-detail-card__heading h2 { margin: 0; font-size: 1.04rem; }
+.wellness-detail-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.wellness-detail-card dt { margin-bottom: 4px; color: var(--muted); font-size: .72rem; }
+.wellness-detail-card dd { margin: 0; font-size: .86rem; font-weight: 700; text-transform: capitalize; }
+.wellness-detail-card > p { margin: 16px 0 0; padding: 14px; border-radius: 11px; background: var(--surface-2); }
+.wellness-handoff { margin-top: 18px; padding: 15px; border-left: 3px solid var(--primary); border-radius: 0 11px 11px 0; background: var(--surface-2); }
+.wellness-handoff p { margin: 5px 0 0; }
+.latest-wellness { display: flex; align-items: center; justify-content: space-between; gap: 26px; margin-bottom: 40px; padding: clamp(23px, 4vw, 34px); color: var(--text); border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)); border-radius: 21px; background: linear-gradient(130deg, var(--surface), color-mix(in srgb, var(--accent) 58%, var(--surface))); }
+.latest-wellness > div { min-width: 0; }
+.latest-wellness h2, .latest-wellness p { margin: 5px 0; }
+.latest-wellness h2 { font-size: clamp(1.35rem, 3vw, 2rem); }
+.latest-wellness > div > span:last-child { color: var(--muted); font-size: .78rem; }
+.wellness-kicker { color: var(--primary); font-size: .73rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.wellness-section-heading { margin: 34px 0 18px; }
+.wellness-section-heading > div { display: flex; align-items: center; gap: 12px; }
+.wellness-section-heading h2, .wellness-section-heading p { margin: 0; }
+.wellness-section-heading h2 { font-size: 1.12rem; }
+.wellness-section-heading p { font-size: .78rem; }
+.wellness-section-heading--history { margin-top: 44px; }
+.vitals-trend-grid { display: grid; gap: 14px; }
+.vitals-trend-card { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 17px; background: var(--surface); }
+.vitals-trend-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.vitals-trend-card__heading > div { display: grid; gap: 4px; }
+.vitals-trend-card__heading span, .vitals-trend-card__heading small { color: var(--muted); font-size: .72rem; }
+.vitals-trend-card__heading strong { font: 700 1.22rem "Manrope"; }
+.vitals-chart { width: 100%; height: 112px; margin-top: 16px; overflow: visible; }
+.vitals-chart line { stroke: var(--border); stroke-width: .65; vector-effect: non-scaling-stroke; }
+.vitals-chart polyline { fill: none; stroke: var(--primary); stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.vitals-chart circle { fill: var(--primary); vector-effect: non-scaling-stroke; }
+.vitals-chart-empty { min-height: 112px; display: grid; place-items: center; margin-top: 16px; color: var(--muted); border: 1px dashed var(--border); border-radius: 11px; font-size: .78rem; }
+.family-wellness-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 18px; padding: 18px 20px; color: var(--text); border: 1px solid var(--border); border-radius: 16px; background: var(--surface); text-decoration: none; transition: transform .18s, border-color .18s; }
+.family-wellness-row > div:first-child { min-width: 0; }
+.family-wellness-row h3, .family-wellness-row p { overflow: hidden; margin: 3px 0; text-overflow: ellipsis; white-space: nowrap; }
+.family-wellness-row h3 { font-size: .95rem; }
+.family-wellness-row p, .family-wellness-row > div:first-child > span { color: var(--muted); font-size: .76rem; }
+.family-wellness-row__meta { display: grid; justify-items: end; gap: 4px; color: var(--muted); font-size: .73rem; }
+
+@media (min-width: 820px) {
+  .wellness-vitals-grid { grid-template-columns: repeat(3, 1fr); }
+  .wellness-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wellness-detail-card--wide { grid-column: 1 / -1; }
+  .wellness-vitals-detail { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .vitals-trend-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 819px) {
+  .wellness-form-actions { position: static; }
+  .wellness-report-row { grid-template-columns: auto 1fr auto; }
+  .wellness-report-row > .status-badge { grid-column: 2; width: fit-content; }
+  .wellness-report-row > .lucide { grid-column: 3; grid-row: 1; }
+  .latest-wellness { align-items: flex-start; flex-direction: column; }
+  .family-wellness-row { grid-template-columns: 1fr auto; }
+  .family-wellness-row__meta { grid-column: 1; justify-items: start; }
+  .family-wellness-row > .lucide { grid-column: 2; grid-row: 1; }
+}
+
+@media (max-width: 520px) {
+  .wellness-form-section { padding: 19px 16px; }
+  .wellness-form-actions { flex-direction: column-reverse; }
+  .wellness-form-actions .button { width: 100%; }
+  .wellness-report-row { grid-template-columns: 1fr auto; }
+  .wellness-report-row > .profile-avatar { display: none; }
+  .wellness-detail-hero { flex-direction: column; }
+  .wellness-detail-card dl { grid-template-columns: 1fr; }
+  .family-wellness-row__meta { display: none; }
+}

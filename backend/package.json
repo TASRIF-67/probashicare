@@ -10,7 +10,8 @@
     "db:sync-indexes": "node scripts/syncDatabaseIndexes.js",
     "test:elderly-profiles": "node scripts/smokeElderlyProfiles.js",
     "test:admin-users": "node scripts/smokeAdminUsers.js",
-    "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js"
+    "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js",
+    "test:wellness-reports": "node scripts/smokeWellnessReports.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

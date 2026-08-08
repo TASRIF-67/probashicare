@@ -21,6 +21,10 @@ import { CaregiverApplicationPage } from "./pages/caregiver/CaregiverApplication
 import { CaregiverApplicationStatusPage } from "./pages/caregiver/CaregiverApplicationStatusPage.jsx";
 import { CaregiverDashboardPage } from "./pages/caregiver/CaregiverDashboardPage.jsx";
 import { CaregiverProfilePage } from "./pages/caregiver/CaregiverProfilePage.jsx";
+import { WellnessReportEditorPage } from "./pages/caregiver/WellnessReportEditorPage.jsx";
+import { WellnessReportListPage } from "./pages/caregiver/WellnessReportListPage.jsx";
+import { ElderlyWellnessPage } from "./pages/elderly/ElderlyWellnessPage.jsx";
+import { WellnessReportDetailPage } from "./pages/wellness/WellnessReportDetailPage.jsx";
 
 /**
  * Declares public and role-protected application routes.
@@ -46,6 +50,8 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/elderly-profiles/:profileId" element={<ElderlyProfileDetailPage />} />
         <Route path="/elderly-profiles/:profileId/edit" element={<EditElderlyProfilePage />} />
+        <Route path="/elderly-profiles/:profileId/wellness" element={<ElderlyWellnessPage />} />
+        <Route path="/elderly-profiles/:profileId/wellness-reports/:reportId" element={<WellnessReportDetailPage />} />
       </Route>
       <Route element={<ProtectedRoute roles={["admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
@@ -66,6 +72,10 @@ export default function App() {
           <Route element={<CaregiverApplicationRoute allowedStatuses={["approved"]} />}>
             <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
             <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
+            <Route path="/caregiver/wellness-reports" element={<WellnessReportListPage />} />
+            <Route path="/caregiver/wellness-reports/new" element={<WellnessReportEditorPage />} />
+            <Route path="/caregiver/wellness-reports/:reportId/edit" element={<WellnessReportEditorPage />} />
+            <Route path="/caregiver/wellness-reports/:reportId" element={<WellnessReportDetailPage />} />
           </Route>
         </Route>
       </Route>
