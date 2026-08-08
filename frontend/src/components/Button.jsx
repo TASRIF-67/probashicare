@@ -14,8 +14,9 @@ export function Button({
 }) {
   return (
     <button
-      className={`button button--${variant} ${className}`}
+      className={`button button--${variant} ${isLoading ? "button--loading" : ""} ${className}`}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
       {isLoading ? <span className="spinner" aria-label="Loading" /> : children}

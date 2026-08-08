@@ -4,6 +4,7 @@ import { CaregiverApplicationRoute } from "./components/CaregiverApplicationRout
 import { CaregiverThemeRoute } from "./components/caregiver/CaregiverTheme.jsx";
 import { AdminLayout } from "./components/admin/AdminLayout.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { CaregiverBrowsePage } from "./pages/family/CaregiverBrowsePage.jsx";
 import { OnboardingPage } from "./pages/OnboardingPage.jsx";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 import { LoginPage } from "./pages/auth/LoginPage.jsx";
@@ -21,6 +22,8 @@ import { CaregiverApplicationPage } from "./pages/caregiver/CaregiverApplication
 import { CaregiverApplicationStatusPage } from "./pages/caregiver/CaregiverApplicationStatusPage.jsx";
 import { CaregiverDashboardPage } from "./pages/caregiver/CaregiverDashboardPage.jsx";
 import { CaregiverProfilePage } from "./pages/caregiver/CaregiverProfilePage.jsx";
+import { FamilyBookingsPage } from "./pages/family/FamilyBookingsPage.jsx";
+import { CaregiverBookingsPage } from "./pages/caregiver/CaregiverBookingsPage.jsx";
 
 /**
  * Declares public and role-protected application routes.
@@ -44,6 +47,8 @@ export default function App() {
       </Route>
       <Route element={<ProtectedRoute roles={["family"]} requireOnboarding />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/caregivers" element={<CaregiverBrowsePage />} />
+        <Route path="/bookings" element={<FamilyBookingsPage />} />
         <Route path="/elderly-profiles/:profileId" element={<ElderlyProfileDetailPage />} />
         <Route path="/elderly-profiles/:profileId/edit" element={<EditElderlyProfilePage />} />
       </Route>
@@ -66,6 +71,7 @@ export default function App() {
           <Route element={<CaregiverApplicationRoute allowedStatuses={["approved"]} />}>
             <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
             <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
+            <Route path="/caregiver/bookings" element={<CaregiverBookingsPage />} />
           </Route>
         </Route>
       </Route>
