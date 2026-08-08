@@ -10,18 +10,32 @@ import { ApiError } from "../utils/ApiError.js";
  * @sideEffects Reads family links and elderly profiles from MongoDB.
  */
 export async function familyHasActiveElderlyProfiles(familyUserId) {
+  // Access comes from active family links, not from the profile's original creator field.
   const links = await ElderlyFamilyLink.find({
     familyUserId,
     status: "active",
-  }).select("elderlyProfileId");
-  if (!links.length) return false;
-
-  return Boolean(
-    await ElderlyProfile.exists({
-      _id: { $in: links.map((link) => link.elderlyProfileId) },
-      status: "active",
-    }),
+  }).select(
+    "elderlyProfileId",
   );
+
+  // Avoid a second query when the family has no active profile relationships.
+  if (links.length === 0) {
+    return false;
+  }
+
+  const linkedProfileIds = links.map((link) => {
+    return link.elderlyProfileId;
+  });
+
+  // Archived profiles do not satisfy onboarding or active-dashboard requirements.
+  const activeProfile = await ElderlyProfile.exists({
+    _id: {
+      $in: linkedProfileIds,
+    },
+    status: "active",
+  });
+
+  return Boolean(activeProfile);
 }
 
 /**
@@ -36,23 +50,60 @@ export async function getAuthorizedElderlyProfile({
   permissions = ["owner", "editor", "viewer"],
   includeArchived = false,
 }) {
+  // Invalid identifiers use the same response as missing records to avoid leaking details.
   if (!mongoose.isValidObjectId(profileId)) {
-    throw new ApiError(404, "Elderly profile not found.");
+    throw new ApiError(
+      404,
+      "Elderly profile not found.",
+    );
   }
 
-  const link = await ElderlyFamilyLink.findOne({
+  const linkFilter = {
     elderlyProfileId: profileId,
     familyUserId,
-    permission: { $in: permissions },
+    permission: {
+      $in: permissions,
+    },
     status: "active",
-  });
-  if (!link) throw new ApiError(404, "Elderly profile not found.");
+  };
 
-  const profile = await ElderlyProfile.findOne({
+  // Check the relationship before loading health data so unauthorized callers learn nothing.
+  const link = await ElderlyFamilyLink.findOne(linkFilter);
+
+  if (!link) {
+    throw new ApiError(
+      404,
+      "Elderly profile not found.",
+    );
+  }
+
+  const profileFilter = {
     _id: profileId,
-    ...(includeArchived ? {} : { status: "active" }),
-  });
-  if (!profile) throw new ApiError(404, "Elderly profile not found.");
+  };
 
-  return { profile, link };
+  // Most workflows exclude archived profiles; owner-only archive views can opt in explicitly.
+  if (!includeArchived) {
+    profileFilter.status = "active";
+  }
+
+  const profile = await ElderlyProfile.findOne(profileFilter);
+
+  if (!profile) {
+    throw new ApiError(
+      404,
+      "Elderly profile not found.",
+    );
+  }
+
+  return {
+    profile,
+    link,
+  };
 }
+
+/*
+ * To add another elderly-profile access rule, keep relationship and permission
+ * checks in this service, call it from the controller, and expose only the data
+ * needed by the frontend service or hook. Use the same concealed 404 response for
+ * missing and unauthorized health records so record existence is not disclosed.
+ */

@@ -13,12 +13,50 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
 
-router.use(asyncHandler(requireAuth), allowRoles("family"));
-router.route("/").post(asyncHandler(createElderlyProfile)).get(asyncHandler(listElderlyProfiles));
-router.route("/:profileId").get(asyncHandler(getElderlyProfile)).put(asyncHandler(updateElderlyProfile));
-router.patch("/:profileId/personal-information", asyncHandler(updatePersonalInformation));
-router.put("/:profileId/:section", asyncHandler(updateProfileSection));
-router.patch("/:profileId/archive", asyncHandler(archiveElderlyProfile));
+// Every route below requires a valid session before role authorization is checked.
+router.use(asyncHandler(requireAuth));
+
+// Elderly profiles are currently created and managed through family accounts.
+router.use(allowRoles("family"));
+
+// Collection routes create a new profile or list profiles linked to the current family.
+router.post(
+  "/",
+  asyncHandler(createElderlyProfile),
+);
+
+router.get(
+  "/",
+  asyncHandler(listElderlyProfiles),
+);
+
+// Profile routes load or replace one profile after its family link is authorized.
+router.get(
+  "/:profileId",
+  asyncHandler(getElderlyProfile),
+);
+
+router.put(
+  "/:profileId",
+  asyncHandler(updateElderlyProfile),
+);
+
+// Focused updates let the frontend save one part without replacing the whole profile.
+router.patch(
+  "/:profileId/personal-information",
+  asyncHandler(updatePersonalInformation),
+);
+
+router.put(
+  "/:profileId/:section",
+  asyncHandler(updateProfileSection),
+);
+
+// Archiving preserves health history while removing the profile from active workflows.
+router.patch(
+  "/:profileId/archive",
+  asyncHandler(archiveElderlyProfile),
+);
 
 /*
  * To add a similar profile API, write a thoroughly documented controller, register
