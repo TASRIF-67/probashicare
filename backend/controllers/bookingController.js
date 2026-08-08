@@ -1,4 +1,3 @@
-import { Booking } from "../models/Booking.js";
 import { CaregiverProfile } from "../models/CaregiverProfile.js";
 import { User } from "../models/User.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -8,8 +7,6 @@ function sanitizeCaregiverSummary(caregiverProfile, caregiverUser) {
     _id: caregiverUser._id.toString(),
     userId: caregiverUser._id.toString(),
     name: caregiverUser.name,
-    email: caregiverUser.email,
-    phone: caregiverProfile.phone || "",
     bio: caregiverProfile.bio || "",
     serviceArea: caregiverProfile.serviceArea || "",
     supportedServiceTypes: caregiverProfile.supportedServiceTypes || ["companionship"],
@@ -19,35 +16,9 @@ function sanitizeCaregiverSummary(caregiverProfile, caregiverUser) {
     skills: caregiverProfile.skills || [],
     languages: caregiverProfile.languages || [],
     availability: caregiverProfile.availability || [],
-    applicationStatus: caregiverProfile.applicationStatus,
   };
 }
-
-function formatBookingDocument(booking) {
-  const caregiver = booking.caregiverId && typeof booking.caregiverId === "object" ? booking.caregiverId : null;
-  const familyMember = booking.familyMemberId && typeof booking.familyMemberId === "object" ? booking.familyMemberId : null;
-
-  return {
-    _id: booking._id,
-    caregiverId: caregiver?._id ? caregiver._id.toString() : booking.caregiverId?.toString(),
-    familyMemberId: familyMember?._id ? familyMember._id.toString() : booking.familyMemberId?.toString(),
-    caregiver: caregiver
-      ? { id: caregiver._id.toString(), name: caregiver.name, email: caregiver.email }
-      : null,
-    familyMember: familyMember
-      ? { id: familyMember._id.toString(), name: familyMember.name, email: familyMember.email }
-      : null,
-    bookingType: booking.bookingType,
-    serviceType: booking.serviceType,
-    startDate: booking.startDate,
-    endDate: booking.endDate,
-    timeSlot: booking.timeSlot,
-    status: booking.status,
-    createdAt: booking.createdAt,
-    updatedAt: booking.updatedAt,
-  };
-}
-
+// Booking mutations live in bookingWorkflowController so this module stays marketplace-only.
 export async function listCaregivers(request, response) {
   const { serviceType, day, availableOn } = request.query;
 
@@ -59,9 +30,10 @@ export async function listCaregivers(request, response) {
     match["availability.day"] = String(day).toLowerCase();
   }
 
-  const profiles = await CaregiverProfile.find(match).populate("userId", "name email role");
+  const profiles = await CaregiverProfile.find(match).populate("userId", "name role isVerified");
 
   let caregivers = profiles
+    .filter((profile) => profile.userId?.isVerified)
     .map((profile) => ({
       caregiver: profile.userId ? sanitizeCaregiverSummary(profile, profile.userId) : null,
       availability: profile.availability || [],
@@ -90,10 +62,9 @@ export async function listCaregivers(request, response) {
     },
   });
 }
-
 export async function getCaregiverAvailability(request, response) {
   const caregiverUser = await User.findById(request.params.id);
-  if (!caregiverUser || caregiverUser.role !== "caregiver") {
+  if (!caregiverUser || caregiverUser.role !== "caregiver" || !caregiverUser.isVerified) {
     throw new ApiError(404, "Caregiver not found.");
   }
 
@@ -108,61 +79,9 @@ export async function getCaregiverAvailability(request, response) {
       caregiver: {
         id: caregiverUser._id.toString(),
         name: caregiverUser.name,
-        email: caregiverUser.email,
       },
       serviceTypes: caregiverProfile.supportedServiceTypes || [],
       availability: caregiverProfile.availability || [],
-    },
-  });
-}
-
-export async function createBooking(request, response) {
-  const caregiverId = request.body.caregiverId;
-  const caregiverUser = await User.findById(caregiverId);
-  if (!caregiverUser || caregiverUser.role !== "caregiver") {
-    throw new ApiError(404, "Selected caregiver not found.");
-  }
-
-  const caregiverProfile = await CaregiverProfile.findOne({ userId: caregiverUser._id });
-  if (!caregiverProfile || caregiverProfile.applicationStatus !== "approved") {
-    throw new ApiError(409, "This caregiver is not currently accepting bookings.");
-  }
-
-  const booking = await Booking.create({
-    familyMemberId: request.user._id,
-    caregiverId: caregiverUser._id,
-    bookingType: request.body.bookingType,
-    serviceType: request.body.serviceType,
-    startDate: new Date(request.body.startDate),
-    endDate: new Date(request.body.endDate),
-    timeSlot: request.body.timeSlot,
-    status: "pending",
-  });
-
-  const populatedBooking = await Booking.findById(booking._id)
-    .populate("caregiverId", "name email role")
-    .populate("familyMemberId", "name email role");
-
-  response.status(201).json({
-    success: true,
-    data: {
-      message: "Booking request created successfully.",
-      booking: formatBookingDocument(populatedBooking),
-    },
-  });
-}
-
-export async function listMyBookings(request, response) {
-  const bookings = await Booking.find({ familyMemberId: request.user._id })
-    .sort({ startDate: 1, createdAt: -1 })
-    .populate("caregiverId", "name email role")
-    .populate("familyMemberId", "name email role");
-
-  response.json({
-    success: true,
-    data: {
-      count: bookings.length,
-      bookings: bookings.map((booking) => formatBookingDocument(booking)),
     },
   });
 }

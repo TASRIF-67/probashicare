@@ -1,19 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "../../components/AppHeader.jsx";
 import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
 import { Input } from "../../components/Input.jsx";
-import { Modal } from "../../components/Modal.jsx";
-import { useToast } from "../../context/ToastContext.jsx";
-import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, MoneyIcon, SearchIcon, ShieldCheckIcon } from "../../components/Icons.jsx";
+import { AlertIcon, MoneyIcon, SearchIcon, ShieldCheckIcon } from "../../components/Icons.jsx";
 import { api, normalizeApiError } from "../../services/api.js";
-import { bookingService } from "../../services/bookingService.js";
-
-const BOOKING_TYPES = [
-  { value: "one-time", label: "One-time" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "long-term", label: "Long-term" },
-];
+import { CaregiverBookingModal } from "../../components/booking/CaregiverBookingModal.jsx";
 
 const DAYS = [
   "monday",
@@ -86,7 +78,6 @@ function CaregiverCard({ caregiver, onBook }) {
 }
 
 export function CaregiverBrowsePage() {
-  const { showToast } = useToast();
   const [caregivers, setCaregivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -96,21 +87,6 @@ export function CaregiverBrowsePage() {
     search: "",
   });
   const [selectedCaregiver, setSelectedCaregiver] = useState(null);
-  const [bookingForm, setBookingForm] = useState({
-    bookingType: "one-time",
-    serviceType: "companionship",
-    startDate: "",
-    endDate: "",
-    timeSlot: "",
-    day: "",
-  });
-  const [formError, setFormError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const availableSlots = useMemo(() => {
-    if (!selectedCaregiver) return [];
-    return (selectedCaregiver.availability || []).filter((slot) => !filters.day || slot.day === filters.day);
-  }, [selectedCaregiver, filters.day]);
 
   function loadCaregivers(nextFilters = filters) {
     setLoading(true);
@@ -135,45 +111,6 @@ export function CaregiverBrowsePage() {
 
   function openBookingModal(caregiver) {
     setSelectedCaregiver(caregiver);
-    setBookingForm({
-      bookingType: "one-time",
-      serviceType: caregiver.supportedServiceTypes?.[0] || "companionship",
-      startDate: "",
-      endDate: "",
-      timeSlot: "",
-      day: "",
-    });
-    setFormError("");
-  }
-
-  function handleSlotChange(slot) {
-    setBookingForm((current) => ({ ...current, timeSlot: `${slot.startTime}-${slot.endTime}`, day: slot.day }));
-  }
-
-  async function submitBooking(event) {
-    event.preventDefault();
-    if (!selectedCaregiver) return;
-    setIsSubmitting(true);
-    setFormError("");
-
-    try {
-      await bookingService.createBooking({
-        caregiverId: selectedCaregiver._id,
-        bookingType: bookingForm.bookingType,
-        serviceType: bookingForm.serviceType,
-        startDate: bookingForm.startDate,
-        endDate: bookingForm.bookingType === "one-time" ? bookingForm.startDate : bookingForm.endDate,
-        timeSlot: bookingForm.timeSlot,
-        day: bookingForm.day,
-      });
-      showToast("Booking request sent successfully.", "success");
-      setSelectedCaregiver(null);
-      setBookingForm({ bookingType: "one-time", serviceType: "companionship", startDate: "", endDate: "", timeSlot: "", day: "" });
-    } catch (requestError) {
-      setFormError(normalizeApiError(requestError).message);
-    } finally {
-      setIsSubmitting(false);
-    }
   }
 
   return (
@@ -239,70 +176,7 @@ export function CaregiverBrowsePage() {
         </div>
       </div>
 
-      <Modal isOpen={Boolean(selectedCaregiver)} title={`Book ${selectedCaregiver?.name || "caregiver"}`} onClose={() => setSelectedCaregiver(null)}>
-        {selectedCaregiver && (
-          <form onSubmit={submitBooking} style={{ display: "grid", gap: 18 }}>
-            <div className="form-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-              <label className="field">
-                <span>Booking type</span>
-                <select className="input" value={bookingForm.bookingType} onChange={(event) => setBookingForm((current) => ({ ...current, bookingType: event.target.value }))}>
-                  {BOOKING_TYPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                <span>Service type</span>
-                <select className="input" value={bookingForm.serviceType} onChange={(event) => setBookingForm((current) => ({ ...current, serviceType: event.target.value }))}>
-                  {selectedCaregiver.supportedServiceTypes?.map((type) => <option key={type} value={type}>{type}</option>)}
-                </select>
-              </label>
-              <label className="field">
-                <span>Start date</span>
-                <input className="input" type="date" value={bookingForm.startDate} onChange={(event) => setBookingForm((current) => ({ ...current, startDate: event.target.value }))} required />
-              </label>
-              {bookingForm.bookingType !== "one-time" && (
-                <label className="field">
-                  <span>End date</span>
-                  <input className="input" type="date" value={bookingForm.endDate} onChange={(event) => setBookingForm((current) => ({ ...current, endDate: event.target.value }))} required />
-                </label>
-              )}
-            </div>
-
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>Available slots</strong>
-                <span style={{ color: "var(--muted)", fontSize: ".8rem" }}>Select one</span>
-              </div>
-              <div style={{ display: "grid", gap: 8 }}>
-                {availableSlots.length ? (
-                  availableSlots.map((slot) => (
-                    <button
-                      type="button"
-                      key={`${slot.day}-${slot.startTime}-${slot.endTime}`}
-                      className="button button--secondary"
-                      style={{ justifyContent: "space-between", width: "100%", border: bookingForm.timeSlot === `${slot.startTime}-${slot.endTime}` ? "1px solid var(--primary)" : "1px solid var(--border)" }}
-                      onClick={() => handleSlotChange(slot)}
-                    >
-                      <span style={{ textTransform: "capitalize" }}>{slot.day}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 6 }}><ClockIcon size={16} /> {toDisplayTime(slot.startTime, slot.endTime)}</span>
-                    </button>
-                  ))
-                ) : (
-                  <div className="empty-state">No matching availability for the current filter.</div>
-                )}
-              </div>
-            </div>
-
-            {formError && <div className="alert alert--error">{formError}</div>}
-
-            <div className="modal-actions">
-              <Button type="button" variant="secondary" onClick={() => setSelectedCaregiver(null)}>Cancel</Button>
-              <Button type="submit" isLoading={isSubmitting} disabled={!bookingForm.timeSlot || !bookingForm.startDate || (bookingForm.bookingType !== "one-time" && !bookingForm.endDate)}>
-                <CheckIcon size={16} /> Confirm booking
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
+      <CaregiverBookingModal caregiver={selectedCaregiver} onClose={() => setSelectedCaregiver(null)} />
     </main>
   );
 }
