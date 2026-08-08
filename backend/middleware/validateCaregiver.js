@@ -48,6 +48,7 @@ export function validateCaregiverApplication(
 ) {
   const skillInput = Array.isArray(body.skills) ? body.skills : [];
   const languageInput = Array.isArray(body.languages) ? body.languages : [];
+  const supportedServiceTypes = Array.isArray(body.supportedServiceTypes) ? body.supportedServiceTypes : [];
   const normalized = {
     phone: body.phone?.trim() || "",
     bio: body.bio?.trim() || "",
@@ -57,6 +58,7 @@ export function validateCaregiverApplication(
     hourlyRate: body.hourlyRate === "" || body.hourlyRate == null ? null : Number(body.hourlyRate),
     monthlyRate: body.monthlyRate === "" || body.monthlyRate == null ? null : Number(body.monthlyRate),
     serviceArea: body.serviceArea?.trim() || "",
+    supportedServiceTypes: [...new Set(supportedServiceTypes.map((item) => String(item).trim()).filter(Boolean))],
     availability: Array.isArray(body.availability) ? body.availability : [],
   };
   const errors = {};
@@ -68,6 +70,10 @@ export function validateCaregiverApplication(
   if (normalized.skills.length > 30 || normalized.skills.some((item) => item.length > 80)) errors.skills = "Add no more than 30 skills, using 80 characters or fewer for each.";
   if (normalized.languages.length > 20 || normalized.languages.some((item) => item.length > 80)) errors.languages = "Add no more than 20 languages, using 80 characters or fewer for each.";
   if (normalized.serviceArea.length > 300) errors.serviceArea = "Service area cannot exceed 300 characters.";
+  if (isSubmission || body.supportedServiceTypes !== undefined) {
+    if (!normalized.supportedServiceTypes.length) errors.supportedServiceTypes = "Select at least one supported service type.";
+    if (normalized.supportedServiceTypes.length > 8 || normalized.supportedServiceTypes.some((item) => item.length > 60)) errors.supportedServiceTypes = "Choose between 1 and 8 service types with 60 characters or fewer each.";
+  }
   if (normalized.availability.length > 21) errors.availability = "Add no more than 21 availability periods.";
   if (normalized.yearsOfExperience != null && (!Number.isFinite(normalized.yearsOfExperience) || normalized.yearsOfExperience < 0 || normalized.yearsOfExperience > 60)) errors.yearsOfExperience = "Experience must be between 0 and 60 years.";
   if (normalized.hourlyRate != null && (!Number.isFinite(normalized.hourlyRate) || normalized.hourlyRate < 0)) errors.hourlyRate = "Hourly rate cannot be negative.";

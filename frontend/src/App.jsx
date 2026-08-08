@@ -4,6 +4,7 @@ import { CaregiverApplicationRoute } from "./components/CaregiverApplicationRout
 import { CaregiverThemeRoute } from "./components/caregiver/CaregiverTheme.jsx";
 import { AdminLayout } from "./components/admin/AdminLayout.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { CaregiverBrowsePage } from "./pages/family/CaregiverBrowsePage.jsx";
 import { OnboardingPage } from "./pages/OnboardingPage.jsx";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 import { LoginPage } from "./pages/auth/LoginPage.jsx";
@@ -44,6 +45,7 @@ export default function App() {
       </Route>
       <Route element={<ProtectedRoute roles={["family"]} requireOnboarding />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/caregivers" element={<CaregiverBrowsePage />} />
         <Route path="/elderly-profiles/:profileId" element={<ElderlyProfileDetailPage />} />
         <Route path="/elderly-profiles/:profileId/edit" element={<EditElderlyProfilePage />} />
       </Route>

@@ -18,6 +18,7 @@ export function AppHeader() {
       <Logo />
       <nav className="app-nav" aria-label="Family navigation">
         <Link to="/dashboard"><DashboardIcon size={17} /> Dashboard</Link>
+        <Link to="/caregivers"><UsersIcon size={17} /> Caregivers</Link>
         <Link to="/elderly-profiles"><UsersIcon size={17} /> Elderly profiles</Link>
       </nav>
       <div className="topbar__actions">

@@ -1,5 +1,9 @@
 import { Router } from "express";
 import {
+  getCaregiverAvailability,
+  listCaregivers,
+} from "../controllers/bookingController.js";
+import {
   getApplication,
   saveApplicationDraft,
   submitApplication,
@@ -12,6 +16,9 @@ import { uploadVerificationDocument } from "../middleware/documentUpload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
+
+router.get("/", asyncHandler(listCaregivers));
+router.get("/:id/availability", asyncHandler(getCaregiverAvailability));
 
 router.use(asyncHandler(requireAuth), allowRoles("caregiver"));
 router.get("/application", asyncHandler(checkCaregiverApplicationStatus()), getApplication);

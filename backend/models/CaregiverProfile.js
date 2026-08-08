@@ -37,6 +37,16 @@ const caregiverProfileSchema = new mongoose.Schema(
     hourlyRate: { type: Number, min: 0, default: null },
     monthlyRate: { type: Number, min: 0, default: null },
     serviceArea: { type: String, trim: true, maxlength: 300, default: "" },
+    supportedServiceTypes: {
+      type: [String],
+      default: ["companionship", "personal-care", "medical-support"],
+      validate: {
+        validator(value) {
+          return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0);
+        },
+        message: "Supported service types must be a list of non-empty strings.",
+      },
+    },
     availability: { type: [availabilitySchema], default: [] },
     verificationDocument: {
       publicId: { type: String, default: null },
