@@ -411,6 +411,18 @@ Add all three `CLOUDINARY_*` values to `backend/.env` and restart the backend.
 For the current development phase, leave `REQUIRE_CAREGIVER_DOCUMENT=false` and
 submit without uploading. Set it to `true` after Cloudinary integration is ready.
 
+## Gemini development setup
+
+Create a development Gemini API key in Google AI Studio and add GEMINI_API_KEY
+only to backend/.env. GEMINI_MODEL is optional and defaults to
+gemini-flash-lite-latest. Restart the backend after changing environment values.
+
+The key is optional. Missing keys, quota limits, timeouts, provider failures, and
+malformed responses use the local fallback summary. Do not put the key in a VITE_
+variable. Free-tier requests must contain only synthetic or anonymized wellness
+values; the implemented sanitizer removes identities, database IDs, contact
+information, medical-history text, and unrestricted notes.
+
 ## 14. Normal daily workflow
 
 After the initial setup, most development sessions require only:

@@ -102,6 +102,27 @@ Requires Node.js 20+ and a MongoDB Atlas database.
 
 The frontend runs at `http://localhost:5173`; the API runs at `http://localhost:5000`.
 
+## Wellness Insights and Early Health Alerts
+
+Submitted wellness reports are screened by deterministic demonstration rules for
+repeated blood-pressure, blood-sugar, medicine, meal, mood, and weight patterns.
+Linked family members can acknowledge or resolve alerts from the elderly wellness
+page. These rules provide informational early warning only and are not clinical
+diagnosis.
+
+Family members may request a short saved summary. The backend sends Gemini only a
+strict whitelist of anonymous dates, enums, numeric vitals, units, and exercise
+duration. Names, contact details, database IDs, medical-history text, and free-text
+caregiver notes are never included. Free-tier development must use synthetic or
+properly anonymized data. If Gemini is unavailable or not configured, the feature
+stores and returns a deterministic fallback summary.
+
+Configure GEMINI_API_KEY and optionally GEMINI_MODEL in backend/.env. The default
+model is gemini-flash-lite-latest. Never prefix the key with VITE_ or place it in
+frontend/.env.
+
+Run the unit checks with npm run test:wellness-insights --prefix backend.
+
 ## API response convention
 
 Successful endpoints return:

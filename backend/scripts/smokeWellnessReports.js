@@ -7,6 +7,7 @@ import { CareAssignment } from "../models/CareAssignment.js";
 import { CaregiverProfile } from "../models/CaregiverProfile.js";
 import { ElderlyFamilyLink } from "../models/ElderlyFamilyLink.js";
 import { ElderlyProfile } from "../models/ElderlyProfile.js";
+import { Notification } from "../models/Notification.js";
 import { User } from "../models/User.js";
 import { WellnessReport } from "../models/WellnessReport.js";
 
@@ -210,6 +211,14 @@ async function runSmokeTest() {
   if (familyReports.payload.data.pagination.total !== 1) {
     throw new Error("Linked family did not receive the submitted report.");
   }
+  const familyNotification = await Notification.findOne({
+    recipientUserId: family._id,
+    relatedEntityId: reportId,
+    type: "wellness-report-submitted",
+  });
+  if (!familyNotification) {
+    throw new Error("Submitted wellness report did not notify the linked family.");
+  }
   const trends = await callApi(
     baseUrl,
     `/api/wellness-reports/elderly/${elderlyProfile._id}/vitals`,
@@ -245,6 +254,11 @@ async function cleanup() {
     await ElderlyProfile.deleteOne({ _id: elderlyProfile._id });
   }
   if (createdUserIds.length) {
+    await Notification.deleteMany({
+      recipientUserId: {
+        $in: createdUserIds,
+      },
+    });
     await CaregiverProfile.deleteMany({ userId: { $in: createdUserIds } });
     await User.deleteMany({ _id: { $in: createdUserIds } });
   }

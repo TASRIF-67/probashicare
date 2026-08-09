@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ElderlyFamilyLink } from "../models/ElderlyFamilyLink.js";
 import { WellnessReport, WELLNESS_REPORT_STATUSES } from "../models/WellnessReport.js";
 import { validateWellnessReportPayload } from "../middleware/validateWellnessReport.js";
 import {
@@ -6,6 +7,8 @@ import {
   listReportableCareAssignments,
 } from "../services/careAssignmentService.js";
 import { getAuthorizedElderlyProfile } from "../services/elderlyProfileAccessService.js";
+import { createNotificationsForUsers } from "../services/notificationService.js";
+import { analyzeAndCreateWellnessAlerts } from "../services/wellnessAnalysisService.js";
 import { ApiError } from "../utils/ApiError.js";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -133,6 +136,49 @@ function buildPaginationResponse(page, limit, total) {
 }
 
 /**
+ * Notifies every actively linked family account about a submitted report.
+ * @param {import("../models/WellnessReport.js").WellnessReport} report - Submitted report document.
+ * @returns {Promise<void>}
+ * @sideEffects Reads family links and upserts one notification per family user.
+ */
+async function notifyFamilyAboutSubmittedReport(report) {
+  const links = await ElderlyFamilyLink.find({
+    elderlyProfileId: report.elderlyProfileId,
+    status: "active",
+  }).select("familyUserId");
+
+  const recipientUserIds = [];
+
+  for (const link of links) {
+    recipientUserIds.push(link.familyUserId);
+  }
+
+  if (!recipientUserIds.length) {
+    return;
+  }
+
+  const profileId = report.elderlyProfileId.toString();
+  const reportId = report._id.toString();
+
+  await createNotificationsForUsers({
+    recipientUserIds,
+    actorUserId: report.caregiverUserId,
+    type: "wellness-report-submitted",
+    priority: "important",
+    title: "New wellness report",
+    message: "A caregiver submitted a new wellness update.",
+    actionPath:
+      "/elderly-profiles/" +
+      profileId +
+      "/wellness-reports/" +
+      reportId,
+    relatedEntityType: "wellness-report",
+    relatedEntityId: report._id,
+    eventKey: "wellness-report:" + reportId + ":submitted",
+  });
+}
+
+/**
  * Loads a report by ID and verifies whether the current family or caregiver may read it.
  * @param {{reportId: string, user: import("../models/User.js").User}} input - Report ID and authenticated user.
  * @returns {Promise<import("../models/WellnessReport.js").WellnessReport>} Authorized populated report.
@@ -216,7 +262,7 @@ export async function listCaregiverReportAssignments(request, response) {
  * POST /api/wellness-reports
  * Body: `{ careAssignmentId, elderlyProfileId, visitDate, checkInAt?, checkOutAt?, mood?, mealStatus?, mealNotes?, medicineIntakeStatus?, medicineNotes?, vitals?, exerciseDurationMinutes?, observations?, caregiverNotes?, nextVisitDate? }`.
  * Success 201: `{ success: true, data: { report, message } }` with a caregiver-owned draft.
- * Failure: shared validation, concealed assignment 404, assignment-window 403, or auth error shape.
+ * Failure: shared validation, concealed assignment 404, or auth error shape.
  * Auth: verified authenticated `caregiver` with an approved application and matching reportable assignment.
  * @param {import("express").Request} request - Authenticated caregiver request containing draft fields.
  * @param {import("express").Response} response - Express response writer.
@@ -317,6 +363,18 @@ export async function submitWellnessReport(request, response) {
   });
   Object.assign(report, values, { status: "submitted", submittedAt: new Date() });
   await report.save();
+  await notifyFamilyAboutSubmittedReport(report);
+
+  try {
+    await analyzeAndCreateWellnessAlerts(report.elderlyProfileId);
+  } catch (analysisError) {
+    // The report is already valid and submitted, so derived analysis must not undo it.
+    console.error(
+      "Wellness alert analysis failed after report submission:",
+      analysisError.message,
+    );
+  }
+
   const populated = await populateReportIdentity(WellnessReport.findById(report._id));
   response.json({
     success: true,

@@ -160,10 +160,6 @@ export function validateWellnessReportPayload(body = {}, { isSubmission = false 
   if (checkInAt && checkOutAt && checkOutAt <= checkInAt) {
     errors.checkOutAt = "Check-out time must be after check-in time.";
   }
-  if (visitDate && visitDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
-    errors.visitDate = "Visit date cannot be more than one day in the future.";
-  }
-
   const lengthRules = [
     ["mealNotes", normalized.mealNotes, 500],
     ["medicineNotes", normalized.medicineNotes, 500],

@@ -28,6 +28,7 @@ import { WellnessReportListPage } from "./pages/caregiver/WellnessReportListPage
 import { FamilyBookingsPage } from "./pages/family/FamilyBookingsPage.jsx";
 import { ElderlyWellnessPage } from "./pages/elderly/ElderlyWellnessPage.jsx";
 import { WellnessReportDetailPage } from "./pages/wellness/WellnessReportDetailPage.jsx";
+import { NotificationsPage } from "./pages/NotificationsPage.jsx";
 
 /**
  * Declares public and role-protected application routes.
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/elderly-profiles/new" element={<CreateElderlyProfilePage />} />
         <Route path="/elderly-profiles" element={<ElderlyProfileListPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
       <Route element={<ProtectedRoute roles={["family"]} requireOnboarding />}>
         <Route path="/dashboard" element={<DashboardPage />} />
@@ -90,6 +92,10 @@ export default function App() {
             <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
             <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
             <Route path="/caregiver/bookings" element={<CaregiverBookingsPage />} />
+            <Route
+              path="/caregiver/notifications"
+              element={<NotificationsPage />}
+            />
             <Route
               path="/caregiver/wellness-reports"
               element={<WellnessReportListPage />}

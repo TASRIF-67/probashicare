@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../Button.jsx";
 import { Input } from "../Input.jsx";
 import {
   ActivityIcon,
   BloodIcon,
+  CalendarIcon,
   ClockIcon,
   HeartPulseIcon,
   PillIcon,
@@ -22,6 +23,152 @@ const MEDICINE_STATUSES = [
   "unknown",
 ];
 const BLOOD_SUGAR_CONTEXTS = ["fasting", "before-meal", "after-meal", "random", "unknown"];
+
+/**
+ * Displays the report visit date with a visible button for the native calendar.
+ * @param {{value: string, error?: string, disabled?: boolean, onChange: Function}} props - Controlled date value and form behavior.
+ * @returns {import("react").ReactElement} Accessible native visit-date field.
+ * @sideEffects Opens the browser date picker or focuses the date input.
+ */
+function ReportDateField({
+  value,
+  error,
+  disabled = false,
+  onChange,
+}) {
+  const inputReference = useRef(null);
+  const inputClassName = error
+    ? "input booking-date-input input--error"
+    : "input booking-date-input";
+
+  /**
+   * Opens the browser calendar when supported and otherwise focuses the input.
+   * @returns {void}
+   * @sideEffects Opens native browser UI or moves keyboard focus.
+   */
+  function openCalendar() {
+    const input = inputReference.current;
+
+    if (!input || disabled) {
+      return;
+    }
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+
+    input.focus();
+  }
+
+  return (
+    <label className="field" htmlFor="report-visit-date">
+      <span>Visit date</span>
+      <span className="booking-date-field">
+        <input
+          ref={inputReference}
+          id="report-visit-date"
+          className={inputClassName}
+          name="visitDate"
+          type="date"
+          value={value}
+          disabled={disabled}
+          aria-invalid={Boolean(error)}
+          onChange={onChange}
+          required
+        />
+        <button
+          className="booking-calendar-button"
+          type="button"
+          aria-label="Open calendar for visit date"
+          disabled={disabled}
+          onClick={openCalendar}
+        >
+          <CalendarIcon size={19} />
+        </button>
+      </span>
+      {error && (
+        <small className="field__error">
+          {error}
+        </small>
+      )}
+    </label>
+  );
+}
+
+/**
+ * Displays a report date-and-time input with a visible native picker button.
+ * @param {{id: string, name: string, label: string, value: string, error?: string, disabled?: boolean, onChange: Function}} props - Controlled date-time field configuration.
+ * @returns {import("react").ReactElement} Accessible native date-and-time field.
+ * @sideEffects Opens the browser date-and-time picker or focuses the input.
+ */
+function ReportDateTimeField({
+  id,
+  name,
+  label,
+  value,
+  error,
+  disabled = false,
+  onChange,
+}) {
+  const inputReference = useRef(null);
+  const inputClassName = error
+    ? "input booking-date-input input--error"
+    : "input booking-date-input";
+
+  /**
+   * Opens the browser date-and-time picker when supported.
+   * @returns {void}
+   * @sideEffects Opens native browser UI or moves keyboard focus.
+   */
+  function openDateTimePicker() {
+    const input = inputReference.current;
+
+    if (!input || disabled) {
+      return;
+    }
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+
+    input.focus();
+  }
+
+  return (
+    <label className="field" htmlFor={id}>
+      <span>{label}</span>
+      <span className="booking-date-field">
+        <input
+          ref={inputReference}
+          id={id}
+          className={inputClassName}
+          name={name}
+          type="datetime-local"
+          value={value}
+          disabled={disabled}
+          aria-invalid={Boolean(error)}
+          onChange={onChange}
+        />
+        <button
+          className="booking-calendar-button"
+          type="button"
+          aria-label={"Open date and time picker for " + label}
+          disabled={disabled}
+          onClick={openDateTimePicker}
+        >
+          <ClockIcon size={19} />
+        </button>
+      </span>
+      {error && (
+        <small className="field__error">
+          {error}
+        </small>
+      )}
+    </label>
+  );
+}
 
 /**
  * Formats a stored date for a native date or datetime-local input in local time.
@@ -175,7 +322,6 @@ export function WellnessReportForm({
         ...current,
         careAssignmentId: assignment.id,
         elderlyProfileId: assignment.elderlyProfileId,
-        visitDate: toLocalInputValue(assignment.startsAt || new Date()),
       };
     });
   }, [assignments, report]);
@@ -228,18 +374,15 @@ export function WellnessReportForm({
 
     setValue((current) => {
       let elderlyProfileId = "";
-      let visitDate = current.visitDate;
 
       if (assignment) {
         elderlyProfileId = assignment.elderlyProfileId;
-        visitDate = toLocalInputValue(assignment.startsAt);
       }
 
       return {
         ...current,
         careAssignmentId: selectedAssignmentId,
         elderlyProfileId,
-        visitDate,
       };
     });
   }
@@ -270,9 +413,30 @@ export function WellnessReportForm({
         <div className="wellness-form-section__heading"><span><ClockIcon /></span><div><h2>Visit details</h2><p>Connect this report to an assigned visit and record arrival information.</p></div></div>
         <div className="form-grid">
           <label className="field field--wide" htmlFor="report-assignment"><span>Assigned care visit</span><select id="report-assignment" className={errors.careAssignmentId ? "input input--error" : "input"} value={value.careAssignmentId} onChange={handleAssignmentChange} disabled={Boolean(report)}><option value="">Choose an assigned visit</option>{assignments.map((assignment) => <option value={assignment.id} key={assignment.id}>{assignment.elderly.preferredName || assignment.elderly.fullName} · {humanize(assignment.assignmentType)} · {new Date(assignment.startsAt).toLocaleDateString("en-GB")}</option>)}</select>{errors.careAssignmentId && <small className="field__error">{errors.careAssignmentId}</small>}</label>
-          <Input id="report-visit-date" name="visitDate" type="date" label="Visit date" value={value.visitDate} onChange={handleChange} error={errors.visitDate} required />
-          <Input id="report-check-in" name="checkInAt" type="datetime-local" label="Check-in time" value={value.checkInAt} onChange={handleChange} error={errors.checkInAt} />
-          <Input id="report-check-out" name="checkOutAt" type="datetime-local" label="Check-out time" value={value.checkOutAt} onChange={handleChange} error={errors.checkOutAt} />
+          <ReportDateField
+            value={value.visitDate}
+            error={errors.visitDate}
+            disabled={isBusy}
+            onChange={handleChange}
+          />
+          <ReportDateTimeField
+            id="report-check-in"
+            name="checkInAt"
+            label="Check-in date and time"
+            value={value.checkInAt}
+            error={errors.checkInAt}
+            disabled={isBusy}
+            onChange={handleChange}
+          />
+          <ReportDateTimeField
+            id="report-check-out"
+            name="checkOutAt"
+            label="Check-out date and time"
+            value={value.checkOutAt}
+            error={errors.checkOutAt}
+            disabled={isBusy}
+            onChange={handleChange}
+          />
           <Input id="report-next-visit" name="nextVisitDate" type="datetime-local" label="Next visit (optional)" value={value.nextVisitDate} onChange={handleChange} error={errors.nextVisitDate} />
         </div>
       </section>

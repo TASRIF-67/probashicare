@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../Button.jsx";
 import { Modal } from "../Modal.jsx";
-import { CheckIcon, ClockIcon } from "../Icons.jsx";
+import { CalendarIcon, CheckIcon, ClockIcon } from "../Icons.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { bookingService } from "../../services/bookingService.js";
 import { elderlyProfileService } from "../../services/elderlyProfileService.js";
@@ -18,6 +18,83 @@ const weekdaysInRange = (start, end) => {
   while (cursor <= last) { result.add(dayForDate(cursor.toISOString().slice(0, 10))); cursor.setUTCDate(cursor.getUTCDate() + 1); }
   return result;
 };
+
+/**
+ * Converts a stored lowercase weekday into a readable label.
+ * @param {string} day - Stored caregiver availability weekday.
+ * @returns {string} Weekday with its first letter capitalized.
+ * @sideEffects None.
+ */
+function formatWeekday(day) {
+  if (!day) {
+    return "Day unavailable";
+  }
+
+  return day.charAt(0).toUpperCase() + day.slice(1);
+}
+
+/**
+ * Displays a date input with a clear button that opens the browser calendar.
+ * @param {{label: import("react").ReactNode, value: string, min: string, disabled: boolean, onChange: Function}} props - Date-field label, limits, state, and change handler.
+ * @returns {import("react").ReactElement} Accessible native date field.
+ * @sideEffects Opens the browser date picker and calls the change handler after selection.
+ */
+function BookingDateField({
+  label,
+  value,
+  min,
+  disabled,
+  onChange,
+}) {
+  const inputReference = useRef(null);
+
+  /**
+   * Opens the native calendar or focuses the date input as a fallback.
+   * @returns {void}
+   * @sideEffects Opens browser UI or moves keyboard focus to the input.
+   */
+  function openCalendar() {
+    const input = inputReference.current;
+
+    if (!input || disabled) {
+      return;
+    }
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+
+    input.focus();
+  }
+
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <span className="booking-date-field">
+        <input
+          ref={inputReference}
+          className="input booking-date-input"
+          type="date"
+          min={min}
+          value={value}
+          disabled={disabled}
+          onChange={onChange}
+          required
+        />
+        <button
+          className="booking-calendar-button"
+          type="button"
+          aria-label={"Open calendar for " + label}
+          disabled={disabled}
+          onClick={openCalendar}
+        >
+          <CalendarIcon size={19} />
+        </button>
+      </span>
+    </label>
+  );
+}
 
 export function CaregiverBookingModal({ caregiver, onClose }) {
   const { showToast } = useToast();
@@ -78,12 +155,59 @@ export function CaregiverBookingModal({ caregiver, onClose }) {
 
   return <Modal isOpen={Boolean(caregiver)} title={`Book ${caregiver?.name || "caregiver"}`} onClose={close}>
     {caregiver && <form onSubmit={submit} className="booking-form">
+      <section className="caregiver-availability-preview">
+        <div className="caregiver-availability-preview__heading">
+          <div>
+            <strong>Caregiver weekly availability</strong>
+            <span>Use these working days to choose a matching date.</span>
+          </div>
+          <CalendarIcon size={20} />
+        </div>
+        {caregiver.availability?.length ? (
+          <div className="caregiver-availability-preview__list">
+            {caregiver.availability.map((slot, index) => (
+              <div
+                className="caregiver-availability-preview__slot"
+                key={`${slot.day}-${slot.startTime}-${slot.endTime}-${index}`}
+              >
+                <strong>{formatWeekday(slot.day)}</strong>
+                <span>
+                  <ClockIcon size={15} />
+                  {slot.startTime} - {slot.endTime}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">
+            This caregiver has not provided weekly availability yet.
+          </div>
+        )}
+      </section>
       <div className="form-grid booking-form__grid">
         <label className="field"><span>Care recipient</span><select className="input" value={form.elderlyProfileId} disabled={loadingProfiles || submitting} onChange={(event) => updateField("elderlyProfileId", event.target.value)} required><option value="">Select an elderly profile</option>{profiles.map((profile) => <option key={profile._id} value={profile._id}>{profile.personalInformation.preferredName || profile.personalInformation.fullName}</option>)}</select></label>
         <label className="field"><span>Booking type</span><select className="input" value={form.bookingType} disabled={submitting} onChange={(event) => updateField("bookingType", event.target.value)}>{TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
         <label className="field"><span>Service</span><select className="input" value={form.serviceType} disabled={submitting} onChange={(event) => updateField("serviceType", event.target.value)}>{caregiver.supportedServiceTypes?.map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
-        <label className="field"><span>Start date</span><input className="input" type="date" min={today()} value={form.startDate} disabled={submitting} onChange={(event) => updateField("startDate", event.target.value)} required /></label>
-        {form.bookingType !== "one-time" && <label className="field"><span>End date {form.bookingType === "long-term" && "(minimum 28 days)"}</span><input className="input" type="date" min={form.startDate || today()} value={form.endDate} disabled={submitting} onChange={(event) => updateField("endDate", event.target.value)} required /></label>}
+        <BookingDateField
+          label="Start date"
+          min={today()}
+          value={form.startDate}
+          disabled={submitting}
+          onChange={(event) => updateField("startDate", event.target.value)}
+        />
+        {form.bookingType !== "one-time" && (
+          <BookingDateField
+            label={
+              form.bookingType === "long-term"
+                ? "End date (minimum 28 days)"
+                : "End date"
+            }
+            min={form.startDate || today()}
+            value={form.endDate}
+            disabled={submitting}
+            onChange={(event) => updateField("endDate", event.target.value)}
+          />
+        )}
       </div>
       <section className="booking-slots"><div className="booking-slots__heading"><strong>Available slots</strong><span>{form.bookingType === "one-time" ? "Matches the selected date" : "Repeats weekly in the date range"}</span></div>
         {(!form.startDate || (form.bookingType !== "one-time" && !form.endDate)) ? <div className="empty-state">Choose the complete date range to see matching slots.</div> : visibleSlots.length ? <div className="booking-slot-grid">{visibleSlots.map((slot) => { const value = `${slot.startTime}-${slot.endTime}`; const selected = form.selectedSlots[slot.day] === value; return <button type="button" className={`booking-slot ${selected ? "booking-slot--selected" : ""}`} aria-pressed={selected} disabled={submitting} key={`${slot.day}-${value}`} onClick={() => toggleSlot(slot)}><span>{slot.day}</span><span><ClockIcon size={16} /> {slot.startTime}-{slot.endTime}</span>{selected && <CheckIcon size={17} />}</button>; })}</div> : <div className="empty-state">No availability occurs inside this date range.</div>}

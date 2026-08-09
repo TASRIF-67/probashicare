@@ -4,6 +4,7 @@ import { AppHeader } from "../../components/AppHeader.jsx";
 import { Card } from "../../components/Card.jsx";
 import { ActivityIcon, ArrowLeftIcon, ArrowRightIcon, HeartPulseIcon } from "../../components/Icons.jsx";
 import { VitalsTrendChart } from "../../components/wellness/VitalsTrendChart.jsx";
+import { WellnessInsightsPanel } from "../../components/wellness/WellnessInsightsPanel.jsx";
 import { normalizeApiError } from "../../services/api.js";
 import { elderlyProfileService } from "../../services/elderlyProfileService.js";
 import { wellnessReportService } from "../../services/wellnessReportService.js";
@@ -104,6 +105,8 @@ export function ElderlyWellnessPage() {
         <div className="page-heading"><span className="eyebrow">Remote care monitoring</span><h1>Wellness and vitals</h1><p>Review submitted caregiver observations and measurement history for {personal.preferredName || personal.fullName}.</p></div>
 
         {latest ? <section className="latest-wellness"><div><span className="wellness-kicker">Latest report · {formatDate(latest.visitDate)}</span><h2>{humanize(latest.mood)} mood, {humanize(latest.mealStatus).toLowerCase()} meal</h2><p>{latest.observations}</p><span>Reported by {latest.caregiver?.name || "Caregiver"}</span></div><Link className="button button--primary" to={`/elderly-profiles/${profileId}/wellness-reports/${latest._id}`}>Open report <ArrowRightIcon size={17} /></Link></section> : <Card className="wellness-empty"><span className="feature-icon"><ActivityIcon /></span><h2>No submitted wellness reports</h2><p>Caregiver reports will appear here after an assigned caregiver submits a visit update.</p></Card>}
+
+        <WellnessInsightsPanel profileId={profileId} />
 
         <section className="wellness-section-heading"><div><span><HeartPulseIcon /></span><div><h2>30-day vitals trends</h2><p>Measurements are shown as recorded and are not an automated medical assessment.</p></div></div></section>
         <div className="vitals-trend-grid"><VitalsTrendChart points={state.points} metric="systolic" label="Systolic blood pressure" unit="mmHg" /><VitalsTrendChart points={state.points} metric="bloodSugar" label="Blood sugar" unit="mg/dL" /><VitalsTrendChart points={state.points} metric="weightKg" label="Weight" unit="kg" /></div>

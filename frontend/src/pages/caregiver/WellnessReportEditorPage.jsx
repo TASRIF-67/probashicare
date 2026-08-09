@@ -203,8 +203,8 @@ export function WellnessReportEditorPage() {
             </span>
             <h2>No reportable care visits</h2>
             <p>
-              An active or recently completed caregiver assignment is required
-              before a report can be created.
+              A scheduled, active, or completed caregiver assignment is
+              required before a report can be created.
             </p>
           </div>
         )}

@@ -5,9 +5,11 @@ import { connectDatabase } from "../config/database.js";
 import { validateEnvironment } from "../config/env.js";
 import { Booking } from "../models/Booking.js";
 import { BookingReservation } from "../models/BookingReservation.js";
+import { CareAssignment } from "../models/CareAssignment.js";
 import { CaregiverProfile } from "../models/CaregiverProfile.js";
 import { ElderlyFamilyLink } from "../models/ElderlyFamilyLink.js";
 import { ElderlyProfile } from "../models/ElderlyProfile.js";
+import { Notification } from "../models/Notification.js";
 import { User } from "../models/User.js";
 
 const marker = `booking-smoke-${Date.now()}`;
@@ -52,7 +54,12 @@ function assertPrivateFieldsHidden(value) {
 async function run() {
   validateEnvironment();
   await connectDatabase();
-  await Promise.all([Booking.syncIndexes(), BookingReservation.syncIndexes()]);
+  await Promise.all([
+    Booking.syncIndexes(),
+    BookingReservation.syncIndexes(),
+    CareAssignment.syncIndexes(),
+    Notification.syncIndexes(),
+  ]);
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}/api`;
@@ -97,6 +104,29 @@ async function run() {
   const scheduledStart = addDays(7);
   const scheduled = await callApi("/bookings", { method: "POST", cookie: familyACookie, expectedStatus: 201, body: payload({ caregiver, elderly: elderlyA, bookingType: "scheduled", startDate: scheduledStart, endDate: addDays(20) }) });
   await callApi(`/caregivers/bookings/${scheduled.payload.data.booking._id}/status`, { method: "PATCH", cookie: caregiverCookie, body: { status: "accepted" } });
+  const acceptedAssignment = await CareAssignment.findOne({
+    sourceBookingId: scheduled.payload.data.booking._id,
+    caregiverUserId: caregiver._id,
+    elderlyProfileId: elderlyA._id,
+    status: "scheduled",
+  });
+  if (!acceptedAssignment) {
+    throw new Error("Accepted booking did not create a reportable care assignment.");
+  }
+  const requestNotification = await Notification.findOne({
+    recipientUserId: caregiver._id,
+    relatedEntityId: scheduled.payload.data.booking._id,
+    type: "booking-requested",
+  });
+  const acceptedNotification = await Notification.findOne({
+    recipientUserId: familyA._id,
+    relatedEntityId: scheduled.payload.data.booking._id,
+    type: "booking-accepted",
+  });
+  if (!requestNotification || !acceptedNotification) {
+    throw new Error("Booking workflow did not create both participant notifications.");
+  }
+
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setHours(0, 0, 0, 0);
   await Booking.updateOne({ _id: scheduled.payload.data.booking._id }, { $set: { startDate: yesterday, endDate: yesterday, occurrences: [{ date: yesterday, timeSlot: "00:00-00:01" }] } });
   await callApi(`/caregivers/bookings/${scheduled.payload.data.booking._id}/status`, { method: "PATCH", cookie: caregiverCookie, body: { status: "completed" } });
@@ -118,7 +148,17 @@ async function run() {
 async function cleanup() {
   const users = await User.find({ email: { $regex: `^${marker}` } }).select("_id").lean();
   const ids = users.map((user) => user._id);
+  await Notification.deleteMany({
+    recipientUserId: {
+      $in: ids,
+    },
+  });
   const bookings = await Booking.find({ $or: [{ familyMemberId: { $in: ids } }, { caregiverId: { $in: ids } }] }).select("_id").lean();
+  await CareAssignment.deleteMany({
+    sourceBookingId: {
+      $in: bookings.map((booking) => booking._id),
+    },
+  });
   await BookingReservation.deleteMany({ bookingId: { $in: bookings.map((booking) => booking._id) } });
   await Booking.deleteMany({ _id: { $in: bookings.map((booking) => booking._id) } });
   const profiles = await ElderlyProfile.find({ createdBy: { $in: ids } }).select("_id").lean();

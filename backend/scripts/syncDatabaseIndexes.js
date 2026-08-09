@@ -6,13 +6,16 @@ import { CaregiverProfile } from "../models/CaregiverProfile.js";
 import { Booking } from "../models/Booking.js";
 import { BookingReservation } from "../models/BookingReservation.js";
 import { CareAssignment } from "../models/CareAssignment.js";
+import { Notification } from "../models/Notification.js";
 import { WellnessReport } from "../models/WellnessReport.js";
+import { WellnessAlert } from "../models/WellnessAlert.js";
+import { WellnessInsight } from "../models/WellnessInsight.js";
 
 /**
  * Synchronizes declared model indexes during controlled development migrations.
  * @param {void} _unused - This function accepts no arguments.
  * @returns {Promise<void>}
- * @sideEffects Connects to MongoDB and synchronizes identity, caregiver, booking, assignment, and wellness indexes.
+ * @sideEffects Connects to MongoDB and synchronizes identity, caregiver, booking, assignment, notification, wellness-report, alert, and insight indexes.
  */
 async function syncDatabaseIndexes() {
   validateEnvironment(["MONGODB_URI"]);
@@ -23,10 +26,13 @@ async function syncDatabaseIndexes() {
     Booking.syncIndexes(),
     BookingReservation.syncIndexes(),
     CareAssignment.syncIndexes(),
+    Notification.syncIndexes(),
     WellnessReport.syncIndexes(),
+    WellnessAlert.syncIndexes(),
+    WellnessInsight.syncIndexes(),
   ]);
   console.log(
-    "Identity, caregiver, booking, assignment, and wellness database indexes synchronized.",
+    "Identity, caregiver, booking, assignment, notification, wellness-report, alert, and insight indexes synchronized.",
   );
 }
 

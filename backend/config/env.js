@@ -35,4 +35,6 @@ export const env = {
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
   requireCaregiverDocument: process.env.REQUIRE_CAREGIVER_DOCUMENT === "true",
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
 };

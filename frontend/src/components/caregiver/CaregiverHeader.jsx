@@ -10,6 +10,7 @@ import {
 import { Button } from "../Button.jsx";
 import { Logo } from "../Logo.jsx";
 import { ThemeToggle } from "../ThemeToggle.jsx";
+import { NotificationBell } from "../notifications/NotificationBell.jsx";
 
 /**
  * Renders caregiver navigation appropriate to the current application status.
@@ -44,6 +45,7 @@ export function CaregiverHeader() {
         </nav>
       )}
       <div className="topbar__actions">
+        <NotificationBell />
         <ThemeToggle />
         <Button variant="ghost" onClick={logout}>
           <LogOutIcon size={17} />

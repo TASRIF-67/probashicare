@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Button } from "./Button.jsx";
 import { Logo } from "./Logo.jsx";
 import { ThemeToggle } from "./ThemeToggle.jsx";
+import { NotificationBell } from "./notifications/NotificationBell.jsx";
 import { CalendarIcon, DashboardIcon, LogOutIcon, UsersIcon } from "./Icons.jsx";
 
 /**
@@ -23,6 +24,7 @@ export function AppHeader() {
         <Link to="/elderly-profiles"><UsersIcon size={17} /> Elderly profiles</Link>
       </nav>
       <div className="topbar__actions">
+        <NotificationBell />
         <ThemeToggle />
         <Button variant="ghost" onClick={logout}><LogOutIcon size={17} /> Sign out</Button>
       </div>

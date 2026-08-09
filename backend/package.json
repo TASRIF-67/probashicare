@@ -14,6 +14,7 @@
     "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js",
     "test:wellness-reports": "node scripts/smokeWellnessReports.js",
     "test:bookings": "node --test test/bookingSchedule.test.js",
+    "test:wellness-insights": "node --test test/wellnessInsights.test.js",
     "test:bookings:integration": "node scripts/smokeBookings.js"
   },
   "dependencies": {
