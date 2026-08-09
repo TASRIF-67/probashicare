@@ -26,10 +26,32 @@ export function ElderlyProfileListPage() {
   const [state, setState] = useState({ loading: true, profiles: [], error: "" });
 
   useEffect(() => {
-    elderlyProfileService
-      .listProfiles()
-      .then(({ profiles }) => setState({ loading: false, profiles, error: "" }))
-      .catch((error) => setState({ loading: false, profiles: [], error: normalizeApiError(error).message }));
+    /**
+     * Loads active profiles linked to the current family.
+     * @returns {Promise<void>}
+     * @sideEffects Reads the profile API and updates page state.
+     */
+    async function loadProfiles() {
+      try {
+        const data = await elderlyProfileService.listProfiles();
+
+        setState({
+          loading: false,
+          profiles: data.profiles,
+          error: "",
+        });
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
+
+        setState({
+          loading: false,
+          profiles: [],
+          error: normalizedError.message,
+        });
+      }
+    }
+
+    loadProfiles();
   }, []);
 
   return (

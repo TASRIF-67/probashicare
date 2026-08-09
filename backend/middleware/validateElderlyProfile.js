@@ -18,44 +18,46 @@ const PROFILE_SECTION_NAMES = [
  * @sideEffects Adds personal-information validation messages to `errors`.
  */
 function validatePersonalInformation(personal, errors) {
-  if (!personal?.fullName?.trim()) {
+  const information = personal || {};
+
+  if (!information.fullName || !information.fullName.trim()) {
     errors["personalInformation.fullName"] = "Full name is required.";
   }
 
-  if (!personal?.dateOfBirth) {
+  if (!information.dateOfBirth) {
     errors["personalInformation.dateOfBirth"] = "Date of birth is required.";
   }
 
   if (
-    personal?.dateOfBirth &&
-    new Date(personal.dateOfBirth) > new Date()
+    information.dateOfBirth &&
+    new Date(information.dateOfBirth) > new Date()
   ) {
     errors["personalInformation.dateOfBirth"] = "Date of birth cannot be in the future.";
   }
 
-  if (!personal?.gender) {
+  if (!information.gender) {
     errors["personalInformation.gender"] = "Gender is required.";
   }
 
-  if (!personal?.address?.trim()) {
+  if (!information.address || !information.address.trim()) {
     errors["personalInformation.address"] = "Address is required.";
   }
 
-  if (!personal?.district?.trim()) {
+  if (!information.district || !information.district.trim()) {
     errors["personalInformation.district"] = "District is required.";
   }
 
-  if (!personal?.division?.trim()) {
+  if (!information.division || !information.division.trim()) {
     errors["personalInformation.division"] = "Division is required.";
   }
 
-  if (!personal?.familyRelationship?.trim()) {
+  if (!information.familyRelationship || !information.familyRelationship.trim()) {
     errors["personalInformation.familyRelationship"] = "Your relationship is required.";
   }
 
   if (
-    personal?.phone &&
-    !PHONE_PATTERN.test(personal.phone)
+    information.phone &&
+    !PHONE_PATTERN.test(information.phone)
   ) {
     errors["personalInformation.phone"] = "Enter a valid phone number.";
   }
@@ -70,7 +72,7 @@ function validatePersonalInformation(personal, errors) {
  */
 function validateSectionShapes(body, errors) {
   for (const section of PROFILE_SECTION_NAMES) {
-    const sectionValue = body?.[section];
+    const sectionValue = body[section];
 
     // Omitted sections are valid for focused section updates.
     if (sectionValue === undefined) {
@@ -96,35 +98,46 @@ function validateSectionShapes(body, errors) {
  * @sideEffects Adds emergency-contact validation messages to `errors`.
  */
 function validateEmergencyContacts(contacts, errors) {
-  const primaryContacts = contacts.filter((contact) => {
-    return contact.isPrimary;
-  });
+  let primaryContactCount = 0;
 
-  if (primaryContacts.length > 1) {
+  for (const contact of contacts) {
+    if (contact.isPrimary) {
+      primaryContactCount += 1;
+    }
+  }
+
+  if (primaryContactCount > 1) {
     errors.emergencyContacts = "Only one emergency contact can be primary.";
   }
 
   // Formatting characters are removed so visually different versions of one number match.
-  const normalizedPhones = contacts
-    .map((contact) => {
-      return contact.phone?.replace(/\D/g, "");
-    })
-    .filter((phone) => {
-      return Boolean(phone);
-    });
+  const normalizedPhones = [];
 
+  for (const contact of contacts) {
+    if (contact.phone) {
+      const phone = contact.phone.replace(/\D/g, "");
+
+      if (phone) {
+        normalizedPhones.push(phone);
+      }
+    }
+  }
+
+  // Set keeps only one copy of each normalized phone number.
   const uniquePhones = new Set(normalizedPhones);
 
   if (uniquePhones.size !== normalizedPhones.length) {
     errors.emergencyContacts = "Emergency contact phone numbers must be unique.";
   }
 
-  contacts.forEach((contact, index) => {
-    if (!contact.name?.trim()) {
+  for (let index = 0; index < contacts.length; index += 1) {
+    const contact = contacts[index];
+
+    if (!contact.name || !contact.name.trim()) {
       errors[`emergencyContacts.${index}.name`] = "Contact name is required.";
     }
 
-    if (!contact.relationship?.trim()) {
+    if (!contact.relationship || !contact.relationship.trim()) {
       errors[`emergencyContacts.${index}.relationship`] = "Relationship is required.";
     }
 
@@ -134,7 +147,7 @@ function validateEmergencyContacts(contacts, errors) {
     ) {
       errors[`emergencyContacts.${index}.phone`] = "Enter a valid phone number.";
     }
-  });
+  }
 }
 
 /**
@@ -145,8 +158,10 @@ function validateEmergencyContacts(contacts, errors) {
  * @sideEffects Adds medication validation messages to `errors`.
  */
 function validateMedications(medications, errors) {
-  medications.forEach((medication, index) => {
-    if (!medication.name?.trim()) {
+  for (let index = 0; index < medications.length; index += 1) {
+    const medication = medications[index];
+
+    if (!medication.name || !medication.name.trim()) {
       errors[`medications.${index}.name`] = "Medicine name is required.";
     }
 
@@ -159,7 +174,7 @@ function validateMedications(medications, errors) {
       errors[`medications.${index}.endDate`] =
         "End date cannot be before the start date.";
     }
-  });
+  }
 }
 
 /**
@@ -176,21 +191,22 @@ export function validateElderlyProfilePayload(
   } = {},
 ) {
   const errors = {};
+  const payload = body || {};
 
   if (requirePersonalInformation) {
     validatePersonalInformation(
-      body?.personalInformation,
+      payload.personalInformation,
       errors,
     );
   }
 
-  validateSectionShapes(body, errors);
+  validateSectionShapes(payload, errors);
   validateEmergencyContacts(
-    body?.emergencyContacts || [],
+    payload.emergencyContacts || [],
     errors,
   );
   validateMedications(
-    body?.medications || [],
+    payload.medications || [],
     errors,
   );
 

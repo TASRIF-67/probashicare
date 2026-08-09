@@ -26,15 +26,8 @@ function toProfileResponse(profile, link) {
   const profileData = profile.toObject();
 
   return {
-    ...profileData, //Spread operator
-
-    /*
-    const a = { x: 1, y: 2 };
-    const b = { ...a, z: 3 };
-
-    console.log(b); // { x: 1, y: 2, z: 3 }
-    */
-
+    // The spread copies every public profile field into the response object.
+    ...profileData,
     // The link describes this caller's relationship and permission, not global profile data.
     familyAccess: {
       relationship: link.relationship,
@@ -149,9 +142,11 @@ export async function listElderlyProfiles(request, response) {
     status: "active",
   }).lean(); // lean --> skip building full Document instances, just give me plain JavaScript objects.
 
-  const linkedProfileIds = links.map((link) => {
-    return link.elderlyProfileId;
-  });
+  const linkedProfileIds = [];
+
+  for (const link of links) {
+    linkedProfileIds.push(link.elderlyProfileId);
+  }
 
   const profileFilter = {
     _id: {
@@ -168,17 +163,21 @@ export async function listElderlyProfiles(request, response) {
     updatedAt: -1,
   });
 
-  // A map avoids repeatedly scanning the link array while formatting profile responses.
-  const linksByProfile = new Map(
-    links.map((link) => {
-      return [link.elderlyProfileId.toString(), link];
-    }),
-  );
+  // A Map stores each link under its profile ID for a direct lookup below.
+  const linksByProfile = new Map();
 
-  const result = profiles.map((profile) => {
+  for (const link of links) {
+    const profileId = link.elderlyProfileId.toString();
+    linksByProfile.set(profileId, link);
+  }
+
+  const result = [];
+
+  for (const profile of profiles) {
     const link = linksByProfile.get(profile._id.toString());
-    return toProfileResponse(profile, link);
-  });
+    const profileResponse = toProfileResponse(profile, link);
+    result.push(profileResponse);
+  }
 
   response.json({
     success: true,
