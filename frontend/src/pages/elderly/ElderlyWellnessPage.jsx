@@ -15,9 +15,14 @@ import { wellnessReportService } from "../../services/wellnessReportService.js";
  * @sideEffects None.
  */
 function formatDate(value) {
-  return value
-    ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(value))
-    : "Not recorded";
+  if (!value) {
+    return "Not recorded";
+  }
+
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+  });
+  return formatter.format(new Date(value));
 }
 
 /**
@@ -27,7 +32,10 @@ function formatDate(value) {
  * @sideEffects None.
  */
 function humanize(value) {
-  if (!value) return "Not recorded";
+  if (!value) {
+    return "Not recorded";
+  }
+
   const text = String(value).replaceAll("-", " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -43,19 +51,44 @@ export function ElderlyWellnessPage() {
   const [state, setState] = useState({ loading: true, profile: null, reports: [], points: [], error: "" });
 
   useEffect(() => {
-    Promise.all([
-      elderlyProfileService.getProfile(profileId),
-      wellnessReportService.listElderlyReports(profileId, { limit: 20 }),
-      wellnessReportService.getVitalsTrends(profileId),
-    ])
-      .then(([profileData, reportData, trendData]) => setState({
-        loading: false,
-        profile: profileData.profile,
-        reports: reportData.reports,
-        points: trendData.points,
-        error: "",
-      }))
-      .catch((error) => setState({ loading: false, profile: null, reports: [], points: [], error: normalizeApiError(error).message }));
+    /**
+     * Loads the profile, reports, and trend points for this page.
+     * @returns {Promise<void>}
+     * @sideEffects Reads three APIs and updates page state.
+     */
+    async function loadWellnessHistory() {
+      try {
+        // Promise.all runs independent requests together, then waits for every result.
+        const results = await Promise.all([
+          elderlyProfileService.getProfile(profileId),
+          wellnessReportService.listElderlyReports(profileId, { limit: 20 }),
+          wellnessReportService.getVitalsTrends(profileId),
+        ]);
+        const profileData = results[0];
+        const reportData = results[1];
+        const trendData = results[2];
+
+        setState({
+          loading: false,
+          profile: profileData.profile,
+          reports: reportData.reports,
+          points: trendData.points,
+          error: "",
+        });
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
+
+        setState({
+          loading: false,
+          profile: null,
+          reports: [],
+          points: [],
+          error: normalizedError.message,
+        });
+      }
+    }
+
+    loadWellnessHistory();
   }, [profileId]);
 
   if (state.loading) return <main><AppHeader /><div className="page-loader"><span className="spinner" /> Loading wellness history</div></main>;

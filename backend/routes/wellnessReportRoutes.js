@@ -20,11 +20,31 @@ const approvedCaregiver = [
 ];
 
 router.use(asyncHandler(requireAuth));
-router.get("/assignments", ...approvedCaregiver, asyncHandler(listCaregiverReportAssignments));
-router.get("/mine", ...approvedCaregiver, asyncHandler(listMyWellnessReports));
-router.post("/", ...approvedCaregiver, asyncHandler(createWellnessReport));
-router.put("/:reportId", ...approvedCaregiver, asyncHandler(updateWellnessReportDraft));
-router.post("/:reportId/submit", ...approvedCaregiver, asyncHandler(submitWellnessReport));
+router.get(
+  "/assignments",
+  ...approvedCaregiver,
+  asyncHandler(listCaregiverReportAssignments),
+);
+router.get(
+  "/mine",
+  ...approvedCaregiver,
+  asyncHandler(listMyWellnessReports),
+);
+router.post(
+  "/",
+  ...approvedCaregiver,
+  asyncHandler(createWellnessReport),
+);
+router.put(
+  "/:reportId",
+  ...approvedCaregiver,
+  asyncHandler(updateWellnessReportDraft),
+);
+router.post(
+  "/:reportId/submit",
+  ...approvedCaregiver,
+  asyncHandler(submitWellnessReport),
+);
 router.get(
   "/elderly/:profileId/vitals",
   allowRoles("family"),
@@ -35,7 +55,11 @@ router.get(
   allowRoles("family"),
   asyncHandler(listElderlyWellnessReports),
 );
-router.get("/:reportId", allowRoles("family", "caregiver"), asyncHandler(getWellnessReport));
+router.get(
+  "/:reportId",
+  allowRoles("family", "caregiver"),
+  asyncHandler(getWellnessReport),
+);
 
 /*
  * To add a similar wellness endpoint, add the documented controller, place the

@@ -31,11 +31,25 @@ const BLOOD_SUGAR_CONTEXTS = ["fasting", "before-meal", "after-meal", "random", 
  * @sideEffects None.
  */
 function toLocalInputValue(value, includeTime = false) {
-  if (!value) return "";
+  if (!value) {
+    return "";
+  }
+
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return offsetDate.toISOString().slice(0, includeTime ? 16 : 10);
+  let endPosition = 10;
+
+  if (includeTime) {
+    endPosition = 16;
+  }
+
+  // slice keeps only the part understood by native date and datetime-local inputs.
+  return offsetDate.toISOString().slice(0, endPosition);
 }
 
 /**
@@ -45,29 +59,37 @@ function toLocalInputValue(value, includeTime = false) {
  * @sideEffects Reads the current date when creating a new value.
  */
 function toFormValue(report) {
+  const source = report || {};
+  const sourceVitals = source.vitals || {};
+  let visitDate = source.visitDate;
+
+  if (!visitDate) {
+    visitDate = new Date();
+  }
+
   return {
-    careAssignmentId: report?.careAssignmentId || "",
-    elderlyProfileId: report?.elderlyProfileId || "",
-    visitDate: toLocalInputValue(report?.visitDate || new Date()),
-    checkInAt: toLocalInputValue(report?.checkInAt, true),
-    checkOutAt: toLocalInputValue(report?.checkOutAt, true),
-    mood: report?.mood || "",
-    mealStatus: report?.mealStatus || "",
-    mealNotes: report?.mealNotes || "",
-    medicineIntakeStatus: report?.medicineIntakeStatus || "",
-    medicineNotes: report?.medicineNotes || "",
+    careAssignmentId: source.careAssignmentId || "",
+    elderlyProfileId: source.elderlyProfileId || "",
+    visitDate: toLocalInputValue(visitDate),
+    checkInAt: toLocalInputValue(source.checkInAt, true),
+    checkOutAt: toLocalInputValue(source.checkOutAt, true),
+    mood: source.mood || "",
+    mealStatus: source.mealStatus || "",
+    mealNotes: source.mealNotes || "",
+    medicineIntakeStatus: source.medicineIntakeStatus || "",
+    medicineNotes: source.medicineNotes || "",
     vitals: {
-      systolic: report?.vitals?.systolic ?? "",
-      diastolic: report?.vitals?.diastolic ?? "",
-      bloodSugar: report?.vitals?.bloodSugar ?? "",
-      bloodSugarContext: report?.vitals?.bloodSugarContext || "",
-      weightKg: report?.vitals?.weightKg ?? "",
-      measuredAt: toLocalInputValue(report?.vitals?.measuredAt, true),
+      systolic: sourceVitals.systolic ?? "",
+      diastolic: sourceVitals.diastolic ?? "",
+      bloodSugar: sourceVitals.bloodSugar ?? "",
+      bloodSugarContext: sourceVitals.bloodSugarContext || "",
+      weightKg: sourceVitals.weightKg ?? "",
+      measuredAt: toLocalInputValue(sourceVitals.measuredAt, true),
     },
-    exerciseDurationMinutes: report?.exerciseDurationMinutes ?? "",
-    observations: report?.observations || "",
-    caregiverNotes: report?.caregiverNotes || "",
-    nextVisitDate: toLocalInputValue(report?.nextVisitDate, true),
+    exerciseDurationMinutes: source.exerciseDurationMinutes ?? "",
+    observations: source.observations || "",
+    caregiverNotes: source.caregiverNotes || "",
+    nextVisitDate: toLocalInputValue(source.nextVisitDate, true),
   };
 }
 
@@ -89,14 +111,30 @@ function humanize(value) {
  * @sideEffects Invokes the supplied change handler.
  */
 function SelectField({ id, label, value, options, error, placeholder, onChange }) {
+  const inputClassName = error ? "input input--error" : "input";
+
   return (
     <label className="field" htmlFor={id}>
       <span>{label}</span>
-      <select id={id} className={error ? "input input--error" : "input"} value={value} onChange={onChange} aria-invalid={Boolean(error)}>
+      <select
+        id={id}
+        className={inputClassName}
+        value={value}
+        onChange={onChange}
+        aria-invalid={Boolean(error)}
+      >
         <option value="">{placeholder}</option>
-        {options.map((option) => <option value={option} key={option}>{humanize(option)}</option>)}
+        {options.map((option) => (
+          <option value={option} key={option}>
+            {humanize(option)}
+          </option>
+        ))}
       </select>
-      {error && <small className="field__error">{error}</small>}
+      {error && (
+        <small className="field__error">
+          {error}
+        </small>
+      )}
     </label>
   );
 }
@@ -122,10 +160,17 @@ export function WellnessReportForm({
   }, [report]);
 
   useEffect(() => {
-    if (report || !assignments.length) return;
+    if (report || !assignments.length) {
+      return;
+    }
+
     setValue((current) => {
-      if (current.careAssignmentId) return current;
+      if (current.careAssignmentId) {
+        return current;
+      }
+
       const assignment = assignments[0];
+
       return {
         ...current,
         careAssignmentId: assignment.id,
@@ -142,7 +187,15 @@ export function WellnessReportForm({
    * @sideEffects Updates local report form state.
    */
   function handleChange(event) {
-    setValue((current) => ({ ...current, [event.target.name]: event.target.value }));
+    const fieldName = event.target.name;
+    const fieldValue = event.target.value;
+
+    setValue((current) => {
+      return {
+        ...current,
+        [fieldName]: fieldValue,
+      };
+    });
   }
 
   /**
@@ -166,13 +219,38 @@ export function WellnessReportForm({
    * @sideEffects Updates assignment, elderly profile, and suggested visit date form state.
    */
   function handleAssignmentChange(event) {
-    const assignment = assignments.find((item) => item.id === event.target.value);
-    setValue((current) => ({
-      ...current,
-      careAssignmentId: event.target.value,
-      elderlyProfileId: assignment?.elderlyProfileId || "",
-      visitDate: assignment ? toLocalInputValue(assignment.startsAt) : current.visitDate,
-    }));
+    const selectedAssignmentId = event.target.value;
+
+    // find returns the first assignment whose id matches the selected option.
+    const assignment = assignments.find((item) => {
+      return item.id === selectedAssignmentId;
+    });
+
+    setValue((current) => {
+      let elderlyProfileId = "";
+      let visitDate = current.visitDate;
+
+      if (assignment) {
+        elderlyProfileId = assignment.elderlyProfileId;
+        visitDate = toLocalInputValue(assignment.startsAt);
+      }
+
+      return {
+        ...current,
+        careAssignmentId: selectedAssignmentId,
+        elderlyProfileId,
+        visitDate,
+      };
+    });
+  }
+
+  /**
+   * Saves the currently displayed fields as a draft.
+   * @returns {void}
+   * @sideEffects Invokes the parent draft-saving callback.
+   */
+  function handleSaveDraft() {
+    onSaveDraft(value);
   }
 
   /**
@@ -236,7 +314,21 @@ export function WellnessReportForm({
       </section>
 
       {errors.form && <div className="alert alert--error">{errors.form}</div>}
-      <div className="wellness-form-actions"><Button type="button" variant="secondary" isLoading={isBusy} onClick={() => onSaveDraft(value)}><SaveIcon size={18} /> Save draft</Button><Button type="submit" isLoading={isBusy}><SendIcon size={18} /> Review and submit</Button></div>
+      <div className="wellness-form-actions">
+        <Button
+          type="button"
+          variant="secondary"
+          isLoading={isBusy}
+          onClick={handleSaveDraft}
+        >
+          <SaveIcon size={18} />
+          Save draft
+        </Button>
+        <Button type="submit" isLoading={isBusy}>
+          <SendIcon size={18} />
+          Review and submit
+        </Button>
+      </div>
     </form>
   );
 }

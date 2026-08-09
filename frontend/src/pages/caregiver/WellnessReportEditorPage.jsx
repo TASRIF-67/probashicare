@@ -25,23 +25,47 @@ export function WellnessReportEditorPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([
-      wellnessReportService.listAssignments(),
-      reportId ? wellnessReportService.getReport(reportId) : Promise.resolve({ report: null }),
-    ])
-      .then(([assignmentData, reportData]) => {
-        if (reportData.report?.status === "submitted") {
+    /**
+     * Loads the assignment choices and optional existing report.
+     * @returns {Promise<void>}
+     * @sideEffects Reads wellness APIs, updates page state, and may redirect.
+     */
+    async function loadEditor() {
+      try {
+        const assignmentData = await wellnessReportService.listAssignments();
+        let reportData = {
+          report: null,
+        };
+
+        if (reportId) {
+          reportData = await wellnessReportService.getReport(reportId);
+        }
+
+        if (reportData.report && reportData.report.status === "submitted") {
           navigate(`/caregiver/wellness-reports/${reportData.report._id}`, { replace: true });
           return;
         }
+
         setState({
           loading: false,
           assignments: assignmentData.assignments,
           report: reportData.report,
           error: "",
         });
-      })
-      .catch((error) => setState((current) => ({ ...current, loading: false, error: normalizeApiError(error).message })));
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
+
+        setState((current) => {
+          return {
+            ...current,
+            loading: false,
+            error: normalizedError.message,
+          };
+        });
+      }
+    }
+
+    loadEditor();
   }, [navigate, reportId]);
 
   /**
@@ -51,10 +75,21 @@ export function WellnessReportEditorPage() {
    * @sideEffects Calls the report API and updates local report state.
    */
   async function persistDraft(values) {
-    const data = state.report
-      ? await wellnessReportService.updateDraft(state.report._id, values)
-      : await wellnessReportService.createReport(values);
-    setState((current) => ({ ...current, report: data.report }));
+    let data;
+
+    if (state.report) {
+      data = await wellnessReportService.updateDraft(state.report._id, values);
+    } else {
+      data = await wellnessReportService.createReport(values);
+    }
+
+    setState((current) => {
+      return {
+        ...current,
+        report: data.report,
+      };
+    });
+
     return data.report;
   }
 
@@ -70,7 +105,9 @@ export function WellnessReportEditorPage() {
     try {
       const report = await persistDraft(values);
       showToast("Wellness report draft saved.", "success");
-      if (!reportId) navigate(`/caregiver/wellness-reports/${report._id}/edit`, { replace: true });
+      if (!reportId) {
+        navigate(`/caregiver/wellness-reports/${report._id}/edit`, { replace: true });
+      }
     } catch (error) {
       const normalized = normalizeApiError(error);
       setErrors({ ...(normalized.details || {}), form: normalized.message });
@@ -87,6 +124,15 @@ export function WellnessReportEditorPage() {
    */
   function handleRequestSubmit(values) {
     setPendingSubmission(values);
+  }
+
+  /**
+   * Closes the submission confirmation modal.
+   * @returns {void}
+   * @sideEffects Clears the pending form values from component state.
+   */
+  function handleCloseSubmission() {
+    setPendingSubmission(null);
   }
 
   /**
@@ -113,8 +159,36 @@ export function WellnessReportEditorPage() {
     }
   }
 
-  if (state.loading) return <main><CaregiverHeader /><div className="page-loader"><span className="spinner" /> Loading report editor</div></main>;
-  if (state.error) return <main><CaregiverHeader /><div className="center-page"><h1>Report unavailable</h1><p>{state.error}</p><Link className="button button--secondary" to="/caregiver/wellness-reports"><ArrowLeftIcon size={18} /> Return to reports</Link></div></main>;
+  if (state.loading) {
+    return (
+      <main>
+        <CaregiverHeader />
+        <div className="page-loader">
+          <span className="spinner" />
+          Loading report editor
+        </div>
+      </main>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <main>
+        <CaregiverHeader />
+        <div className="center-page">
+          <h1>Report unavailable</h1>
+          <p>{state.error}</p>
+          <Link
+            className="button button--secondary"
+            to="/caregiver/wellness-reports"
+          >
+            <ArrowLeftIcon size={18} />
+            Return to reports
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -122,11 +196,52 @@ export function WellnessReportEditorPage() {
       <div className="caregiver-page wellness-editor-page">
         <Link className="profile-back-link" to="/caregiver/wellness-reports"><ArrowLeftIcon size={17} /> Wellness reports</Link>
         <div className="page-heading"><span className="eyebrow">Daily care record</span><h1>{state.report ? "Continue wellness report" : "Create wellness report"}</h1><p>Save an incomplete visit as a draft. Once submitted, the report becomes read-only and visible to linked family members.</p></div>
-        {!state.assignments.length ? <div className="wellness-no-assignment"><span><ClipboardListIcon /></span><h2>No reportable care visits</h2><p>An active or recently completed caregiver assignment is required before a report can be created.</p></div> : <WellnessReportForm report={state.report} assignments={state.assignments} errors={errors} isBusy={isBusy} onSaveDraft={handleSaveDraft} onRequestSubmit={handleRequestSubmit} />}
+        {!state.assignments.length && (
+          <div className="wellness-no-assignment">
+            <span>
+              <ClipboardListIcon />
+            </span>
+            <h2>No reportable care visits</h2>
+            <p>
+              An active or recently completed caregiver assignment is required
+              before a report can be created.
+            </p>
+          </div>
+        )}
+        {Boolean(state.assignments.length) && (
+          <WellnessReportForm
+            report={state.report}
+            assignments={state.assignments}
+            errors={errors}
+            isBusy={isBusy}
+            onSaveDraft={handleSaveDraft}
+            onRequestSubmit={handleRequestSubmit}
+          />
+        )}
       </div>
-      <Modal isOpen={Boolean(pendingSubmission)} title="Submit this wellness report?" onClose={() => setPendingSubmission(null)}>
+      <Modal
+        isOpen={Boolean(pendingSubmission)}
+        title="Submit this wellness report?"
+        onClose={handleCloseSubmission}
+      >
         <p>Linked family members will be able to read it immediately. Submitted reports cannot be edited from the caregiver portal.</p>
-        <div className="modal-actions"><Button type="button" variant="secondary" onClick={() => setPendingSubmission(null)}>Continue editing</Button><Button type="button" isLoading={isBusy} onClick={handleConfirmSubmit}><SendIcon size={18} /> Submit report</Button></div>
+        <div className="modal-actions">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleCloseSubmission}
+          >
+            Continue editing
+          </Button>
+          <Button
+            type="button"
+            isLoading={isBusy}
+            onClick={handleConfirmSubmit}
+          >
+            <SendIcon size={18} />
+            Submit report
+          </Button>
+        </div>
       </Modal>
     </main>
   );

@@ -21,16 +21,39 @@ export const BLOOD_SUGAR_CONTEXTS = [
 
 const vitalsSchema = new mongoose.Schema(
   {
-    systolic: { type: Number, min: 50, max: 260, default: null },
-    diastolic: { type: Number, min: 30, max: 180, default: null },
-    bloodSugar: { type: Number, min: 20, max: 600, default: null },
+    systolic: {
+      type: Number,
+      min: 50,
+      max: 260,
+      default: null,
+    },
+    diastolic: {
+      type: Number,
+      min: 30,
+      max: 180,
+      default: null,
+    },
+    bloodSugar: {
+      type: Number,
+      min: 20,
+      max: 600,
+      default: null,
+    },
     bloodSugarContext: {
       type: String,
       enum: BLOOD_SUGAR_CONTEXTS,
       default: "unknown",
     },
-    weightKg: { type: Number, min: 20, max: 300, default: null },
-    measuredAt: { type: Date, default: null },
+    weightKg: {
+      type: Number,
+      min: 20,
+      max: 300,
+      default: null,
+    },
+    measuredAt: {
+      type: Date,
+      default: null,
+    },
   },
   { _id: false },
 );
@@ -55,23 +78,69 @@ const wellnessReportSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    visitDate: { type: Date, required: true, index: true },
-    checkInAt: { type: Date, default: null },
-    checkOutAt: { type: Date, default: null },
-    mood: { type: String, enum: MOOD_OPTIONS, default: null },
-    mealStatus: { type: String, enum: MEAL_STATUSES, default: null },
-    mealNotes: { type: String, trim: true, maxlength: 500, default: "" },
+    visitDate: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+    checkInAt: {
+      type: Date,
+      default: null,
+    },
+    checkOutAt: {
+      type: Date,
+      default: null,
+    },
+    mood: {
+      type: String,
+      enum: MOOD_OPTIONS,
+      default: null,
+    },
+    mealStatus: {
+      type: String,
+      enum: MEAL_STATUSES,
+      default: null,
+    },
+    mealNotes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
     medicineIntakeStatus: {
       type: String,
       enum: MEDICINE_INTAKE_STATUSES,
       default: null,
     },
-    medicineNotes: { type: String, trim: true, maxlength: 500, default: "" },
+    medicineNotes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
     vitals: { type: vitalsSchema, default: () => ({}) },
-    exerciseDurationMinutes: { type: Number, min: 0, max: 600, default: null },
-    observations: { type: String, trim: true, maxlength: 2000, default: "" },
-    caregiverNotes: { type: String, trim: true, maxlength: 1500, default: "" },
-    nextVisitDate: { type: Date, default: null },
+    exerciseDurationMinutes: {
+      type: Number,
+      min: 0,
+      max: 600,
+      default: null,
+    },
+    observations: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: "",
+    },
+    caregiverNotes: {
+      type: String,
+      trim: true,
+      maxlength: 1500,
+      default: "",
+    },
+    nextVisitDate: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: String,
       enum: WELLNESS_REPORT_STATUSES,
@@ -83,9 +152,21 @@ const wellnessReportSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-wellnessReportSchema.index({ elderlyProfileId: 1, status: 1, visitDate: -1 });
-wellnessReportSchema.index({ caregiverUserId: 1, status: 1, visitDate: -1 });
-wellnessReportSchema.index({ careAssignmentId: 1, visitDate: -1 });
+// These indexes support the report-history screens without changing stored data.
+wellnessReportSchema.index({
+  elderlyProfileId: 1,
+  status: 1,
+  visitDate: -1,
+});
+wellnessReportSchema.index({
+  caregiverUserId: 1,
+  status: 1,
+  visitDate: -1,
+});
+wellnessReportSchema.index({
+  careAssignmentId: 1,
+  visitDate: -1,
+});
 
 /*
  * To add another visit record, create a separate time-series model linked to

@@ -19,13 +19,32 @@ const MAX_TREND_DAYS = 365;
  * @sideEffects Throws a 422 ApiError when a supplied value is invalid.
  */
 function parsePagination(query) {
-  const page = query.page === undefined ? 1 : Number(query.page);
-  const limit = query.limit === undefined ? DEFAULT_PAGE_SIZE : Number(query.limit);
-  if (!Number.isInteger(page) || page < 1) throw new ApiError(422, "Page must be a positive integer.");
+  let page = 1;
+  let limit = DEFAULT_PAGE_SIZE;
+
+  if (query.page !== undefined) {
+    page = Number(query.page);
+  }
+
+  if (query.limit !== undefined) {
+    limit = Number(query.limit);
+  }
+
+  if (!Number.isInteger(page) || page < 1) {
+    throw new ApiError(422, "Page must be a positive integer.");
+  }
+
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
     throw new ApiError(422, `Limit must be between 1 and ${MAX_PAGE_SIZE}.`);
   }
-  return { page, limit, skip: (page - 1) * limit };
+
+  const skip = (page - 1) * limit;
+
+  return {
+    page,
+    limit,
+    skip,
+  };
 }
 
 /**
@@ -53,19 +72,63 @@ function toWellnessReportResponse(report) {
   const value = report.toObject();
   const caregiver = value.caregiverUserId;
   const elderly = value.elderlyProfileId;
+
+  let caregiverUserId = caregiver;
+  let caregiverSummary = null;
+
+  if (caregiver && caregiver._id) {
+    caregiverUserId = caregiver._id;
+    caregiverSummary = {
+      id: caregiver._id,
+      name: caregiver.name,
+    };
+  }
+
+  let elderlyProfileId = elderly;
+  let elderlySummary = null;
+
+  if (elderly && elderly._id) {
+    elderlyProfileId = elderly._id;
+
+    let fullName;
+    let preferredName;
+
+    if (elderly.personalInformation) {
+      fullName = elderly.personalInformation.fullName;
+      preferredName = elderly.personalInformation.preferredName;
+    }
+
+    elderlySummary = {
+      id: elderly._id,
+      fullName,
+      preferredName,
+      profilePhotoUrl: elderly.profilePhotoUrl,
+    };
+  }
+
   return {
     ...value,
-    caregiverUserId: caregiver?._id || caregiver,
-    elderlyProfileId: elderly?._id || elderly,
-    caregiver: caregiver?._id ? { id: caregiver._id, name: caregiver.name } : null,
-    elderly: elderly?._id
-      ? {
-          id: elderly._id,
-          fullName: elderly.personalInformation?.fullName,
-          preferredName: elderly.personalInformation?.preferredName,
-          profilePhotoUrl: elderly.profilePhotoUrl,
-        }
-      : null,
+    caregiverUserId,
+    elderlyProfileId,
+    caregiver: caregiverSummary,
+    elderly: elderlySummary,
+  };
+}
+
+/**
+ * Builds the pagination object returned by wellness report list endpoints.
+ * @param {number} page - Current one-based page number.
+ * @param {number} limit - Maximum records returned on one page.
+ * @param {number} total - Total records matching the query.
+ * @returns {{page: number, limit: number, total: number, pages: number}} Pagination metadata.
+ * @sideEffects None.
+ */
+function buildPaginationResponse(page, limit, total) {
+  return {
+    page,
+    limit,
+    total,
+    pages: Math.ceil(total / limit),
   };
 }
 
@@ -76,9 +139,15 @@ function toWellnessReportResponse(report) {
  * @sideEffects Reads WellnessReport and family-link data; conceals unauthorized records as 404.
  */
 async function getAuthorizedReport({ reportId, user }) {
-  if (!mongoose.isValidObjectId(reportId)) throw new ApiError(404, "Wellness report not found.");
+  if (!mongoose.isValidObjectId(reportId)) {
+    throw new ApiError(404, "Wellness report not found.");
+  }
+
   const report = await populateReportIdentity(WellnessReport.findById(reportId));
-  if (!report) throw new ApiError(404, "Wellness report not found.");
+
+  if (!report) {
+    throw new ApiError(404, "Wellness report not found.");
+  }
 
   if (user.role === "caregiver") {
     if (report.caregiverUserId?._id?.toString() !== user._id.toString()) {
@@ -109,9 +178,14 @@ async function getAuthorizedReport({ reportId, user }) {
  */
 export async function listCaregiverReportAssignments(request, response) {
   const assignments = await listReportableCareAssignments(request.user._id);
-  const result = assignments
-    .filter((assignment) => assignment.elderlyProfileId)
-    .map((assignment) => ({
+  const result = [];
+
+  for (const assignment of assignments) {
+    if (!assignment.elderlyProfileId) {
+      continue;
+    }
+
+    const assignmentSummary = {
       id: assignment._id,
       elderlyProfileId: assignment.elderlyProfileId._id,
       elderly: {
@@ -124,8 +198,18 @@ export async function listCaregiverReportAssignments(request, response) {
       startsAt: assignment.startsAt,
       endsAt: assignment.endsAt,
       status: assignment.status,
-    }));
-  response.json({ success: true, data: { assignments: result, count: result.length } });
+    };
+
+    result.push(assignmentSummary);
+  }
+
+  response.json({
+    success: true,
+    data: {
+      assignments: result,
+      count: result.length,
+    },
+  });
 }
 
 /**
@@ -180,7 +264,9 @@ export async function updateWellnessReportDraft(request, response) {
     caregiverUserId: request.user._id,
     status: "draft",
   });
-  if (!report) throw new ApiError(404, "Editable wellness report not found.");
+  if (!report) {
+    throw new ApiError(404, "Editable wellness report not found.");
+  }
 
   const values = validateWellnessReportPayload(request.body);
   await getReportableCareAssignment({
@@ -218,7 +304,9 @@ export async function submitWellnessReport(request, response) {
     caregiverUserId: request.user._id,
     status: "draft",
   });
-  if (!report) throw new ApiError(404, "Editable wellness report not found.");
+  if (!report) {
+    throw new ApiError(404, "Editable wellness report not found.");
+  }
 
   const values = validateWellnessReportPayload(report.toObject(), { isSubmission: true });
   await getReportableCareAssignment({
@@ -253,7 +341,13 @@ export async function listMyWellnessReports(request, response) {
   if (status && !WELLNESS_REPORT_STATUSES.includes(status)) {
     throw new ApiError(422, "Status must be draft or submitted.");
   }
-  const filter = { caregiverUserId: request.user._id, ...(status ? { status } : {}) };
+  const filter = {
+    caregiverUserId: request.user._id,
+  };
+
+  if (status) {
+    filter.status = status;
+  }
   const [reports, total] = await Promise.all([
     populateReportIdentity(
       WellnessReport.find(filter).sort({ visitDate: -1, createdAt: -1 }).skip(skip).limit(limit),
@@ -264,7 +358,7 @@ export async function listMyWellnessReports(request, response) {
     success: true,
     data: {
       reports: reports.map(toWellnessReportResponse),
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      pagination: buildPaginationResponse(page, limit, total),
     },
   });
 }
@@ -313,7 +407,7 @@ export async function listElderlyWellnessReports(request, response) {
     success: true,
     data: {
       reports: reports.map(toWellnessReportResponse),
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      pagination: buildPaginationResponse(page, limit, total),
     },
   });
 }
@@ -334,10 +428,17 @@ export async function getElderlyVitalsTrends(request, response) {
     profileId: request.params.profileId,
     familyUserId: request.user._id,
   });
-  const to = request.query.to ? new Date(request.query.to) : new Date();
-  const from = request.query.from
-    ? new Date(request.query.from)
-    : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  let to = new Date();
+
+  if (request.query.to) {
+    to = new Date(request.query.to);
+  }
+
+  let from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  if (request.query.from) {
+    from = new Date(request.query.from);
+  }
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) {
     throw new ApiError(422, "Choose a valid vitals date range.");
   }
@@ -356,16 +457,25 @@ export async function getElderlyVitalsTrends(request, response) {
   })
     .select("visitDate vitals")
     .sort({ visitDate: 1 });
+  const points = [];
+
+  for (const report of reports) {
+    const vitals = report.vitals.toObject();
+    const point = {
+      reportId: report._id,
+      visitDate: report.visitDate,
+      ...vitals,
+    };
+
+    points.push(point);
+  }
+
   response.json({
     success: true,
     data: {
       from,
       to,
-      points: reports.map((report) => ({
-        reportId: report._id,
-        visitDate: report.visitDate,
-        ...report.vitals.toObject(),
-      })),
+      points,
     },
   });
 }

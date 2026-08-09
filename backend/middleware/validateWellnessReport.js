@@ -13,9 +13,17 @@ import { ApiError } from "../utils/ApiError.js";
  * @sideEffects None.
  */
 function optionalNumber(value) {
-  if (value === "" || value == null) return null;
+  if (value === "" || value == null) {
+    return null;
+  }
+
   const number = Number(value);
-  return Number.isFinite(number) ? number : Number.NaN;
+
+  if (Number.isFinite(number)) {
+    return number;
+  }
+
+  return Number.NaN;
 }
 
 /**
@@ -27,8 +35,12 @@ function optionalNumber(value) {
  * @sideEffects Adds a field entry to `errors` when parsing fails.
  */
 function optionalDate(value, field, errors) {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
+
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) {
     errors[field] = "Enter a valid date and time.";
     return null;
@@ -45,7 +57,12 @@ function optionalDate(value, field, errors) {
  */
 export function validateWellnessReportPayload(body = {}, { isSubmission = false } = {}) {
   const errors = {};
-  const vitalsInput = body.vitals && typeof body.vitals === "object" ? body.vitals : {};
+  let vitalsInput = {};
+
+  if (body.vitals && typeof body.vitals === "object") {
+    vitalsInput = body.vitals;
+  }
+
   const visitDate = optionalDate(body.visitDate, "visitDate", errors);
   const checkInAt = optionalDate(body.checkInAt, "checkInAt", errors);
   const checkOutAt = optionalDate(body.checkOutAt, "checkOutAt", errors);
@@ -76,11 +93,21 @@ export function validateWellnessReportPayload(body = {}, { isSubmission = false 
     nextVisitDate,
   };
 
-  if (!normalized.careAssignmentId) errors.careAssignmentId = "Choose an assigned visit.";
-  if (!normalized.elderlyProfileId) errors.elderlyProfileId = "Choose an elderly profile.";
-  if (!visitDate) errors.visitDate = errors.visitDate || "Visit date is required.";
-  if (normalized.mood && !MOOD_OPTIONS.includes(normalized.mood)) errors.mood = "Choose a valid mood.";
-  if (normalized.mealStatus && !MEAL_STATUSES.includes(normalized.mealStatus)) errors.mealStatus = "Choose a valid meal status.";
+  if (!normalized.careAssignmentId) {
+    errors.careAssignmentId = "Choose an assigned visit.";
+  }
+  if (!normalized.elderlyProfileId) {
+    errors.elderlyProfileId = "Choose an elderly profile.";
+  }
+  if (!visitDate) {
+    errors.visitDate = errors.visitDate || "Visit date is required.";
+  }
+  if (normalized.mood && !MOOD_OPTIONS.includes(normalized.mood)) {
+    errors.mood = "Choose a valid mood.";
+  }
+  if (normalized.mealStatus && !MEAL_STATUSES.includes(normalized.mealStatus)) {
+    errors.mealStatus = "Choose a valid meal status.";
+  }
   if (
     normalized.medicineIntakeStatus &&
     !MEDICINE_INTAKE_STATUSES.includes(normalized.medicineIntakeStatus)
@@ -98,11 +125,12 @@ export function validateWellnessReportPayload(body = {}, { isSubmission = false 
     ["vitals.weightKg", normalized.vitals.weightKg, 20, 300],
     ["exerciseDurationMinutes", normalized.exerciseDurationMinutes, 0, 600],
   ];
-  numericRules.forEach(([field, value, minimum, maximum]) => {
+  // Each rule contains the field name, current value, minimum, and maximum.
+  for (const [field, value, minimum, maximum] of numericRules) {
     if (value != null && (!Number.isFinite(value) || value < minimum || value > maximum)) {
       errors[field] = `Enter a value between ${minimum} and ${maximum}.`;
     }
-  });
+  }
 
   const hasSystolic = normalized.vitals.systolic != null;
   const hasDiastolic = normalized.vitals.diastolic != null;
@@ -110,11 +138,19 @@ export function validateWellnessReportPayload(body = {}, { isSubmission = false 
     errors[hasSystolic ? "vitals.diastolic" : "vitals.systolic"] =
       "Record both blood pressure values together.";
   }
-  const hasVitals = [
+  const possibleVitals = [
     normalized.vitals.systolic,
     normalized.vitals.bloodSugar,
     normalized.vitals.weightKg,
-  ].some((value) => value != null);
+  ];
+  let hasVitals = false;
+
+  for (const value of possibleVitals) {
+    if (value != null) {
+      hasVitals = true;
+      break;
+    }
+  }
   if (hasVitals && !normalized.vitals.measuredAt) {
     errors["vitals.measuredAt"] = "Add the time when the vitals were measured.";
   }
@@ -134,18 +170,28 @@ export function validateWellnessReportPayload(body = {}, { isSubmission = false 
     ["observations", normalized.observations, 2000],
     ["caregiverNotes", normalized.caregiverNotes, 1500],
   ];
-  lengthRules.forEach(([field, value, maximum]) => {
-    if (value.length > maximum) errors[field] = `Use ${maximum} characters or fewer.`;
-  });
+  for (const [field, value, maximum] of lengthRules) {
+    if (value.length > maximum) {
+      errors[field] = `Use ${maximum} characters or fewer.`;
+    }
+  }
 
   if (isSubmission) {
-    if (!checkInAt) errors.checkInAt = "Check-in time is required before submission.";
-    if (!normalized.mood) errors.mood = "Mood is required before submission.";
-    if (!normalized.mealStatus) errors.mealStatus = "Meal status is required before submission.";
+    if (!checkInAt) {
+      errors.checkInAt = "Check-in time is required before submission.";
+    }
+    if (!normalized.mood) {
+      errors.mood = "Mood is required before submission.";
+    }
+    if (!normalized.mealStatus) {
+      errors.mealStatus = "Meal status is required before submission.";
+    }
     if (!normalized.medicineIntakeStatus) {
       errors.medicineIntakeStatus = "Medicine status is required before submission.";
     }
-    if (!normalized.observations) errors.observations = "Add a brief health observation.";
+    if (!normalized.observations) {
+      errors.observations = "Add a brief health observation.";
+    }
   }
 
   if (Object.keys(errors).length) {

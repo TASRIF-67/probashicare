@@ -13,18 +13,32 @@ const REPORT_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
  * @sideEffects Upserts one CareAssignment document in MongoDB.
  */
 export async function syncCareAssignmentFromBooking(input) {
+  const assignmentFilter = {
+    sourceBookingId: input.bookingId,
+  };
+
+  const assignmentValues = {
+    elderlyProfileId: input.elderlyProfileId,
+    caregiverUserId: input.caregiverUserId,
+    sourceBookingId: input.bookingId,
+    assignmentType: input.assignmentType,
+    startsAt: input.startsAt,
+    endsAt: input.endsAt || null,
+    status: input.status,
+  };
+
+  // `upsert` updates an existing assignment or creates one when none exists.
+  const updateOptions = {
+    upsert: true,
+    new: true,
+    runValidators: true,
+    setDefaultsOnInsert: true,
+  };
+
   return CareAssignment.findOneAndUpdate(
-    { sourceBookingId: input.bookingId },
-    {
-      elderlyProfileId: input.elderlyProfileId,
-      caregiverUserId: input.caregiverUserId,
-      sourceBookingId: input.bookingId,
-      assignmentType: input.assignmentType,
-      startsAt: input.startsAt,
-      endsAt: input.endsAt || null,
-      status: input.status,
-    },
-    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
+    assignmentFilter,
+    assignmentValues,
+    updateOptions,
   );
 }
 
@@ -36,17 +50,27 @@ export async function syncCareAssignmentFromBooking(input) {
  */
 export async function listReportableCareAssignments(caregiverUserId) {
   const oldestAllowedEnd = new Date(Date.now() - REPORT_GRACE_PERIOD_MS);
-  return CareAssignment.find({
+
+  const assignmentFilter = {
     caregiverUserId,
-    status: { $in: REPORTABLE_STATUSES },
-    $or: [{ endsAt: null }, { endsAt: { $gte: oldestAllowedEnd } }],
-  })
+    status: {
+      $in: REPORTABLE_STATUSES,
+    },
+    $or: [
+      { endsAt: null },
+      { endsAt: { $gte: oldestAllowedEnd } },
+    ],
+  };
+
+  const assignments = await CareAssignment.find(assignmentFilter)
     .sort({ startsAt: -1 })
     .populate({
       path: "elderlyProfileId",
       match: { status: "active" },
       select: "personalInformation.fullName personalInformation.preferredName profilePhotoUrl status",
     });
+
+  return assignments;
 }
 
 /**
@@ -71,16 +95,27 @@ export async function getReportableCareAssignment({
     caregiverUserId,
     status: { $in: REPORTABLE_STATUSES },
   });
-  if (!assignment) throw new ApiError(404, "Care assignment not found.");
+  if (!assignment) {
+    throw new ApiError(404, "Care assignment not found.");
+  }
 
-  const profileExists = await ElderlyProfile.exists({ _id: elderlyProfileId, status: "active" });
-  if (!profileExists) throw new ApiError(404, "Care assignment not found.");
+  const profileFilter = {
+    _id: elderlyProfileId,
+    status: "active",
+  };
+  const profileExists = await ElderlyProfile.exists(profileFilter);
+
+  if (!profileExists) {
+    throw new ApiError(404, "Care assignment not found.");
+  }
 
   const visitTime = new Date(visitDate).getTime();
   const startsAt = assignment.startsAt.getTime();
-  const latestAllowed = assignment.endsAt
-    ? assignment.endsAt.getTime() + REPORT_GRACE_PERIOD_MS
-    : Number.POSITIVE_INFINITY;
+  let latestAllowed = Number.POSITIVE_INFINITY;
+
+  if (assignment.endsAt) {
+    latestAllowed = assignment.endsAt.getTime() + REPORT_GRACE_PERIOD_MS;
+  }
   const earliestAllowed = startsAt - 24 * 60 * 60 * 1000;
   if (!Number.isFinite(visitTime) || visitTime < earliestAllowed || visitTime > latestAllowed) {
     throw new ApiError(403, "The report date falls outside this care assignment.");

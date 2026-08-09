@@ -6,19 +6,57 @@
  * @sideEffects None.
  */
 function buildPlot(points, metric) {
-  const values = points.map((point) => point[metric]).filter((value) => Number.isFinite(value));
-  if (!values.length) return { coordinates: "", values: [], minimum: null, maximum: null };
+  const values = [];
+
+  for (const point of points) {
+    const value = point[metric];
+
+    if (Number.isFinite(value)) {
+      values.push(value);
+    }
+  }
+
+  if (!values.length) {
+    return {
+      coordinates: "",
+      values: [],
+      minimum: null,
+      maximum: null,
+    };
+  }
+
+  // Math.min and Math.max calculate the displayed range.
   const minimum = Math.min(...values);
   const maximum = Math.max(...values);
-  const span = maximum - minimum || 1;
-  const coordinates = values
-    .map((value, index) => {
-      const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
-      const y = 85 - ((value - minimum) / span) * 70;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  return { coordinates, values, minimum, maximum };
+  let span = maximum - minimum;
+
+  if (span === 0) {
+    span = 1;
+  }
+
+  const coordinateParts = [];
+
+  for (let index = 0; index < values.length; index += 1) {
+    const value = values[index];
+    let x = 50;
+
+    if (values.length > 1) {
+      x = (index / (values.length - 1)) * 100;
+    }
+
+    const y = 85 - ((value - minimum) / span) * 70;
+    coordinateParts.push(`${x},${y}`);
+  }
+
+  // join creates the space-separated coordinate format required by SVG.
+  const coordinates = coordinateParts.join(" ");
+
+  return {
+    coordinates,
+    values,
+    minimum,
+    maximum,
+  };
 }
 
 /**
@@ -29,7 +67,11 @@ function buildPlot(points, metric) {
  */
 export function VitalsTrendChart({ points, metric, label, unit }) {
   const plot = buildPlot(points, metric);
-  const latest = plot.values.at(-1);
+  let latest;
+
+  if (plot.values.length) {
+    latest = plot.values[plot.values.length - 1];
+  }
   return (
     <article className="vitals-trend-card">
       <div className="vitals-trend-card__heading">

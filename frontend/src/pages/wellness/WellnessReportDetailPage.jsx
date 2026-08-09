@@ -15,7 +15,10 @@ import { wellnessReportService } from "../../services/wellnessReportService.js";
  * @sideEffects None.
  */
 function humanize(value) {
-  if (!value) return "Not recorded";
+  if (!value) {
+    return "Not recorded";
+  }
+
   const text = String(value).replaceAll("-", " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -27,9 +30,15 @@ function humanize(value) {
  * @sideEffects None.
  */
 function formatDateTime(value) {
-  return value
-    ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
-    : "Not recorded";
+  if (!value) {
+    return "Not recorded";
+  }
+
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  return formatter.format(new Date(value));
 }
 
 /**
@@ -39,7 +48,18 @@ function formatDateTime(value) {
  * @sideEffects None.
  */
 function ReportDetail({ label, value }) {
-  return <div><dt>{label}</dt><dd>{value ?? "Not recorded"}</dd></div>;
+  let displayedValue = value;
+
+  if (displayedValue === null || displayedValue === undefined) {
+    displayedValue = "Not recorded";
+  }
+
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{displayedValue}</dd>
+    </div>
+  );
 }
 
 /**
@@ -57,10 +77,32 @@ export function WellnessReportDetailPage() {
   const backPath = isCaregiver ? "/caregiver/wellness-reports" : `/elderly-profiles/${profileId}/wellness`;
 
   useEffect(() => {
-    wellnessReportService
-      .getReport(reportId)
-      .then(({ report }) => setState({ loading: false, report, error: "" }))
-      .catch((error) => setState({ loading: false, report: null, error: normalizeApiError(error).message }));
+    /**
+     * Loads the report allowed for the signed-in user.
+     * @returns {Promise<void>}
+     * @sideEffects Reads the report API and updates page state.
+     */
+    async function loadReport() {
+      try {
+        const data = await wellnessReportService.getReport(reportId);
+
+        setState({
+          loading: false,
+          report: data.report,
+          error: "",
+        });
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
+
+        setState({
+          loading: false,
+          report: null,
+          error: normalizedError.message,
+        });
+      }
+    }
+
+    loadReport();
   }, [reportId]);
 
   if (state.loading) return <main><Header /><div className="page-loader"><span className="spinner" /> Loading wellness report</div></main>;

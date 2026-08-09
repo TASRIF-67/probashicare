@@ -26,8 +26,14 @@ const careAssignmentSchema = new mongoose.Schema(
       enum: CARE_ASSIGNMENT_TYPES,
       required: true,
     },
-    startsAt: { type: Date, required: true },
-    endsAt: { type: Date, default: null },
+    startsAt: {
+      type: Date,
+      required: true,
+    },
+    endsAt: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: String,
       enum: CARE_ASSIGNMENT_STATUSES,
@@ -38,8 +44,17 @@ const careAssignmentSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-careAssignmentSchema.index({ caregiverUserId: 1, status: 1, startsAt: -1 });
-careAssignmentSchema.index({ elderlyProfileId: 1, status: 1, startsAt: -1 });
+// These indexes make the caregiver and family assignment-history queries faster.
+careAssignmentSchema.index({
+  caregiverUserId: 1,
+  status: 1,
+  startsAt: -1,
+});
+careAssignmentSchema.index({
+  elderlyProfileId: 1,
+  status: 1,
+  startsAt: -1,
+});
 careAssignmentSchema.index(
   { sourceBookingId: 1 },
   { unique: true, partialFilterExpression: { sourceBookingId: { $type: "objectId" } } },

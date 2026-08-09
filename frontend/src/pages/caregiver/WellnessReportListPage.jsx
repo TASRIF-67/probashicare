@@ -13,8 +13,27 @@ import { wellnessReportService } from "../../services/wellnessReportService.js";
  * @sideEffects None.
  */
 function formatDate(value) {
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(value));
+  const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+  });
+
+  return dateFormatter.format(new Date(value));
 }
+
+const STATUS_FILTERS = [
+  {
+    value: "",
+    label: "All",
+  },
+  {
+    value: "draft",
+    label: "Drafts",
+  },
+  {
+    value: "submitted",
+    label: "Submitted",
+  },
+];
 
 /**
  * Lists current caregiver drafts and submitted wellness reports.
@@ -27,12 +46,57 @@ export function WellnessReportListPage() {
   const [state, setState] = useState({ loading: true, reports: [], error: "" });
 
   useEffect(() => {
-    setState((current) => ({ ...current, loading: true, error: "" }));
-    wellnessReportService
-      .listMyReports(status ? { status } : {})
-      .then(({ reports }) => setState({ loading: false, reports, error: "" }))
-      .catch((error) => setState({ loading: false, reports: [], error: normalizeApiError(error).message }));
+    /**
+     * Loads the reports matching the selected status.
+     * @returns {Promise<void>}
+     * @sideEffects Reads the wellness API and updates page state.
+     */
+    async function loadReports() {
+      setState((current) => {
+        return {
+          ...current,
+          loading: true,
+          error: "",
+        };
+      });
+
+      const options = {};
+
+      if (status) {
+        options.status = status;
+      }
+
+      try {
+        const data = await wellnessReportService.listMyReports(options);
+
+        setState({
+          loading: false,
+          reports: data.reports,
+          error: "",
+        });
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
+
+        setState({
+          loading: false,
+          reports: [],
+          error: normalizedError.message,
+        });
+      }
+    }
+
+    loadReports();
   }, [status]);
+
+  /**
+   * Changes the active report-status filter.
+   * @param {string} nextStatus - Empty, draft, or submitted status value.
+   * @returns {void}
+   * @sideEffects Updates local filter state and triggers report reloading.
+   */
+  function handleStatusChange(nextStatus) {
+    setStatus(nextStatus);
+  }
 
   return (
     <main>
