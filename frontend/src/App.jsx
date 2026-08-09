@@ -4,6 +4,7 @@ import { CaregiverApplicationRoute } from "./components/CaregiverApplicationRout
 import { CaregiverThemeRoute } from "./components/caregiver/CaregiverTheme.jsx";
 import { AdminLayout } from "./components/admin/AdminLayout.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { CaregiverBrowsePage } from "./pages/family/CaregiverBrowsePage.jsx";
 import { OnboardingPage } from "./pages/OnboardingPage.jsx";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 import { LoginPage } from "./pages/auth/LoginPage.jsx";
@@ -21,8 +22,10 @@ import { CaregiverApplicationPage } from "./pages/caregiver/CaregiverApplication
 import { CaregiverApplicationStatusPage } from "./pages/caregiver/CaregiverApplicationStatusPage.jsx";
 import { CaregiverDashboardPage } from "./pages/caregiver/CaregiverDashboardPage.jsx";
 import { CaregiverProfilePage } from "./pages/caregiver/CaregiverProfilePage.jsx";
+import { CaregiverBookingsPage } from "./pages/caregiver/CaregiverBookingsPage.jsx";
 import { WellnessReportEditorPage } from "./pages/caregiver/WellnessReportEditorPage.jsx";
 import { WellnessReportListPage } from "./pages/caregiver/WellnessReportListPage.jsx";
+import { FamilyBookingsPage } from "./pages/family/FamilyBookingsPage.jsx";
 import { ElderlyWellnessPage } from "./pages/elderly/ElderlyWellnessPage.jsx";
 import { WellnessReportDetailPage } from "./pages/wellness/WellnessReportDetailPage.jsx";
 
@@ -48,10 +51,24 @@ export default function App() {
       </Route>
       <Route element={<ProtectedRoute roles={["family"]} requireOnboarding />}>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/elderly-profiles/:profileId" element={<ElderlyProfileDetailPage />} />
-        <Route path="/elderly-profiles/:profileId/edit" element={<EditElderlyProfilePage />} />
-        <Route path="/elderly-profiles/:profileId/wellness" element={<ElderlyWellnessPage />} />
-        <Route path="/elderly-profiles/:profileId/wellness-reports/:reportId" element={<WellnessReportDetailPage />} />
+        <Route path="/caregivers" element={<CaregiverBrowsePage />} />
+        <Route path="/bookings" element={<FamilyBookingsPage />} />
+        <Route
+          path="/elderly-profiles/:profileId"
+          element={<ElderlyProfileDetailPage />}
+        />
+        <Route
+          path="/elderly-profiles/:profileId/edit"
+          element={<EditElderlyProfilePage />}
+        />
+        <Route
+          path="/elderly-profiles/:profileId/wellness"
+          element={<ElderlyWellnessPage />}
+        />
+        <Route
+          path="/elderly-profiles/:profileId/wellness-reports/:reportId"
+          element={<WellnessReportDetailPage />}
+        />
       </Route>
       <Route element={<ProtectedRoute roles={["admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
@@ -72,10 +89,23 @@ export default function App() {
           <Route element={<CaregiverApplicationRoute allowedStatuses={["approved"]} />}>
             <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
             <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
-            <Route path="/caregiver/wellness-reports" element={<WellnessReportListPage />} />
-            <Route path="/caregiver/wellness-reports/new" element={<WellnessReportEditorPage />} />
-            <Route path="/caregiver/wellness-reports/:reportId/edit" element={<WellnessReportEditorPage />} />
-            <Route path="/caregiver/wellness-reports/:reportId" element={<WellnessReportDetailPage />} />
+            <Route path="/caregiver/bookings" element={<CaregiverBookingsPage />} />
+            <Route
+              path="/caregiver/wellness-reports"
+              element={<WellnessReportListPage />}
+            />
+            <Route
+              path="/caregiver/wellness-reports/new"
+              element={<WellnessReportEditorPage />}
+            />
+            <Route
+              path="/caregiver/wellness-reports/:reportId/edit"
+              element={<WellnessReportEditorPage />}
+            />
+            <Route
+              path="/caregiver/wellness-reports/:reportId"
+              element={<WellnessReportDetailPage />}
+            />
           </Route>
         </Route>
       </Route>

@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import elderlyProfileRoutes from "./routes/elderlyProfileRoutes.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
 import caregiverRoutes from "./routes/caregiverRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 import wellnessReportRoutes from "./routes/wellnessReportRoutes.js";
 
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/elderly-profiles", elderlyProfileRoutes);
 app.use("/api/admin", adminUserRoutes);
 app.use("/api/caregivers", caregiverRoutes);
+app.use("/api/bookings", bookingRoutes);
 app.use("/api/wellness-reports", wellnessReportRoutes);
 
 app.use(notFound);

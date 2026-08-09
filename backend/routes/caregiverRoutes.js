@@ -1,5 +1,10 @@
 import { Router } from "express";
 import {
+  getCaregiverAvailability,
+  listCaregivers,
+} from "../controllers/bookingController.js";
+import { listCaregiverBookings, updateCaregiverBookingStatus } from "../controllers/bookingWorkflowController.js";
+import {
   getApplication,
   saveApplicationDraft,
   submitApplication,
@@ -13,7 +18,12 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
 
+router.get("/", asyncHandler(requireAuth), allowRoles("family", "admin"), asyncHandler(listCaregivers));
+router.get("/:id/availability", asyncHandler(requireAuth), allowRoles("family", "admin"), asyncHandler(getCaregiverAvailability));
+
 router.use(asyncHandler(requireAuth), allowRoles("caregiver"));
+router.get("/bookings/mine", asyncHandler(checkCaregiverApplicationStatus("approved")), asyncHandler(listCaregiverBookings));
+router.patch("/bookings/:bookingId/status", asyncHandler(checkCaregiverApplicationStatus("approved")), asyncHandler(updateCaregiverBookingStatus));
 router.get("/application", asyncHandler(checkCaregiverApplicationStatus()), getApplication);
 router.put(
   "/application/draft",

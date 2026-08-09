@@ -8,10 +8,13 @@
     "start": "node server.js",
     "seed:admin": "node scripts/seedAdmin.js",
     "db:sync-indexes": "node scripts/syncDatabaseIndexes.js",
+    "db:migrate-bookings": "node scripts/migrateLegacyBookings.js",
     "test:elderly-profiles": "node scripts/smokeElderlyProfiles.js",
     "test:admin-users": "node scripts/smokeAdminUsers.js",
     "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js",
-    "test:wellness-reports": "node scripts/smokeWellnessReports.js"
+    "test:wellness-reports": "node scripts/smokeWellnessReports.js",
+    "test:bookings": "node --test test/bookingSchedule.test.js",
+    "test:bookings:integration": "node scripts/smokeBookings.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
