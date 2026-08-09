@@ -132,7 +132,11 @@ export function SignupPage({ initialMode = "family" }) {
   return (
     <AuthLayout {...copy} headerAccessory={<SignupModeToggle value={mode} onChange={handleModeChange} />}>
       <Card className="auth-card signup-card">
-        <div className="auth-card__heading"><h2>{mode === "family" ? "Create family account" : "Apply as a caregiver"}</h2><p>{mode === "family" ? "Set up your secure family care space." : "Administrator approval is required before providing care."}</p></div>
+        <div className="auth-card__heading">
+          <span className="auth-card__kicker">{mode === "family" ? "Family space" : "Caregiver pathway"}</span>
+          <h2>{mode === "family" ? "Create family account" : "Apply as a caregiver"}</h2>
+          <p>{mode === "family" ? "Set up your secure family care space." : "Administrator approval is required before providing care."}</p>
+        </div>
         {errors.form && <div className="alert alert--error">{errors.form}</div>}
         {message ? (
           <div className="success-panel"><h3>Check your inbox</h3><p>{message}</p><Link className="button button--primary" to={mode === "caregiver" ? "/login?mode=caregiver" : "/login"}>Return to sign in</Link></div>

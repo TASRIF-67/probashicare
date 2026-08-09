@@ -9,8 +9,22 @@ import { BriefcaseIcon, UsersIcon } from "./Icons.jsx";
 export function SignupModeToggle({ value, onChange }) {
   return (
     <div className="signup-mode-toggle" role="group" aria-label="Choose account type">
-      <button type="button" className={value === "family" ? "signup-mode-toggle__option signup-mode-toggle__option--active" : "signup-mode-toggle__option"} aria-pressed={value === "family"} onClick={() => onChange("family")}><UsersIcon size={15} /> Family</button>
-      <button type="button" className={value === "caregiver" ? "signup-mode-toggle__option signup-mode-toggle__option--active" : "signup-mode-toggle__option"} aria-pressed={value === "caregiver"} onClick={() => onChange("caregiver")}><BriefcaseIcon size={15} /> Caregiver</button>
+      <button
+        type="button"
+        className={value === "family" ? "signup-mode-toggle__option signup-mode-toggle__option--active" : "signup-mode-toggle__option"}
+        aria-pressed={value === "family"}
+        onClick={() => onChange("family")}
+      >
+        <UsersIcon size={15} /> Family
+      </button>
+      <button
+        type="button"
+        className={value === "caregiver" ? "signup-mode-toggle__option signup-mode-toggle__option--active" : "signup-mode-toggle__option"}
+        aria-pressed={value === "caregiver"}
+        onClick={() => onChange("caregiver")}
+      >
+        <BriefcaseIcon size={15} /> Caregiver
+      </button>
     </div>
   );
 }

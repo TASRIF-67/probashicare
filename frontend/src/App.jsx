@@ -25,6 +25,7 @@ import { WellnessReportEditorPage } from "./pages/caregiver/WellnessReportEditor
 import { WellnessReportListPage } from "./pages/caregiver/WellnessReportListPage.jsx";
 import { ElderlyWellnessPage } from "./pages/elderly/ElderlyWellnessPage.jsx";
 import { WellnessReportDetailPage } from "./pages/wellness/WellnessReportDetailPage.jsx";
+import { HomePage } from "./pages/HomePage.jsx";
 
 /**
  * Declares public and role-protected application routes.
@@ -35,7 +36,7 @@ import { WellnessReportDetailPage } from "./pages/wellness/WellnessReportDetailP
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage initialMode="family" />} />
       <Route path="/caregiver/signup" element={<SignupPage initialMode="caregiver" />} />
