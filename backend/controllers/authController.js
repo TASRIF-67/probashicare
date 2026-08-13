@@ -241,7 +241,7 @@ export async function googleLogin(request, response) {
  * @param {import("express").Request} request - Request containing the raw token.
  * @param {import("express").Response} response - Express response writer.
  * @returns {Promise<void>}
- * @sideEffects Marks User verified and deletes all of that user's verification tokens.
+ * @sideEffects Marks User verified and records when its token was first used.
  */
 export async function verifyEmail(request, response) {
   const rawToken = request.query.token;
@@ -258,10 +258,33 @@ export async function verifyEmail(request, response) {
   const user = await User.findById(record.userId);
   if (!user) throw new ApiError(404, "The account for this link no longer exists.");
 
+  if (user.isVerified) {
+    if (!record.usedAt) {
+      record.usedAt = new Date();
+      await record.save();
+    }
+
+    response.json({
+      success: true,
+      data: {
+        message: "Email is already verified. You can sign in.",
+      },
+    });
+    return;
+  }
+
   user.isVerified = true;
   await user.save();
-  await EmailVerificationToken.deleteMany({ userId: user._id });
-  response.json({ success: true, data: { message: "Email verified. You can now sign in." } });
+
+  record.usedAt = new Date();
+  await record.save();
+
+  response.json({
+    success: true,
+    data: {
+      message: "Email verified. You can now sign in.",
+    },
+  });
 }
 
 /**
@@ -320,6 +343,158 @@ export async function getCurrentUser(request, response) {
           ? caregiverProfile?.applicationStatus || "draft"
           : null,
       ),
+    },
+  });
+}
+
+/**
+ * PATCH /api/auth/account
+ * Auth: verified Family account only.
+ * Body: `{ name: string, email: string, currentPassword?: string }`.
+ * Success 200: updated public user for name-only changes, or verification instructions
+ * when the email changes. An email change requires the current password, marks the
+ * account unverified, sends a new one-time link, and clears the current session.
+ * Failure 409/422/500: duplicate email, validation/password failure, or mail failure.
+ * A failed mail send restores the previous email and verification state so the family
+ * owner is not locked out. Other existing sessions become unusable after a successful
+ * email change because authentication middleware rejects unverified accounts.
+ * @param {import("express").Request} request - Authenticated and validated family request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects May update User, create an EmailVerificationToken, send SMTP email, and clear the session cookie.
+ */
+export async function updateFamilyAccount(request, response) {
+  const account = await User.findById(request.user._id).select(
+    "+password",
+  );
+
+  if (!account || account.role !== "family") {
+    throw new ApiError(404, "Family account not found.");
+  }
+
+  const previousName = account.name;
+  const previousEmail = account.email;
+  const previousVerificationState = account.isVerified;
+  const emailChanged = request.body.email !== previousEmail;
+
+  if (emailChanged) {
+    if (!account.password) {
+      throw new ApiError(
+        422,
+        "This Google-linked account cannot change its email here.",
+        {
+          email: "Google manages the sign-in email for this account.",
+        },
+      );
+    }
+
+    if (!request.body.currentPassword) {
+      throw new ApiError(
+        422,
+        "Enter your current password to change the email address.",
+        {
+          currentPassword: "Current password is required for an email change.",
+        },
+      );
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      request.body.currentPassword,
+      account.password,
+    );
+
+    if (!passwordMatches) {
+      throw new ApiError(
+        422,
+        "The current password is incorrect.",
+        {
+          currentPassword: "The current password is incorrect.",
+        },
+      );
+    }
+
+    const emailOwner = await User.findOne({
+      email: request.body.email,
+      _id: {
+        $ne: account._id,
+      },
+    });
+
+    if (emailOwner) {
+      throw new ApiError(
+        409,
+        "An account already exists for this email.",
+        {
+          email: "Choose an email address that is not already registered.",
+        },
+      );
+    }
+  }
+
+  account.name = request.body.name;
+  account.email = request.body.email;
+
+  if (emailChanged) {
+    account.isVerified = false;
+  }
+
+  try {
+    await account.save();
+
+    if (emailChanged) {
+      await issueVerificationEmail(account);
+    }
+  } catch (error) {
+    if (error?.code === 11000) {
+      throw new ApiError(
+        409,
+        "An account already exists for this email.",
+        {
+          email: "Choose an email address that is not already registered.",
+        },
+      );
+    }
+
+    if (emailChanged) {
+      account.name = previousName;
+      account.email = previousEmail;
+      account.isVerified = previousVerificationState;
+      await account.save();
+      await EmailVerificationToken.deleteMany({
+        userId: account._id,
+      });
+    }
+
+    throw error;
+  }
+
+  if (emailChanged) {
+    response
+      .clearCookie("session", {
+        httpOnly: true,
+        secure: env.nodeEnv === "production",
+        sameSite: env.nodeEnv === "production" ? "none" : "lax",
+      })
+      .json({
+        success: true,
+        data: {
+          email: account.email,
+          requiresEmailVerification: true,
+          message:
+            "Email updated. Open the verification link sent to your new address before signing in again.",
+        },
+      });
+    return;
+  }
+
+  const linked = await hasLinkedElderlyProfiles(account._id.toString());
+
+  response.json({
+    success: true,
+    data: {
+      user: toPublicUser(account, linked, null),
+      requiresEmailVerification: false,
+      message: "Account information updated.",
     },
   });
 }

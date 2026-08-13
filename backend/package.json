@@ -9,11 +9,17 @@
     "seed:admin": "node scripts/seedAdmin.js",
     "db:sync-indexes": "node scripts/syncDatabaseIndexes.js",
     "db:migrate-bookings": "node scripts/migrateLegacyBookings.js",
+    "db:sync-subscription-plans": "node scripts/syncSubscriptionPlans.js",
     "test:elderly-profiles": "node scripts/smokeElderlyProfiles.js",
     "test:admin-users": "node scripts/smokeAdminUsers.js",
     "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js",
     "test:bookings": "node --test test/bookingSchedule.test.js",
-    "test:bookings:integration": "node scripts/smokeBookings.js"
+    "test:bookings:integration": "node scripts/smokeBookings.js",
+    "test:subscriptions": "node --test test/subscriptionPeriod.test.js test/subscriptionAccess.test.js test/subscriptionPaymentHelpers.test.js",
+    "test:subscriptions:integration": "node scripts/smokeSubscriptions.js",
+    "test:wellness-reports": "node scripts/smokeWellnessReports.js",
+    "test:wellness-insights": "node --test test/wellnessInsights.test.js",
+    "test:email": "node scripts/testEmailDelivery.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

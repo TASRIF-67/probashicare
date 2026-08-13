@@ -46,3 +46,52 @@ export function validateLogin(request, _response, next) {
   request.body = { ...request.body, email };
   return next();
 }
+
+/**
+ * Validates editable family account fields before the account controller runs.
+ * @param {import("express").Request} request - Request with `name`, `email`, and optional `currentPassword`.
+ * @param {import("express").Response} _response - Express response, unused.
+ * @param {import("express").NextFunction} next - Middleware continuation.
+ * @returns {void}
+ * @sideEffects Normalizes the submitted name and email or forwards a 422 error.
+ */
+export function validateFamilyAccountUpdate(request, _response, next) {
+  const name = request.body?.name?.trim();
+  const email = request.body?.email?.trim().toLowerCase();
+  const currentPassword = request.body?.currentPassword;
+  const details = {};
+
+  if (!name || name.length > 100) {
+    details.name = "Name must be between 1 and 100 characters.";
+  }
+
+  if (!email || !EMAIL_PATTERN.test(email)) {
+    details.email = "Enter a valid email address.";
+  }
+
+  if (
+    currentPassword !== undefined &&
+    typeof currentPassword !== "string"
+  ) {
+    details.currentPassword = "Current password must be text.";
+  }
+
+  if (Object.keys(details).length > 0) {
+    next(
+      new ApiError(
+        422,
+        "Please correct the highlighted fields.",
+        details,
+      ),
+    );
+    return;
+  }
+
+  request.body = {
+    ...request.body,
+    name,
+    email,
+    currentPassword: currentPassword || "",
+  };
+  next();
+}

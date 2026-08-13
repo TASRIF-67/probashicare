@@ -7,10 +7,15 @@ import {
   logout,
   resendVerification,
   signup,
+  updateFamilyAccount,
   verifyEmail,
 } from "../controllers/authController.js";
-import { requireAuth } from "../middleware/auth.js";
-import { validateLogin, validateSignup } from "../middleware/validateAuth.js";
+import { allowRoles, requireAuth } from "../middleware/auth.js";
+import {
+  validateFamilyAccountUpdate,
+  validateLogin,
+  validateSignup,
+} from "../middleware/validateAuth.js";
 import { validateCaregiverSignup } from "../middleware/validateCaregiver.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -23,6 +28,13 @@ router.post("/google", asyncHandler(googleLogin));
 router.get("/verify-email", asyncHandler(verifyEmail));
 router.post("/resend-verification", asyncHandler(resendVerification));
 router.get("/me", asyncHandler(requireAuth), asyncHandler(getCurrentUser));
+router.patch(
+  "/account",
+  asyncHandler(requireAuth),
+  allowRoles("family"),
+  validateFamilyAccountUpdate,
+  asyncHandler(updateFamilyAccount),
+);
 router.post("/logout", logout);
 
 /*

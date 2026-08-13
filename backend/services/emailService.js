@@ -4,6 +4,48 @@ import { env } from "../config/env.js";
 let transporter;
 
 /**
+ * Converts plain text into safe HTML before it is inserted into an email.
+ * @param {string} value - Plain text such as a user's display name.
+ * @returns {string} Text with HTML control characters escaped.
+ * @sideEffects None.
+ */
+function escapeHtml(value) {
+  let safeValue = "";
+
+  for (const character of String(value)) {
+    if (character === "&") {
+      safeValue += "&amp;";
+    } else if (character === "<") {
+      safeValue += "&lt;";
+    } else if (character === ">") {
+      safeValue += "&gt;";
+    } else if (character === '"') {
+      safeValue += "&quot;";
+    } else if (character === "'") {
+      safeValue += "&#039;";
+    } else {
+      safeValue += character;
+    }
+  }
+
+  return safeValue;
+}
+
+/**
+ * Confirms that every value required for SMTP delivery is configured.
+ * @param {void} _unused - This function accepts no arguments.
+ * @returns {void}
+ * @sideEffects Throws an Error when the mail configuration is incomplete.
+ */
+function requireMailConfiguration() {
+  if (!env.smtpHost || !env.smtpUser || !env.smtpPass) {
+    throw new Error(
+      "SMTP_HOST, SMTP_USER, and SMTP_PASS are required to send email.",
+    );
+  }
+}
+
+/**
  * Lazily creates the SMTP transport so startup does not open unnecessary connections.
  * @param {void} _unused - This function accepts no arguments.
  * @returns {import("nodemailer").Transporter} Configured reusable mail transporter.
@@ -11,14 +53,30 @@ let transporter;
  */
 function getTransporter() {
   if (!transporter) {
+    requireMailConfiguration();
+
     transporter = nodemailer.createTransport({
       host: env.smtpHost,
       port: env.smtpPort,
       secure: env.smtpPort === 465,
-      auth: { user: env.smtpUser, pass: env.smtpPass },
+      auth: {
+        user: env.smtpUser,
+        pass: env.smtpPass,
+      },
     });
   }
   return transporter;
+}
+
+/**
+ * Checks the SMTP connection and credentials without sending a message.
+ * @param {void} _unused - This function accepts no arguments.
+ * @returns {Promise<boolean>} True when the SMTP provider accepts the connection and login.
+ * @sideEffects Opens a temporary connection to the configured SMTP server.
+ */
+export async function verifyEmailTransport() {
+  requireMailConfiguration();
+  return getTransporter().verify();
 }
 
 /**
@@ -33,17 +91,25 @@ export async function sendVerificationEmail({ to, name, verificationUrl }) {
     return { messageId: "development-console-delivery" };
   }
 
-  if (!env.smtpHost || !env.smtpUser || !env.smtpPass) {
-    throw new Error("SMTP configuration is required to send verification emails.");
-  }
+  requireMailConfiguration();
+
+  const safeName = escapeHtml(name);
+  const safeVerificationUrl = escapeHtml(verificationUrl);
 
   const result = await getTransporter().sendMail({
     from: env.mailFrom,
     to,
     subject: "Verify your ProbashiCare account",
     text: `Hello ${name}, verify your ProbashiCare account: ${verificationUrl}`,
-    html: `<p>Hello ${name},</p><p>Verify your ProbashiCare account by opening this link:</p><p><a href="${verificationUrl}">Verify email address</a></p><p>This link expires in 24 hours.</p>`,
+    html:
+      `<p>Hello ${safeName},</p>` +
+      "<p>Verify your ProbashiCare account by opening this link:</p>" +
+      `<p><a href="${safeVerificationUrl}">Verify email address</a></p>` +
+      "<p>This link expires in 24 hours.</p>" +
+      "<p>If you did not create this account, you can ignore this email.</p>",
   });
 
-  return { messageId: result.messageId };
+  return {
+    messageId: result.messageId,
+  };
 }

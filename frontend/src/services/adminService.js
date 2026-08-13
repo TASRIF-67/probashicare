@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+﻿import { api } from "./api.js";
 
 /**
  * Retrieves live metrics and recent registrations for the admin overview.
@@ -78,7 +78,45 @@ async function rejectCaregiverApplication(profileId, reason) {
   return response.data.data;
 }
 
+/**
+ * Retrieves subscription revenue and access analytics for the Admin dashboard.
+ * @returns {Promise<object>} Simulated payment totals and subscription metrics.
+ * @sideEffects Calls GET `/admin/subscriptions/analytics`.
+ */
+async function getSubscriptionAnalytics() {
+  const response = await api.get("/admin/subscriptions/analytics");
+  return response.data.data;
+}
+
+/**
+ * Lists simulated subscription transactions for administrators.
+ * @param {{status?: string, search?: string, page?: number, limit?: number}} [filters] - Transaction filters.
+ * @returns {Promise<{payments: object[], pagination: object, simulated: boolean}>} Transaction page.
+ * @sideEffects Calls GET `/admin/subscriptions/payments`.
+ */
+async function listSubscriptionPayments(filters = {}) {
+  const response = await api.get("/admin/subscriptions/payments", {
+    params: filters,
+  });
+  return response.data.data;
+}
+
+/**
+ * Lists read-only family-to-caregiver booking records for administrators.
+ * @param {{status?: string, page?: number, limit?: number}} [filters] - Booking audit filters.
+ * @returns {Promise<{bookings: object[], summary: object, pagination: object}>} Booking audit page.
+ * @sideEffects Calls GET `/admin/bookings`.
+ */
+async function listBookings(filters = {}) {
+  const response = await api.get("/admin/bookings", {
+    params: filters,
+  });
+  return response.data.data;
+}
 export const adminService = {
+  listBookings,
+  getSubscriptionAnalytics,
+  listSubscriptionPayments,
   getOverview,
   listFamilyUsers,
   deleteFamilyUser,

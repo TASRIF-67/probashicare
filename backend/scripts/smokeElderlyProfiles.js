@@ -21,21 +21,44 @@ let profileId;
  * @sideEffects Makes an HTTP request to the local development API.
  */
 async function callApi(path, { method = "GET", body, cookie, expectedStatus = 200 } = {}) {
+  const headers = {};
+
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (cookie) {
+    headers.Cookie = cookie;
+  }
+
+  let requestBody;
+
+  if (body) {
+    requestBody = JSON.stringify(body);
+  }
+
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    headers,
+    body: requestBody,
   });
   const payload = await response.json();
+
   if (response.status !== expectedStatus) {
     throw new Error(`${method} ${path} returned ${response.status}: ${JSON.stringify(payload)}`);
   }
+
+  let responseCookie = cookie || "";
+  const setCookieHeader = response.headers.get("set-cookie");
+
+  if (setCookieHeader) {
+    // split separates the session cookie from attributes such as Path and HttpOnly.
+    responseCookie = setCookieHeader.split(";")[0];
+  }
+
   return {
     payload,
-    cookie: response.headers.get("set-cookie")?.split(";")[0] || cookie || "",
+    cookie: responseCookie,
   };
 }
 
@@ -156,6 +179,7 @@ async function cleanup() {
     await ElderlyFamilyLink.deleteMany({ elderlyProfileId: profileId });
     await ElderlyProfile.deleteOne({ _id: profileId });
   }
+
   await User.deleteMany({ email: { $regex: `^${marker}` } });
   await mongoose.disconnect();
 }

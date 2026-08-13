@@ -3,11 +3,11 @@ import { CloseIcon } from "./Icons.jsx";
 
 /**
  * Displays accessible focused information over the current view.
- * @param {{isOpen: boolean, title: string, children: import("react").ReactNode, onClose: () => void}} props - Modal state, content, and close action.
+ * @param {{isOpen: boolean, title: string, className?: string, children: import("react").ReactNode, onClose: () => void}} props - Modal state, optional style class, content, and close action.
  * @returns {import("react").ReactElement|null} Dialog overlay when open.
  * @sideEffects Registers an Escape-key listener while visible.
  */
-export function Modal({ isOpen, title, children, onClose }) {
+export function Modal({ isOpen, title, className = "", children, onClose }) {
   useEffect(() => {
     /**
      * Closes the dialog when Escape is pressed.
@@ -26,7 +26,7 @@ export function Modal({ isOpen, title, children, onClose }) {
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
-        className="modal"
+        className={("modal " + className).trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

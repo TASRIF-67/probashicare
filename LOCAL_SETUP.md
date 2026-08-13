@@ -274,12 +274,15 @@ verification are captured before application review.
 /caregiver/application-status   Submitted/suspended holding page
 /caregiver/dashboard            Approved caregiver dashboard
 /caregiver/profile              Approved caregiver profile editor
+/caregiver/wellness-reports     Caregiver-owned draft and submitted reports
+/caregiver/wellness-reports/new New assigned-visit wellness report
 /verify-email                   Email verification result
 /onboarding                     First elderly-profile prompt
 /elderly-profiles/new           Create an elderly profile
 /elderly-profiles               List linked active profiles
 /elderly-profiles/:profileId    Profile details
 /elderly-profiles/:profileId/edit
+/elderly-profiles/:profileId/wellness
 /dashboard                      Family dashboard
 /admin                          Live admin overview
 /admin/accounts                 Family account management
@@ -320,6 +323,22 @@ This caregiver test uses an ephemeral local API, creates a temporary verified
 caregiver, and checks draft saving, document-optional submission, admin rejection,
 resubmission, approval, and approved-profile editing. It removes
 its temporary records afterward and does not call Cloudinary.
+
+Run the daily wellness report and vitals authorization smoke test:
+
+```powershell
+npm.cmd run test:wellness-reports --prefix backend
+```
+
+This test creates isolated temporary family, elderly, approved-caregiver, care-
+assignment, and wellness records. It checks draft privacy, submission locking,
+linked-family visibility, vitals trends, and unrelated-account denial, then
+removes every temporary record.
+
+Caregiver report creation requires a `CareAssignment`. The Caregiver Booking
+feature should call `syncCareAssignmentFromBooking` after booking creation and
+every schedule or status change. Until booking produces that projection, the
+caregiver report editor intentionally shows that no reportable visits exist.
 
 Check the API health endpoint in PowerShell:
 
@@ -391,6 +410,18 @@ servers.
 Add all three `CLOUDINARY_*` values to `backend/.env` and restart the backend.
 For the current development phase, leave `REQUIRE_CAREGIVER_DOCUMENT=false` and
 submit without uploading. Set it to `true` after Cloudinary integration is ready.
+
+## Gemini development setup
+
+Create a development Gemini API key in Google AI Studio and add GEMINI_API_KEY
+only to backend/.env. GEMINI_MODEL is optional and defaults to
+gemini-flash-lite-latest. Restart the backend after changing environment values.
+
+The key is optional. Missing keys, quota limits, timeouts, provider failures, and
+malformed responses use the local fallback summary. Do not put the key in a VITE_
+variable. Free-tier requests must contain only synthetic or anonymized wellness
+values; the implemented sanitizer removes identities, database IDs, contact
+information, medical-history text, and unrestricted notes.
 
 ## 14. Normal daily workflow
 

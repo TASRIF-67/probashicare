@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "../../components/Card.jsx";
+import { AdminBusinessAnalytics } from "../../components/admin/AdminBusinessAnalytics.jsx";
 import {
   ArchiveIcon,
   ArrowRightIcon,
@@ -43,6 +44,7 @@ export function AdminOverviewPage() {
   return (
     <>
       <div className="admin-heading"><div><span className="eyebrow">Overview</span><h1>Platform operations</h1><p>A live summary of family access, elderly profiles, and caregiver verification.</p></div><span className="live-status"><span /> Live data</span></div>
+      <AdminBusinessAnalytics />
       <section className="overview-metrics" aria-label="Platform metrics">
         <Card className="overview-metric"><span className="metric-card__icon"><UsersIcon /></span><div><small>Family accounts</small><strong>{metrics.totalFamilies}</strong><span>{metrics.verifiedFamilies} verified</span></div></Card>
         <Card className="overview-metric"><span className="metric-card__icon metric-card__icon--success"><ShieldCheckIcon /></span><div><small>Active elderly profiles</small><strong>{metrics.activeElderlyProfiles}</strong><span>Available to linked families</span></div></Card>
