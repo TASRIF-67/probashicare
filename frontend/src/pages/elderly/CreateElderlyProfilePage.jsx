@@ -30,17 +30,40 @@ export function CreateElderlyProfilePage() {
     setIsSubmitting(true);
     setErrors({});
     try {
-      const { profile } = await elderlyProfileService.createProfile(value);
+      const data = await elderlyProfileService.createProfile(value);
+      const profile = data.profile;
+
       await refreshUser();
       showToast("Elderly profile created.", "success");
       navigate(`/elderly-profiles/${profile._id}`, { replace: true });
     } catch (error) {
       const normalized = normalizeApiError(error);
-      setErrors({ ...(normalized.details || {}), form: normalized.message });
+      const fieldErrors = normalized.details || {};
+
+      setErrors({
+        ...fieldErrors,
+        form: normalized.message,
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  return <main><AppHeader /><div className="feature-page"><div className="page-heading"><span className="eyebrow">Health Core</span><h1>Create an elderly profile</h1><p>Build a clear, private health overview for your relative.</p></div><ProfileForm onSubmit={handleCreate} isSubmitting={isSubmitting} errors={errors} /></div></main>;
+  return (
+    <main>
+      <AppHeader />
+      <div className="feature-page">
+        <div className="page-heading">
+          <span className="eyebrow">Health Core</span>
+          <h1>Create an elderly profile</h1>
+          <p>Build a clear, private health overview for your relative.</p>
+        </div>
+        <ProfileForm
+          onSubmit={handleCreate}
+          isSubmitting={isSubmitting}
+          errors={errors}
+        />
+      </div>
+    </main>
+  );
 }

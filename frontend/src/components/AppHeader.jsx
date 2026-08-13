@@ -1,9 +1,17 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button } from "./Button.jsx";
 import { Logo } from "./Logo.jsx";
 import { ThemeToggle } from "./ThemeToggle.jsx";
-import { CalendarIcon, DashboardIcon, LogOutIcon, UsersIcon } from "./Icons.jsx";
+import {
+  CalendarIcon,
+  DashboardIcon,
+  LogOutIcon,
+  ShieldCheckIcon,
+  UserIcon,
+  UsersIcon,
+} from "./Icons.jsx";
+import { NotificationBell } from "./notifications/NotificationBell.jsx";
 
 /**
  * Renders authenticated family navigation and account actions.
@@ -17,12 +25,22 @@ export function AppHeader() {
     <header className="topbar app-topbar">
       <Logo />
       <nav className="app-nav" aria-label="Family navigation">
-        <Link to="/dashboard"><DashboardIcon size={17} /> Dashboard</Link>
-        <Link to="/caregivers"><UsersIcon size={17} /> Caregivers</Link>
-        <Link to="/bookings"><CalendarIcon size={17} /> Bookings</Link>
-        <Link to="/elderly-profiles"><UsersIcon size={17} /> Elderly profiles</Link>
+        <NavLink to="/dashboard"><DashboardIcon size={17} /> Dashboard</NavLink>
+        <NavLink to="/caregivers"><UsersIcon size={17} /> Caregivers</NavLink>
+        <NavLink to="/bookings"><CalendarIcon size={17} /> Bookings</NavLink>
+        <NavLink to="/subscription"><ShieldCheckIcon size={17} /> Subscription</NavLink>
+        <NavLink to="/elderly-profiles"><UsersIcon size={17} /> Elderly profiles</NavLink>
       </nav>
       <div className="topbar__actions">
+        <NavLink
+          className="icon-button"
+          to="/account"
+          aria-label="My account"
+          title="My account"
+        >
+          <UserIcon size={18} />
+        </NavLink>
+        <NotificationBell />
         <ThemeToggle />
         <Button variant="ghost" onClick={logout}><LogOutIcon size={17} /> Sign out</Button>
       </div>

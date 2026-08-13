@@ -130,8 +130,24 @@ export function SignupPage({ initialMode = "family" }) {
   const errors = errorsByMode[mode];
   const message = messagesByMode[mode];
   return (
-    <AuthLayout {...copy} headerAccessory={<SignupModeToggle value={mode} onChange={handleModeChange} />}>
+    <AuthLayout
+      {...copy}
+      variant={mode}
+      processItems={mode === "family"
+        ? ["Create account", "Verify email", "Add care recipient"]
+        : ["Create account", "Verify email", "Profile review"]}
+      activeProcessIndex={0}
+      headerAccessory={(
+        <SignupModeToggle
+          value={mode}
+          onChange={handleModeChange}
+        />
+      )}
+    >
       <Card className="auth-card signup-card">
+        <span className="auth-card__kicker">
+          {mode === "family" ? "Family registration" : "Caregiver registration"}
+        </span>
         <div className="auth-card__heading"><h2>{mode === "family" ? "Create family account" : "Apply as a caregiver"}</h2><p>{mode === "family" ? "Set up your secure family care space." : "Administrator approval is required before providing care."}</p></div>
         {errors.form && <div className="alert alert--error">{errors.form}</div>}
         {message ? (

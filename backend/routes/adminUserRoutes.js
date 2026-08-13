@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import {
   deleteFamilyUser,
   getAdminOverview,
@@ -7,17 +7,25 @@ import {
 import { allowRoles, requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {
+  getSubscriptionAnalytics,
+  listSubscriptionPayments,
+} from "../controllers/adminSubscriptionController.js";
+import {
   approveCaregiverApplication,
   getCaregiverApplication,
   listCaregiverApplications,
   rejectCaregiverApplication,
 } from "../controllers/adminCaregiverController.js";
+import { listAdminBookings } from "../controllers/adminBookingController.js";
 
 const router = Router();
 
 router.use(asyncHandler(requireAuth), allowRoles("admin"));
 router.get("/overview", asyncHandler(getAdminOverview));
+router.get("/bookings", asyncHandler(listAdminBookings));
 router.get("/users", asyncHandler(listUsers));
+router.get("/subscriptions/analytics", asyncHandler(getSubscriptionAnalytics));
+router.get("/subscriptions/payments", asyncHandler(listSubscriptionPayments));
 router.delete("/users/:userId", asyncHandler(deleteFamilyUser));
 router.get("/caregiver-applications", asyncHandler(listCaregiverApplications));
 router.get("/caregiver-applications/:profileId", asyncHandler(getCaregiverApplication));

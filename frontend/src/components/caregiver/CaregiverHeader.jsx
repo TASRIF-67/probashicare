@@ -1,9 +1,16 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { BriefcaseIcon, CalendarIcon, DashboardIcon, LogOutIcon } from "../Icons.jsx";
+import {
+  BriefcaseIcon,
+  CalendarIcon,
+  ClipboardListIcon,
+  DashboardIcon,
+  LogOutIcon,
+} from "../Icons.jsx";
 import { Button } from "../Button.jsx";
 import { Logo } from "../Logo.jsx";
 import { ThemeToggle } from "../ThemeToggle.jsx";
+import { NotificationBell } from "../notifications/NotificationBell.jsx";
 
 /**
  * Renders caregiver navigation appropriate to the current application status.
@@ -17,8 +24,34 @@ export function CaregiverHeader() {
   return (
     <header className="topbar app-topbar">
       <Logo />
-      {isApproved && <nav className="app-nav" aria-label="Caregiver navigation"><Link to="/caregiver/dashboard"><DashboardIcon size={17} /> Dashboard</Link><Link to="/caregiver/bookings"><CalendarIcon size={17} /> Bookings</Link><Link to="/caregiver/profile"><BriefcaseIcon size={17} /> My profile</Link></nav>}
-      <div className="topbar__actions"><ThemeToggle /><Button variant="ghost" onClick={logout}><LogOutIcon size={17} /> Sign out</Button></div>
+      {isApproved && (
+        <nav className="app-nav" aria-label="Caregiver navigation">
+          <NavLink to="/caregiver/dashboard">
+            <DashboardIcon size={17} />
+            Dashboard
+          </NavLink>
+          <NavLink to="/caregiver/bookings">
+            <CalendarIcon size={17} />
+            Bookings
+          </NavLink>
+          <NavLink to="/caregiver/wellness-reports">
+            <ClipboardListIcon size={17} />
+            Reports
+          </NavLink>
+          <NavLink to="/caregiver/profile">
+            <BriefcaseIcon size={17} />
+            My profile
+          </NavLink>
+        </nav>
+      )}
+      <div className="topbar__actions">
+        <NotificationBell />
+        <ThemeToggle />
+        <Button variant="ghost" onClick={logout}>
+          <LogOutIcon size={17} />
+          Sign out
+        </Button>
+      </div>
     </header>
   );
 }

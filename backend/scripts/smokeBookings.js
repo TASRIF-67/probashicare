@@ -1,14 +1,17 @@
-import bcrypt from "bcryptjs";
+﻿import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import app from "../app.js";
 import { connectDatabase } from "../config/database.js";
 import { validateEnvironment } from "../config/env.js";
 import { Booking } from "../models/Booking.js";
 import { BookingReservation } from "../models/BookingReservation.js";
+import { CareAssignment } from "../models/CareAssignment.js";
 import { CaregiverProfile } from "../models/CaregiverProfile.js";
 import { ElderlyFamilyLink } from "../models/ElderlyFamilyLink.js";
 import { ElderlyProfile } from "../models/ElderlyProfile.js";
+import { Notification } from "../models/Notification.js";
 import { User } from "../models/User.js";
+import { FamilySubscription } from "../models/FamilySubscription.js";
 
 const marker = `booking-smoke-${Date.now()}`;
 const password = "BookingSmokePassword2026";
@@ -52,7 +55,12 @@ function assertPrivateFieldsHidden(value) {
 async function run() {
   validateEnvironment();
   await connectDatabase();
-  await Promise.all([Booking.syncIndexes(), BookingReservation.syncIndexes()]);
+  await Promise.all([
+    Booking.syncIndexes(),
+    BookingReservation.syncIndexes(),
+    CareAssignment.syncIndexes(),
+    Notification.syncIndexes(),
+  ]);
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}/api`;
@@ -61,6 +69,29 @@ async function run() {
   const [elderlyA, elderlyB] = await Promise.all([createElderly(familyA, "A"), createElderly(familyB, "B")]);
   await CaregiverProfile.create({ userId: caregiver._id, phone: "Private caregiver phone", bio: "Private-safe public bio", supportedServiceTypes: ["companionship"], availability: ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].map((day) => ({ day, startTime: "00:00", endTime: "23:59" })), applicationStatus: "approved" });
   const [familyACookie, familyBCookie, caregiverCookie, adminCookie] = await Promise.all([login(familyA), login(familyB), login(caregiver), login(admin)]);
+  const premiumEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await FamilySubscription.create([
+    {
+      family: familyA._id,
+      accessLevel: "premium",
+      status: "trialing",
+      trialUsed: true,
+      trialStartedAt: new Date(),
+      trialEndsAt: premiumEndsAt,
+      currentPeriodStartedAt: new Date(),
+      currentPeriodEndsAt: premiumEndsAt,
+    },
+    {
+      family: familyB._id,
+      accessLevel: "premium",
+      status: "trialing",
+      trialUsed: true,
+      trialStartedAt: new Date(),
+      trialEndsAt: premiumEndsAt,
+      currentPeriodStartedAt: new Date(),
+      currentPeriodEndsAt: premiumEndsAt,
+    },
+  ]);
 
   await callApi("/caregivers", { expectedStatus: 401 });
   await callApi("/caregivers", { cookie: caregiverCookie, expectedStatus: 403 });
@@ -97,6 +128,29 @@ async function run() {
   const scheduledStart = addDays(7);
   const scheduled = await callApi("/bookings", { method: "POST", cookie: familyACookie, expectedStatus: 201, body: payload({ caregiver, elderly: elderlyA, bookingType: "scheduled", startDate: scheduledStart, endDate: addDays(20) }) });
   await callApi(`/caregivers/bookings/${scheduled.payload.data.booking._id}/status`, { method: "PATCH", cookie: caregiverCookie, body: { status: "accepted" } });
+  const acceptedAssignment = await CareAssignment.findOne({
+    sourceBookingId: scheduled.payload.data.booking._id,
+    caregiverUserId: caregiver._id,
+    elderlyProfileId: elderlyA._id,
+    status: "scheduled",
+  });
+  if (!acceptedAssignment) {
+    throw new Error("Accepted booking did not create a reportable care assignment.");
+  }
+  const requestNotification = await Notification.findOne({
+    recipient: caregiver._id,
+    relatedEntityId: scheduled.payload.data.booking._id,
+    type: "booking-requested",
+  });
+  const acceptedNotification = await Notification.findOne({
+    recipient: familyA._id,
+    relatedEntityId: scheduled.payload.data.booking._id,
+    type: "booking-accepted",
+  });
+  if (!requestNotification || !acceptedNotification) {
+    throw new Error("Booking workflow did not create both participant notifications.");
+  }
+
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setHours(0, 0, 0, 0);
   await Booking.updateOne({ _id: scheduled.payload.data.booking._id }, { $set: { startDate: yesterday, endDate: yesterday, occurrences: [{ date: yesterday, timeSlot: "00:00-00:01" }] } });
   await callApi(`/caregivers/bookings/${scheduled.payload.data.booking._id}/status`, { method: "PATCH", cookie: caregiverCookie, body: { status: "completed" } });
@@ -112,19 +166,51 @@ async function run() {
   const familyHistory = await callApi("/bookings", { cookie: familyACookie });
   const caregiverHistory = await callApi("/caregivers/bookings/mine", { cookie: caregiverCookie });
   if (familyHistory.payload.data.count < 4 || caregiverHistory.payload.data.count < 5) throw new Error("Booking history did not expose the full authenticated workflow.");
+  await FamilySubscription.updateOne(
+    { family: familyA._id },
+    {
+      $set: {
+        accessLevel: "core",
+        status: "expired",
+        currentPeriodEndsAt: new Date(Date.now() - 1000),
+      },
+    },
+  );
+  await callApi("/bookings", {
+    method: "POST",
+    cookie: familyACookie,
+    expectedStatus: 403,
+    body: payload({
+      caregiver,
+      elderly: elderlyA,
+      startDate: addDays(80),
+    }),
+  });
+  await callApi("/bookings", { cookie: familyACookie });
   console.log("Authenticated booking API smoke test passed.");
 }
 
 async function cleanup() {
   const users = await User.find({ email: { $regex: `^${marker}` } }).select("_id").lean();
   const ids = users.map((user) => user._id);
+  await Notification.deleteMany({
+    recipient: {
+      $in: ids,
+    },
+  });
   const bookings = await Booking.find({ $or: [{ familyMemberId: { $in: ids } }, { caregiverId: { $in: ids } }] }).select("_id").lean();
+  await CareAssignment.deleteMany({
+    sourceBookingId: {
+      $in: bookings.map((booking) => booking._id),
+    },
+  });
   await BookingReservation.deleteMany({ bookingId: { $in: bookings.map((booking) => booking._id) } });
   await Booking.deleteMany({ _id: { $in: bookings.map((booking) => booking._id) } });
   const profiles = await ElderlyProfile.find({ createdBy: { $in: ids } }).select("_id").lean();
   await ElderlyFamilyLink.deleteMany({ elderlyProfileId: { $in: profiles.map((profile) => profile._id) } });
   await ElderlyProfile.deleteMany({ _id: { $in: profiles.map((profile) => profile._id) } });
   await CaregiverProfile.deleteMany({ userId: { $in: ids } });
+  await FamilySubscription.deleteMany({ family: { $in: ids } });
   await User.deleteMany({ _id: { $in: ids } });
   if (server) await new Promise((resolve) => server.close(resolve));
   await mongoose.disconnect();

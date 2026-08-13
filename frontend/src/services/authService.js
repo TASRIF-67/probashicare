@@ -56,6 +56,17 @@ async function getCurrentUser() {
 }
 
 /**
+ * Updates the authenticated family owner's account information.
+ * @param {{name: string, email: string, currentPassword?: string}} input - Editable identity fields and password confirmation for an email change.
+ * @returns {Promise<{user?: object, email?: string, requiresEmailVerification: boolean, message: string}>} Updated user or re-verification instructions.
+ * @sideEffects Calls PATCH `/auth/account`; an email change sends mail and clears the server session.
+ */
+async function updateFamilyAccount(input) {
+  const response = await api.patch("/auth/account", input);
+  return response.data.data;
+}
+
+/**
  * Ends the current session.
  * @param {void} _unused - This function accepts no arguments.
  * @returns {Promise<{message: string}>} Server confirmation.
@@ -99,6 +110,7 @@ export const authService = {
   login,
   loginWithGoogle,
   getCurrentUser,
+  updateFamilyAccount,
   logout,
   verifyEmail,
   resendVerification,

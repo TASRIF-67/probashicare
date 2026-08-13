@@ -57,6 +57,16 @@ export function AuthProvider({ children }) {
   }
 
   /**
+   * Clears only the browser's cached user after the server already ended the session.
+   * @param {void} _unused - This function accepts no arguments.
+   * @returns {void}
+   * @sideEffects Removes the current user from React authentication state.
+   */
+  function clearSession() {
+    setUser(null);
+  }
+
+  /**
    * Reloads the public user, including the current elderly-profile onboarding status.
    * @param {void} _unused - This function accepts no arguments.
    * @returns {Promise<object>} Refreshed public user.
@@ -69,7 +79,15 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({ user, isLoading, login, loginWithGoogle, logout, refreshUser }),
+    () => ({
+      user,
+      isLoading,
+      login,
+      loginWithGoogle,
+      logout,
+      clearSession,
+      refreshUser,
+    }),
     [user, isLoading],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -78,7 +96,7 @@ export function AuthProvider({ children }) {
 /**
  * Reads session data and actions from AuthProvider.
  * @param {void} _unused - This hook accepts no arguments.
- * @returns {{user: object|null, isLoading: boolean, login: Function, loginWithGoogle: Function, logout: Function}} Auth context.
+ * @returns {{user: object|null, isLoading: boolean, login: Function, loginWithGoogle: Function, logout: Function, clearSession: Function, refreshUser: Function}} Auth context.
  * @sideEffects None.
  */
 export function useAuth() {

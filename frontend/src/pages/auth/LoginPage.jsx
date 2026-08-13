@@ -1,6 +1,6 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AuthLayout } from "../../components/AuthLayout.jsx";
 import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
@@ -9,7 +9,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useAuthRedirect } from "../../hooks/useAuthRedirect.js";
 import { normalizeApiError } from "../../services/api.js";
-import { LogInIcon } from "../../components/Icons.jsx";
+import { BadgeCheckIcon, LogInIcon } from "../../components/Icons.jsx";
 import { CaregiverTheme } from "../../components/caregiver/CaregiverTheme.jsx";
 
 /**
@@ -20,8 +20,14 @@ import { CaregiverTheme } from "../../components/caregiver/CaregiverTheme.jsx";
  */
 export function LoginPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const isCaregiverMode = searchParams.get("mode") === "caregiver";
-  const [form, setForm] = useState({ email: "", password: "" });
+  const verificationNotice = location.state?.verificationNotice || "";
+  const verificationEmail = location.state?.verificationEmail || "";
+  const [form, setForm] = useState({
+    email: verificationEmail,
+    password: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const { login, loginWithGoogle } = useAuth();
@@ -82,12 +88,29 @@ export function LoginPage() {
       title={isCaregiverMode ? "Continue your care application." : "Stay close to the people who raised you."}
       description={isCaregiverMode ? "Sign in to complete your professional profile, review your application status, or manage approved caregiver work." : "Coordinate trusted care in Bangladesh from wherever life has taken you."}
       trustItems={isCaregiverMode ? ["Private by design", "Verified care network"] : undefined}
+      variant={isCaregiverMode ? "caregiver" : "family"}
+      processItems={isCaregiverMode
+        ? ["Sign in", "Review assignments", "Share updates"]
+        : ["Sign in", "Open family space", "Coordinate care"]}
+      activeProcessIndex={0}
     >
       <Card className="auth-card">
+        <span className="auth-card__kicker">
+          {isCaregiverMode ? "Caregiver account" : "Family account"}
+        </span>
         <div className="auth-card__heading">
           <h2>Sign in</h2>
           <p>{isCaregiverMode ? "Continue to your caregiver workspace." : "Continue to your secure care workspace."}</p>
         </div>
+        {verificationNotice && (
+          <div className="success-panel auth-verification-notice" role="status">
+            <BadgeCheckIcon size={20} />
+            <div>
+              <strong>Verify your new email</strong>
+              <p>{verificationNotice}</p>
+            </div>
+          </div>
+        )}
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
           <Input id="email" name="email" type="email" label="Email address" autoComplete="email" value={form.email} onChange={handleChange} required />

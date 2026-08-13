@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Central icon exports keep naming and library choice consistent across the UI.
  * To add an icon, re-export its Lucide component here and consume the alias from
  * feature components instead of importing different icon libraries per page.
@@ -10,9 +10,11 @@ export {
   ArrowRight as ArrowRightIcon,
   Check as CheckIcon,
   ChevronRight as ChevronRightIcon,
+  ClipboardList as ClipboardListIcon,
   Clock3 as ClockIcon,
   CalendarDays as CalendarIcon,
   BadgeCheck as BadgeCheckIcon,
+  Bell as BellIcon,
   Banknote as MoneyIcon,
   BriefcaseBusiness as BriefcaseIcon,
   CircleAlert as AlertIcon,
@@ -35,12 +37,16 @@ export {
   Plus as PlusIcon,
   RefreshCw as RefreshIcon,
   Save as SaveIcon,
+  Send as SendIcon,
   Search as SearchIcon,
   ShieldCheck as ShieldCheckIcon,
+  Sparkles as InsightsIcon,
   Stethoscope as StethoscopeIcon,
   Sun as SunIcon,
   Trash2 as TrashIcon,
+  Utensils as UtensilsIcon,
   UserPlus as UserPlusIcon,
+  UserRound as UserIcon,
   UploadCloud as UploadIcon,
   UsersRound as UsersIcon,
   X as CloseIcon,

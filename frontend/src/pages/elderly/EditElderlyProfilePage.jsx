@@ -21,7 +21,25 @@ export function EditElderlyProfilePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    elderlyProfileService.getProfile(profileId).then(({ profile: result }) => setProfile(result)).catch((error) => setErrors({ load: normalizeApiError(error).message }));
+    /**
+     * Loads the profile that will be edited.
+     * @returns {Promise<void>}
+     * @sideEffects Reads the profile API and updates page state.
+     */
+    async function loadProfile() {
+      try {
+        const data = await elderlyProfileService.getProfile(profileId);
+        setProfile(data.profile);
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
+
+        setErrors({
+          load: normalizedError.message,
+        });
+      }
+    }
+
+    loadProfile();
   }, [profileId]);
 
   /**
@@ -39,13 +57,62 @@ export function EditElderlyProfilePage() {
       navigate(`/elderly-profiles/${profileId}`);
     } catch (error) {
       const normalized = normalizeApiError(error);
-      setErrors({ ...(normalized.details || {}), form: normalized.message });
+      const fieldErrors = normalized.details || {};
+
+      setErrors({
+        ...fieldErrors,
+        form: normalized.message,
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  if (errors.load) return <main><AppHeader /><div className="center-page"><h1>Profile unavailable</h1><p>{errors.load}</p><Link to="/elderly-profiles">Return to profiles</Link></div></main>;
-  if (!profile) return <main><AppHeader /><div className="page-loader"><span className="spinner" /> Loading profile</div></main>;
-  return <main><AppHeader /><div className="feature-page"><div className="page-heading"><span className="eyebrow">Update record</span><h1>Edit {profile.personalInformation.preferredName || profile.personalInformation.fullName}</h1><p>Review changes carefully before saving the health record.</p></div><ProfileForm initialProfile={profile} onSubmit={handleUpdate} isSubmitting={isSubmitting} errors={errors} submitLabel="Save changes" /></div></main>;
+  if (errors.load) {
+    return (
+      <main>
+        <AppHeader />
+        <div className="center-page">
+          <h1>Profile unavailable</h1>
+          <p>{errors.load}</p>
+          <Link to="/elderly-profiles">Return to profiles</Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <main>
+        <AppHeader />
+        <div className="page-loader">
+          <span className="spinner" />
+          Loading profile
+        </div>
+      </main>
+    );
+  }
+
+  const personal = profile.personalInformation;
+  const displayName = personal.preferredName || personal.fullName;
+
+  return (
+    <main>
+      <AppHeader />
+      <div className="feature-page">
+        <div className="page-heading">
+          <span className="eyebrow">Update record</span>
+          <h1>Edit {displayName}</h1>
+          <p>Review changes carefully before saving the health record.</p>
+        </div>
+        <ProfileForm
+          initialProfile={profile}
+          onSubmit={handleUpdate}
+          isSubmitting={isSubmitting}
+          errors={errors}
+          submitLabel="Save changes"
+        />
+      </div>
+    </main>
+  );
 }

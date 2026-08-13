@@ -99,6 +99,7 @@ async function runSmokeTest() {
     hourlyRate: 650,
     monthlyRate: 45000,
     serviceArea: "Dhanmondi, Dhaka",
+    supportedServiceTypes: ["companionship", "medical-support"],
     availability: [{ day: "monday", startTime: "09:00", endTime: "17:00" }],
   };
   await callApi(baseUrl, "/api/caregivers/application/draft", {
