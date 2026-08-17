@@ -22,6 +22,7 @@ import {
   ClipboardListIcon,
 } from "../../components/Icons.jsx";
 import { Modal } from "../../components/Modal.jsx";
+import { FamilyTaskPlanner } from "../../components/FamilyTaskPlanner.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { normalizeApiError } from "../../services/api.js";
@@ -408,6 +409,10 @@ export function ElderlyProfileDetailPage() {
           <Card className="snapshot-card"><span className="snapshot-card__icon snapshot-card__icon--medicine"><PillIcon /></span><div><strong>{activeMedications}</strong><span>Active medications</span><small>{profile.medications.length - activeMedications} inactive</small></div></Card>
           <Card className="snapshot-card"><span className="snapshot-card__icon snapshot-card__icon--allergy"><AlertIcon /></span><div><strong>{profile.allergies.length}</strong><span>Known allergies</span><small>{severeAllergies} severe</small></div></Card>
           <Card className="snapshot-card"><span className="snapshot-card__icon"><PhoneIcon /></span><div><strong>{profile.emergencyContacts.length}</strong><span>Emergency contacts</span><small>{primaryContact ? `${primaryContact.name} is primary` : "No primary selected"}</small></div></Card>
+        </section>
+
+        <section className="modern-section-card" style={{ marginTop: "1.5rem" }}>
+          <FamilyTaskPlanner elderlyProfileId={profileId} elderlyName={personal.preferredName || personal.fullName} />
         </section>
 
         <nav className="profile-tabs" aria-label="Profile sections">

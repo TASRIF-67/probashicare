@@ -13,6 +13,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import wellnessReportRoutes from "./routes/wellnessReportRoutes.js";
 import wellnessInsightRoutes from "./routes/wellnessInsightRoutes.js";
+import careVisitRoutes from "./routes/careVisitRoutes.js";
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/wellness-reports", wellnessReportRoutes);
+app.use("/api/care-visit", careVisitRoutes);
 app.use("/api", wellnessInsightRoutes);
 
 app.use(notFound);
