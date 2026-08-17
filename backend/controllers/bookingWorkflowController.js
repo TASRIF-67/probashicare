@@ -6,15 +6,93 @@ import { syncCareAssignmentFromBooking } from "../services/careAssignmentService
 import { createNotification } from "../services/notificationService.js";
 import { ApiError } from "../utils/ApiError.js";
 import { buildReservationDocuments, dateKey, parseTimeSlot } from "../utils/bookingSchedule.js";
+import { CaregiverReview } from "../models/CaregiverReview.js";
+import { CaregiverComplaint } from "../models/CaregiverComplaint.js";
+import { env } from "../config/env.js";
 
-function formatBooking(booking) {
-  const caregiver = booking.caregiverId?._id ? booking.caregiverId : null;
-  const family = booking.familyMemberId?._id ? booking.familyMemberId : null;
-  const elderly = booking.elderlyProfileId?.personalInformation ? booking.elderlyProfileId : null;
-  return { _id: booking._id, caregiverId: caregiver?._id?.toString() || booking.caregiverId?.toString(), elderlyProfileId: elderly?._id?.toString() || booking.elderlyProfileId?.toString(), caregiver: caregiver ? { id: caregiver._id.toString(), name: caregiver.name } : null, familyMember: family ? { id: family._id.toString(), name: family.name } : null, elderlyProfile: elderly ? { id: elderly._id.toString(), name: elderly.personalInformation.preferredName || elderly.personalInformation.fullName } : null, bookingType: booking.bookingType, serviceType: booking.serviceType, startDate: booking.startDate, endDate: booking.endDate, slots: booking.slots || [], occurrences: booking.occurrences || [], status: booking.status, statusReason: booking.statusReason || "", migrationStatus: booking.migrationStatus || "requires-review", createdAt: booking.createdAt, updatedAt: booking.updatedAt };
+/**
+ * Converts one populated booking into the shared participant response shape.
+ * Optional family-only feedback records are omitted from caregiver responses.
+ * @param {import("mongoose").Document} booking - Populated booking document.
+ * @param {object|null} [review=null] - Family-owned review summary.
+ * @param {object|null} [complaint=null] - Family-owned complaint summary.
+ * @returns {object} Safe booking response with participant names and schedule.
+ * @sideEffects None.
+ */
+function formatBooking(booking, review = null, complaint = null) {
+  const caregiver = booking.caregiverId?._id
+    ? booking.caregiverId
+    : null;
+  const family = booking.familyMemberId?._id
+    ? booking.familyMemberId
+    : null;
+  const elderly = booking.elderlyProfileId?.personalInformation
+    ? booking.elderlyProfileId
+    : null;
+  let elderlyName = "";
+
+  if (elderly) {
+    elderlyName = elderly.personalInformation.preferredName
+      || elderly.personalInformation.fullName;
+  }
+
+  return {
+    _id: booking._id,
+    caregiverId: caregiver?._id?.toString()
+      || booking.caregiverId?.toString(),
+    elderlyProfileId: elderly?._id?.toString()
+      || booking.elderlyProfileId?.toString(),
+    caregiver: caregiver
+      ? {
+          id: caregiver._id.toString(),
+          name: caregiver.name,
+        }
+      : null,
+    familyMember: family
+      ? {
+          id: family._id.toString(),
+          name: family.name,
+        }
+      : null,
+    elderlyProfile: elderly
+      ? {
+          id: elderly._id.toString(),
+          name: elderlyName,
+        }
+      : null,
+    bookingType: booking.bookingType,
+    serviceType: booking.serviceType,
+    startDate: booking.startDate,
+    endDate: booking.endDate,
+    slots: booking.slots || [],
+    occurrences: booking.occurrences || [],
+    status: booking.status,
+    statusReason: booking.statusReason || "",
+    completedAt: booking.completedAt || null,
+    review,
+    complaint,
+    migrationStatus: booking.migrationStatus || "requires-review",
+    createdAt: booking.createdAt,
+    updatedAt: booking.updatedAt,
+  };
 }
 
-const populateBooking = (query) => query.populate("caregiverId", "name role").populate("familyMemberId", "name role").populate("elderlyProfileId", "personalInformation.fullName personalInformation.preferredName");
+/**
+ * Adds participant display fields to a Booking query without exposing emails.
+ * Mongoose populate replaces stored IDs with selected referenced documents.
+ * @param {import("mongoose").Query} query - Booking query to populate.
+ * @returns {import("mongoose").Query} The same query with population rules.
+ * @sideEffects Configures the supplied Mongoose query before execution.
+ */
+function populateBooking(query) {
+  return query
+    .populate("caregiverId", "name role")
+    .populate("familyMemberId", "name role")
+    .populate(
+      "elderlyProfileId",
+      "personalInformation.fullName personalInformation.preferredName",
+    );
+}
 
 /**
  * Converts a booking workflow status into a care-assignment status.
@@ -154,7 +232,71 @@ export async function createBooking(request, response) {
 
 export async function listMyBookings(request, response) {
   const bookings = await populateBooking(Booking.find({ familyMemberId: request.user._id }).sort({ createdAt: -1 }));
-  response.json({ success: true, data: { count: bookings.length, bookings: bookings.map(formatBooking) } });
+  const bookingIds = [];
+
+  for (const booking of bookings) {
+    bookingIds.push(booking._id);
+  }
+
+  const [reviews, complaints] = await Promise.all([
+    CaregiverReview.find({
+      familyMemberId: request.user._id,
+      bookingId: {
+        $in: bookingIds,
+      },
+    }),
+    CaregiverComplaint.find({
+      familyMemberId: request.user._id,
+      bookingId: {
+        $in: bookingIds,
+      },
+    }),
+  ]);
+  const reviewsByBookingId = {};
+  const complaintsByBookingId = {};
+
+  for (const review of reviews) {
+    reviewsByBookingId[review.bookingId.toString()] = {
+      id: review._id.toString(),
+      rating: review.rating,
+      feedback: review.feedback || "",
+      moderationStatus: review.moderationStatus,
+      createdAt: review.createdAt,
+    };
+  }
+
+  for (const complaint of complaints) {
+    complaintsByBookingId[complaint.bookingId.toString()] = {
+      id: complaint._id.toString(),
+      category: complaint.category,
+      description: complaint.description,
+      status: complaint.status,
+      adminResponse: complaint.adminResponse || "",
+      createdAt: complaint.createdAt,
+      resolvedAt: complaint.resolvedAt || null,
+    };
+  }
+
+  const formattedBookings = [];
+
+  for (const booking of bookings) {
+    const bookingId = booking._id.toString();
+    formattedBookings.push(
+      formatBooking(
+        booking,
+        reviewsByBookingId[bookingId] || null,
+        complaintsByBookingId[bookingId] || null,
+      ),
+    );
+  }
+
+  response.json({
+    success: true,
+    data: {
+      count: formattedBookings.length,
+      bookings: formattedBookings,
+    },
+  });
 }
 
 export async function cancelMyBooking(request, response) {
@@ -187,7 +329,19 @@ export async function cancelMyBooking(request, response) {
 
 export async function listCaregiverBookings(request, response) {
   const bookings = await populateBooking(Booking.find({ caregiverId: request.user._id }).sort({ createdAt: -1 }));
-  response.json({ success: true, data: { count: bookings.length, bookings: bookings.map(formatBooking) } });
+  const formattedBookings = [];
+
+  for (const booking of bookings) {
+    formattedBookings.push(formatBooking(booking));
+  }
+
+  response.json({
+    success: true,
+    data: {
+      count: formattedBookings.length,
+      bookings: formattedBookings,
+    },
+  });
 }
 
 export async function updateCaregiverBookingStatus(request, response) {
@@ -200,7 +354,7 @@ export async function updateCaregiverBookingStatus(request, response) {
   if (!existing) throw new ApiError(404, "Booking not found.");
   const allowedFrom = status === "completed" ? ["accepted", "confirmed"] : ["pending"];
   if (!allowedFrom.includes(existing.status)) throw new ApiError(409, `A ${existing.status} booking cannot be marked ${status}.`);
-  if (status === "completed") {
+  if (status === "completed" && !env.allowEarlyBookingCompletion) {
     const finalOccurrence = existing.occurrences?.at(-1);
     if (!finalOccurrence) throw new ApiError(409, "This legacy booking must be migrated before completion.");
     const now = new Date();
@@ -244,7 +398,9 @@ export async function updateCaregiverBookingStatus(request, response) {
         type: notificationType,
         title: notificationTitle,
         message: notificationMessage,
-        actionPath: "/bookings",
+        actionPath: status === "completed"
+          ? "/bookings?review=" + booking._id
+          : "/bookings",
         session,
       });
     }

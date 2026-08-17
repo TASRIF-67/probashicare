@@ -1,7 +1,7 @@
 ﻿import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { BriefcaseIcon, ClipboardListIcon, CloseIcon, DashboardIcon, LogOutIcon, MenuIcon, MoneyIcon, UsersIcon } from "../Icons.jsx";
+import { BriefcaseIcon, ClipboardListIcon, CloseIcon, DashboardIcon, LogOutIcon, MenuIcon, MoneyIcon, StarIcon, UsersIcon } from "../Icons.jsx";
 import { Logo } from "../Logo.jsx";
 import { ThemeToggle } from "../ThemeToggle.jsx";
 
@@ -9,6 +9,7 @@ const ADMIN_NAVIGATION = [
   { to: "/admin", label: "Overview", icon: DashboardIcon, end: true },
   { to: "/admin/accounts", label: "Family accounts", icon: UsersIcon, end: false },
   { to: "/admin/bookings", label: "Bookings", icon: ClipboardListIcon, end: false },
+  { to: "/admin/feedback", label: "Ratings & complaints", icon: StarIcon, end: false },
   { to: "/admin/payments", label: "Transactions", icon: MoneyIcon, end: false },
   { to: "/admin/caregivers", label: "Caregiver applications", icon: BriefcaseIcon, end: false },
 ];

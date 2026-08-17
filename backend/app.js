@@ -13,6 +13,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import wellnessReportRoutes from "./routes/wellnessReportRoutes.js";
 import wellnessInsightRoutes from "./routes/wellnessInsightRoutes.js";
+import groceryRequestRoutes from "./routes/groceryRequestRoutes.js";
+import storeLocatorRoutes from "./routes/storeLocatorRoutes.js";
 
 const app = express();
 
@@ -45,6 +47,10 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/wellness-reports", wellnessReportRoutes);
+app.use("/api/grocery-requests", groceryRequestRoutes);
+app.use("/api/store-locator", storeLocatorRoutes);
+// Keep this broad `/api` router after specific feature routers because it applies
+// a family-only gate before checking its own wellness-insight route patterns.
 app.use("/api", wellnessInsightRoutes);
 
 app.use(notFound);

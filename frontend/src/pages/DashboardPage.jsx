@@ -10,6 +10,7 @@ import {
   ClockIcon,
   HeartPulseIcon,
   ShieldCheckIcon,
+  StarIcon,
   UsersIcon,
 } from "../components/Icons.jsx";
 import { bookingService } from "../services/bookingService.js";
@@ -18,6 +19,7 @@ import { normalizeApiError } from "../services/api.js";
 import { subscriptionService } from "../services/subscriptionService.js";
 import { SubscriptionStatusCard } from "../components/subscription/SubscriptionStatusCard.jsx";
 import { SubscriptionExpiryModal } from "../components/subscription/SubscriptionExpiryModal.jsx";
+import { CaregiverFeedbackModal } from "../components/booking/CaregiverFeedbackModal.jsx";
 
 const ACTIVE_STATUSES = ["pending", "accepted", "confirmed"];
 const ASSIGNED_STATUSES = ["accepted", "confirmed"];
@@ -153,6 +155,7 @@ export function DashboardPage() {
     data: null,
   });
   const [isDismissingReminder, setIsDismissingReminder] = useState(false);
+  const [feedbackBooking, setFeedbackBooking] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -170,6 +173,21 @@ export function DashboardPage() {
       try {
         const bookingResult = await bookingService.listMyBookings();
         bookings = bookingResult.bookings || [];
+
+        if (active) {
+          for (const booking of bookings) {
+            if (booking.status !== "completed" || booking.review) {
+              continue;
+            }
+
+            const promptKey = "caregiver-feedback-prompt-" + booking._id;
+
+            if (!window.sessionStorage.getItem(promptKey)) {
+              setFeedbackBooking(booking);
+              break;
+            }
+          }
+        }
       } catch (requestError) {
         errorMessages.push(
           "Bookings: " + normalizeApiError(requestError).message,
@@ -267,10 +285,62 @@ export function DashboardPage() {
     }
   }
 
+  /**
+   * Closes the automatic rating prompt for the remainder of this browser session.
+   * @returns {void}
+   * @sideEffects Stores a session-only prompt marker and closes the modal.
+   */
+  function closeFeedbackPrompt() {
+    if (feedbackBooking) {
+      const promptKey = "caregiver-feedback-prompt-" + feedbackBooking._id;
+      window.sessionStorage.setItem(promptKey, "dismissed");
+    }
+
+    setFeedbackBooking(null);
+  }
+
+  /**
+   * Adds newly submitted feedback to dashboard state without reloading the page.
+   * @param {{review?: object, complaint?: object}} result - Saved API feedback result.
+   * @returns {void}
+   * @sideEffects Updates one booking in React state and closes the prompt.
+   */
+  function handleFeedbackSaved(result) {
+    setCareState(function updateBookingFeedback(current) {
+      const updatedBookings = [];
+
+      for (const booking of current.bookings) {
+        if (booking._id !== feedbackBooking?._id) {
+          updatedBookings.push(booking);
+          continue;
+        }
+
+        updatedBookings.push({
+          ...booking,
+          review: result.review || booking.review,
+          complaint: result.complaint || booking.complaint,
+        });
+      }
+
+      return {
+        ...current,
+        bookings: updatedBookings,
+      };
+    });
+    closeFeedbackPrompt();
+  }
+
   const activeBookings = getActiveBookings(careState.bookings);
   const pendingCount = countBookings(careState.bookings, ["pending"]);
   const assignedCount = countBookings(careState.bookings, ASSIGNED_STATUSES);
   const completedCount = countBookings(careState.bookings, ["completed"]);
+  const unratedCompletedBookings = [];
+
+  for (const booking of careState.bookings) {
+    if (booking.status === "completed" && !booking.review) {
+      unratedCompletedBookings.push(booking);
+    }
+  }
   const nextVisit = findNextCareVisit(careState.bookings);
   const visibleBookings = activeBookings.slice(0, 3);
   const visibleProfiles = careState.profiles.slice(0, 3);
@@ -307,6 +377,27 @@ export function DashboardPage() {
           </div>
         )}
         {careState.error && <div className="alert alert--error">{careState.error}</div>}
+
+        {unratedCompletedBookings.length > 0 && (
+          <Link
+            className="family-feedback-reminder"
+            to={"/bookings?review=" + unratedCompletedBookings[0]._id}
+          >
+            <span>
+              <StarIcon />
+            </span>
+            <div>
+              <strong>
+                {unratedCompletedBookings.length} completed booking
+                {unratedCompletedBookings.length === 1 ? "" : "s"} awaiting feedback
+              </strong>
+              <small>
+                Share an anonymous verified rating when you are ready.
+              </small>
+            </div>
+            <ArrowRightIcon />
+          </Link>
+        )}
 
         <section className="family-dashboard-metrics" aria-label="Family care summary">
           <Card>
@@ -469,6 +560,12 @@ export function DashboardPage() {
         reminder={subscriptionState.data?.reminder || null}
         onDismiss={dismissSubscriptionReminder}
         isDismissing={isDismissingReminder}
+      />
+      <CaregiverFeedbackModal
+        booking={feedbackBooking}
+        initialMode="review"
+        onClose={closeFeedbackPrompt}
+        onSaved={handleFeedbackSaved}
       />
     </main>
   );

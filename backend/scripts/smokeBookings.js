@@ -12,6 +12,8 @@ import { ElderlyProfile } from "../models/ElderlyProfile.js";
 import { Notification } from "../models/Notification.js";
 import { User } from "../models/User.js";
 import { FamilySubscription } from "../models/FamilySubscription.js";
+import { CaregiverComplaint } from "../models/CaregiverComplaint.js";
+import { CaregiverReview } from "../models/CaregiverReview.js";
 
 const marker = `booking-smoke-${Date.now()}`;
 const password = "BookingSmokePassword2026";
@@ -60,6 +62,8 @@ async function run() {
     BookingReservation.syncIndexes(),
     CareAssignment.syncIndexes(),
     Notification.syncIndexes(),
+    CaregiverReview.syncIndexes(),
+    CaregiverComplaint.syncIndexes(),
   ]);
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
@@ -151,9 +155,188 @@ async function run() {
     throw new Error("Booking workflow did not create both participant notifications.");
   }
 
+  await callApi(`/bookings/${scheduled.payload.data.booking._id}/review`, {
+    method: "POST",
+    cookie: familyACookie,
+    expectedStatus: 409,
+    body: {
+      rating: 5,
+      feedback: "This accepted booking is not completed yet.",
+    },
+  });
+
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setHours(0, 0, 0, 0);
   await Booking.updateOne({ _id: scheduled.payload.data.booking._id }, { $set: { startDate: yesterday, endDate: yesterday, occurrences: [{ date: yesterday, timeSlot: "00:00-00:01" }] } });
   await callApi(`/caregivers/bookings/${scheduled.payload.data.booking._id}/status`, { method: "PATCH", cookie: caregiverCookie, body: { status: "completed" } });
+
+  const completedBookingId = scheduled.payload.data.booking._id;
+  const reviewInput = {
+    rating: 4,
+    feedback: "Dependable care and clear communication throughout the visit.",
+  };
+
+  await callApi(`/bookings/${completedBookingId}/review`, {
+    method: "POST",
+    cookie: familyBCookie,
+    expectedStatus: 404,
+    body: reviewInput,
+  });
+  await callApi(`/bookings/${completedBookingId}/review`, {
+    method: "POST",
+    cookie: caregiverCookie,
+    expectedStatus: 403,
+    body: reviewInput,
+  });
+  const createdReview = await callApi(`/bookings/${completedBookingId}/review`, {
+    method: "POST",
+    cookie: familyACookie,
+    expectedStatus: 201,
+    body: reviewInput,
+  });
+
+  if (createdReview.payload.data.review.rating !== 4) {
+    throw new Error("Family review response omitted the submitted rating.");
+  }
+
+  await callApi(`/bookings/${completedBookingId}/review`, {
+    method: "POST",
+    cookie: familyACookie,
+    expectedStatus: 409,
+    body: reviewInput,
+  });
+
+  const caregiverReviews = await callApi("/caregivers/reviews/mine", {
+    cookie: caregiverCookie,
+  });
+  const serializedCaregiverReviews = JSON.stringify(caregiverReviews.payload);
+
+  if (
+    caregiverReviews.payload.data.summary.reviewCount !== 1
+    || serializedCaregiverReviews.includes(familyA.email)
+    || serializedCaregiverReviews.includes(familyA.name)
+    || serializedCaregiverReviews.includes(elderlyA.personalInformation.fullName)
+    || serializedCaregiverReviews.includes(completedBookingId)
+  ) {
+    throw new Error("Caregiver feedback response did not preserve family privacy.");
+  }
+
+  const marketplaceAfterReview = await callApi("/caregivers", {
+    cookie: familyACookie,
+  });
+  const ratedCaregiver = marketplaceAfterReview.payload.data.caregivers.find(
+    (entry) => entry._id === caregiver._id.toString(),
+  );
+
+  if (
+    !ratedCaregiver
+    || ratedCaregiver.reviewCount !== 1
+    || ratedCaregiver.averageRating !== 4
+  ) {
+    throw new Error("Marketplace rating summary did not include verified feedback.");
+  }
+
+  const adminReviews = await callApi("/admin/caregiver-reviews", {
+    cookie: adminCookie,
+  });
+  const adminReview = adminReviews.payload.data.reviews.find(
+    (entry) => entry.id === createdReview.payload.data.review.id,
+  );
+
+  if (
+    !adminReview
+    || adminReview.family.email !== familyA.email
+    || adminReview.caregiver.name !== caregiver.name
+  ) {
+    throw new Error("Administrator review audit omitted participant attribution.");
+  }
+
+  await callApi(
+    `/admin/caregiver-reviews/${createdReview.payload.data.review.id}/moderation`,
+    {
+      method: "PATCH",
+      cookie: adminCookie,
+      body: {
+        status: "hidden",
+      },
+    },
+  );
+  const hiddenCaregiverReviews = await callApi("/caregivers/reviews/mine", {
+    cookie: caregiverCookie,
+  });
+
+  if (hiddenCaregiverReviews.payload.data.summary.reviewCount !== 0) {
+    throw new Error("A hidden review remained visible to the caregiver.");
+  }
+
+  await callApi(
+    `/admin/caregiver-reviews/${createdReview.payload.data.review.id}/moderation`,
+    {
+      method: "PATCH",
+      cookie: adminCookie,
+      body: {
+        status: "published",
+      },
+    },
+  );
+
+  const complaintInput = {
+    category: "communication",
+    description: "The family needs an administrator to review a communication concern.",
+  };
+  const createdComplaint = await callApi(
+    `/bookings/${completedBookingId}/complaint`,
+    {
+      method: "POST",
+      cookie: familyACookie,
+      expectedStatus: 201,
+      body: complaintInput,
+    },
+  );
+  await callApi(`/bookings/${completedBookingId}/complaint`, {
+    method: "POST",
+    cookie: familyACookie,
+    expectedStatus: 409,
+    body: complaintInput,
+  });
+
+  const adminComplaints = await callApi("/admin/caregiver-complaints", {
+    cookie: adminCookie,
+  });
+  const adminComplaint = adminComplaints.payload.data.complaints.find(
+    (entry) => entry.id === createdComplaint.payload.data.complaint.id,
+  );
+
+  if (!adminComplaint || adminComplaint.family.email !== familyA.email) {
+    throw new Error("Administrator complaint audit omitted family attribution.");
+  }
+
+  await callApi(
+    `/admin/caregiver-complaints/${createdComplaint.payload.data.complaint.id}`,
+    {
+      method: "PATCH",
+      cookie: adminCookie,
+      body: {
+        status: "resolved",
+        adminResponse: "The concern was reviewed and follow-up guidance was provided.",
+      },
+    },
+  );
+
+  const familyFeedbackHistory = await callApi("/bookings", {
+    cookie: familyACookie,
+  });
+  const reviewedBooking = familyFeedbackHistory.payload.data.bookings.find(
+    (entry) => entry._id === completedBookingId,
+  );
+
+  if (
+    !reviewedBooking
+    || reviewedBooking.review?.rating !== 4
+    || reviewedBooking.complaint?.status !== "resolved"
+    || !reviewedBooking.completedAt
+  ) {
+    throw new Error("Family booking history omitted completed-care feedback status.");
+  }
 
   const declineDate = addDays(22);
   const declined = await callApi("/bookings", { method: "POST", cookie: familyACookie, expectedStatus: 201, body: payload({ caregiver, elderly: elderlyA, startDate: declineDate }) });
@@ -199,6 +382,16 @@ async function cleanup() {
     },
   });
   const bookings = await Booking.find({ $or: [{ familyMemberId: { $in: ids } }, { caregiverId: { $in: ids } }] }).select("_id").lean();
+  await CaregiverReview.deleteMany({
+    bookingId: {
+      $in: bookings.map((booking) => booking._id),
+    },
+  });
+  await CaregiverComplaint.deleteMany({
+    bookingId: {
+      $in: bookings.map((booking) => booking._id),
+    },
+  });
   await CareAssignment.deleteMany({
     sourceBookingId: {
       $in: bookings.map((booking) => booking._id),

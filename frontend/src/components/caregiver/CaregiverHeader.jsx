@@ -6,6 +6,8 @@ import {
   ClipboardListIcon,
   DashboardIcon,
   LogOutIcon,
+  StarIcon,
+  ShoppingBasketIcon,
 } from "../Icons.jsx";
 import { Button } from "../Button.jsx";
 import { Logo } from "../Logo.jsx";
@@ -37,6 +39,14 @@ export function CaregiverHeader() {
           <NavLink to="/caregiver/wellness-reports">
             <ClipboardListIcon size={17} />
             Reports
+          </NavLink>
+          <NavLink to="/caregiver/groceries">
+            <ShoppingBasketIcon size={17} />
+            Essentials
+          </NavLink>
+          <NavLink to="/caregiver/reviews">
+            <StarIcon size={17} />
+            Reviews
           </NavLink>
           <NavLink to="/caregiver/profile">
             <BriefcaseIcon size={17} />

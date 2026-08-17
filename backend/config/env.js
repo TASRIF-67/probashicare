@@ -42,6 +42,18 @@ export function validateEnvironment(names = requiredVariables) {
       "PROTOTYPE_PAYMENTS_ENABLED must be true or false.",
     );
   }
+
+  const earlyCompletionSetting = process.env.ALLOW_EARLY_BOOKING_COMPLETION;
+
+  if (
+    earlyCompletionSetting
+    && earlyCompletionSetting !== "true"
+    && earlyCompletionSetting !== "false"
+  ) {
+    throw new Error(
+      "ALLOW_EARLY_BOOKING_COMPLETION must be true or false.",
+    );
+  }
 }
 
 export const env = {
@@ -65,6 +77,12 @@ export const env = {
   subscriptionCurrency: process.env.SUBSCRIPTION_CURRENCY || "BDT",
   prototypePaymentsEnabled:
     process.env.PROTOTYPE_PAYMENTS_ENABLED === "true",
+  allowEarlyBookingCompletion:
+    process.env.NODE_ENV !== "production"
+    && process.env.ALLOW_EARLY_BOOKING_COMPLETION === "true",
   geminiApiKey: process.env.GEMINI_API_KEY,
   geminiModel: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
+  storeLocatorUserAgent:
+    process.env.STORE_LOCATOR_USER_AGENT
+    || "ProbashiCareStudentProject/1.0",
 };

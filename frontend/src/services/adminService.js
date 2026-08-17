@@ -113,6 +113,64 @@ async function listBookings(filters = {}) {
   });
   return response.data.data;
 }
+
+/**
+ * Lists attributed caregiver reviews for administrator moderation.
+ * @param {{status?: string, page?: number, limit?: number}} [filters] - Review filters.
+ * @returns {Promise<{reviews: object[], summary: object, pagination: object}>} Review audit page.
+ * @sideEffects Calls GET /admin/caregiver-reviews.
+ */
+async function listCaregiverReviews(filters = {}) {
+  const response = await api.get("/admin/caregiver-reviews", {
+    params: filters,
+  });
+  return response.data.data;
+}
+
+/**
+ * Changes whether a caregiver review is visible outside the admin panel.
+ * @param {string} reviewId - CaregiverReview identifier.
+ * @param {"published"|"hidden"} status - New moderation status.
+ * @returns {Promise<{message: string, review: object}>} Updated review.
+ * @sideEffects Calls the review moderation API.
+ */
+async function moderateCaregiverReview(reviewId, status) {
+  const response = await api.patch(
+    "/admin/caregiver-reviews/" + reviewId + "/moderation",
+    {
+      status,
+    },
+  );
+  return response.data.data;
+}
+
+/**
+ * Lists caregiver complaints for administrator investigation.
+ * @param {{status?: string, page?: number, limit?: number}} [filters] - Complaint filters.
+ * @returns {Promise<{complaints: object[], summary: object, pagination: object}>} Complaint page.
+ * @sideEffects Calls GET /admin/caregiver-complaints.
+ */
+async function listCaregiverComplaints(filters = {}) {
+  const response = await api.get("/admin/caregiver-complaints", {
+    params: filters,
+  });
+  return response.data.data;
+}
+
+/**
+ * Updates one caregiver complaint investigation.
+ * @param {string} complaintId - CaregiverComplaint identifier.
+ * @param {{status: string, adminResponse: string}} input - Resolution details.
+ * @returns {Promise<{message: string, complaint: object}>} Updated complaint.
+ * @sideEffects Calls the complaint update API.
+ */
+async function updateCaregiverComplaint(complaintId, input) {
+  const response = await api.patch(
+    "/admin/caregiver-complaints/" + complaintId,
+    input,
+  );
+  return response.data.data;
+}
 export const adminService = {
   listBookings,
   getSubscriptionAnalytics,
@@ -124,4 +182,8 @@ export const adminService = {
   getCaregiverApplication,
   approveCaregiverApplication,
   rejectCaregiverApplication,
+  listCaregiverReviews,
+  moderateCaregiverReview,
+  listCaregiverComplaints,
+  updateCaregiverComplaint,
 };
