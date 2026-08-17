@@ -2,7 +2,7 @@
 
 /**
  * Creates one idempotent booking or wellness notification for a user.
- * @param {{recipientUserId: string|import("mongoose").Types.ObjectId, actorUserId?: string|import("mongoose").Types.ObjectId|null, type: string, priority?: "normal"|"important"|"emergency", title: string, message: string, actionPath: string, relatedEntityType: "booking"|"wellness-report", relatedEntityId: string|import("mongoose").Types.ObjectId, eventKey: string, session?: import("mongoose").ClientSession}} input - Notification content and optional database transaction.
+ * @param {{recipientUserId: string|import("mongoose").Types.ObjectId, actorUserId?: string|import("mongoose").Types.ObjectId|null, type: string, priority?: "normal"|"important"|"emergency", title: string, message: string, actionPath: string, relatedEntityType: string, relatedEntityId: string|import("mongoose").Types.ObjectId, eventKey: string, session?: import("mongoose").ClientSession}} input - Notification content and optional database transaction.
  * @returns {Promise<import("mongoose").Document>} Existing or newly created notification.
  * @sideEffects Upserts one Notification document in MongoDB.
  */
@@ -57,7 +57,7 @@ export async function createNotification(input) {
 
 /**
  * Creates the same event notification for each unique recipient.
- * @param {{recipientUserIds: Array<string|import("mongoose").Types.ObjectId>, actorUserId?: string|import("mongoose").Types.ObjectId|null, type: string, priority?: "normal"|"important"|"emergency", title: string, message: string, actionPath: string, relatedEntityType: "booking"|"wellness-report", relatedEntityId: string|import("mongoose").Types.ObjectId, eventKey: string, session?: import("mongoose").ClientSession}} input - Shared event and recipients.
+ * @param {{recipientUserIds: Array<string|import("mongoose").Types.ObjectId>, actorUserId?: string|import("mongoose").Types.ObjectId|null, type: string, priority?: "normal"|"important"|"emergency", title: string, message: string, actionPath: string, relatedEntityType: string, relatedEntityId: string|import("mongoose").Types.ObjectId, eventKey: string, session?: import("mongoose").ClientSession}} input - Shared event and recipients.
  * @returns {Promise<void>}
  * @sideEffects Upserts one notification per unique recipient.
  */

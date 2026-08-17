@@ -15,10 +15,12 @@
     "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js",
     "test:bookings": "node --test test/bookingSchedule.test.js",
     "test:bookings:integration": "node scripts/smokeBookings.js",
+    "test:caregiver-feedback": "node scripts/smokeBookings.js",
     "test:subscriptions": "node --test test/subscriptionPeriod.test.js test/subscriptionAccess.test.js test/subscriptionPaymentHelpers.test.js",
     "test:subscriptions:integration": "node scripts/smokeSubscriptions.js",
     "test:wellness-reports": "node scripts/smokeWellnessReports.js",
     "test:wellness-insights": "node --test test/wellnessInsights.test.js",
+    "test:groceries": "node scripts/smokeGroceryRequests.js",
     "test:email": "node scripts/testEmailDelivery.js"
   },
   "dependencies": {

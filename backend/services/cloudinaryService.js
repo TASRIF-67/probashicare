@@ -74,3 +74,83 @@ export async function deleteCaregiverDocument(document) {
     invalidate: true,
   });
 }
+
+/**
+ * Uploads an optional grocery cash memo or receipt as an authenticated asset.
+ * @param {{buffer: Buffer, mimetype: string, originalname: string, requestId: string}} input - Receipt data and owning request.
+ * @returns {Promise<{publicId: string, resourceType: string, format: string, originalName: string, bytes: number, uploadedAt: Date}>} Stored receipt metadata.
+ * @sideEffects Uploads one private Cloudinary asset.
+ */
+export async function uploadGroceryReceipt({
+  buffer,
+  mimetype,
+  originalname,
+  requestId,
+}) {
+  if (!isCloudinaryConfigured()) {
+    throw new ApiError(
+      503,
+      "Receipt upload is not configured. You can continue without a receipt.",
+    );
+  }
+
+  const client = getCloudinaryClient();
+  const dataUri = "data:" + mimetype + ";base64," + buffer.toString("base64");
+  const result = await client.uploader.upload(dataUri, {
+    folder: "probashicare/grocery-receipts/" + requestId,
+    type: "authenticated",
+    resource_type: "auto",
+    use_filename: false,
+    unique_filename: true,
+  });
+
+  return {
+    publicId: result.public_id,
+    resourceType: result.resource_type,
+    format: result.format || "",
+    originalName: originalname,
+    bytes: result.bytes,
+    uploadedAt: new Date(),
+  };
+}
+
+/**
+ * Generates a short-lived authenticated grocery receipt URL.
+ * @param {{publicId: string, resourceType?: string, format?: string}|null} receipt - Stored receipt metadata.
+ * @returns {string|null} Signed receipt URL or null when unavailable.
+ * @sideEffects Reads Cloudinary configuration and signs a URL locally.
+ */
+export function createGroceryReceiptUrl(receipt) {
+  if (!receipt?.publicId || !isCloudinaryConfigured()) {
+    return null;
+  }
+
+  const client = getCloudinaryClient();
+  return client.url(receipt.publicId, {
+    type: "authenticated",
+    resource_type: receipt.resourceType || "image",
+    format: receipt.format || undefined,
+    sign_url: true,
+    secure: true,
+    expires_at: Math.floor(Date.now() / 1000) + 10 * 60,
+  });
+}
+
+/**
+ * Removes an optional grocery receipt after it is replaced.
+ * @param {{publicId: string, resourceType?: string}|null} receipt - Existing receipt metadata.
+ * @returns {Promise<void>}
+ * @sideEffects Deletes one authenticated Cloudinary asset when configured.
+ */
+export async function deleteGroceryReceipt(receipt) {
+  if (!receipt?.publicId || !isCloudinaryConfigured()) {
+    return;
+  }
+
+  const client = getCloudinaryClient();
+  await client.uploader.destroy(receipt.publicId, {
+    type: "authenticated",
+    resource_type: receipt.resourceType || "image",
+    invalidate: true,
+  });
+}

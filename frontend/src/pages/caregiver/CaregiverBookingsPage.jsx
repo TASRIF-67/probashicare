@@ -251,7 +251,7 @@ export function CaregiverBookingsPage() {
   async function reviewBooking(booking, status) {
     if (status === "completed") {
       const confirmed = window.confirm(
-        "Mark this care schedule completed? This action is available only after the final visit ends.",
+        "Mark this complete care schedule as finished? During development, early completion may be enabled for testing.",
       );
 
       if (!confirmed) {
@@ -531,7 +531,10 @@ export function CaregiverBookingsPage() {
                   <div className="caregiver-booking-complete">
                     <div>
                       <strong>Assigned care</strong>
-                      <span>Completion becomes available after the final scheduled visit ends.</span>
+                      <span>
+                        Complete the full schedule after its final visit. A
+                        development setting may allow early testing.
+                      </span>
                     </div>
                     <Button
                       isLoading={state.busyId === booking._id}

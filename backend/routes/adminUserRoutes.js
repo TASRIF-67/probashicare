@@ -17,12 +17,28 @@ import {
   rejectCaregiverApplication,
 } from "../controllers/adminCaregiverController.js";
 import { listAdminBookings } from "../controllers/adminBookingController.js";
+import {
+  listAdminCaregiverComplaints,
+  listAdminCaregiverReviews,
+  moderateCaregiverReview,
+  updateCaregiverComplaint,
+} from "../controllers/caregiverFeedbackController.js";
 
 const router = Router();
 
 router.use(asyncHandler(requireAuth), allowRoles("admin"));
 router.get("/overview", asyncHandler(getAdminOverview));
 router.get("/bookings", asyncHandler(listAdminBookings));
+router.get("/caregiver-reviews", asyncHandler(listAdminCaregiverReviews));
+router.patch(
+  "/caregiver-reviews/:reviewId/moderation",
+  asyncHandler(moderateCaregiverReview),
+);
+router.get("/caregiver-complaints", asyncHandler(listAdminCaregiverComplaints));
+router.patch(
+  "/caregiver-complaints/:complaintId",
+  asyncHandler(updateCaregiverComplaint),
+);
 router.get("/users", asyncHandler(listUsers));
 router.get("/subscriptions/analytics", asyncHandler(getSubscriptionAnalytics));
 router.get("/subscriptions/payments", asyncHandler(listSubscriptionPayments));
