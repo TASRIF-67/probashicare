@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+import CountUp from "react-countup";
 import { AppHeader } from "../components/AppHeader.jsx";
 import { Card } from "../components/Card.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -20,6 +22,7 @@ import { subscriptionService } from "../services/subscriptionService.js";
 import { SubscriptionStatusCard } from "../components/subscription/SubscriptionStatusCard.jsx";
 import { SubscriptionExpiryModal } from "../components/subscription/SubscriptionExpiryModal.jsx";
 import { CaregiverFeedbackModal } from "../components/booking/CaregiverFeedbackModal.jsx";
+import { createRevealMotion } from "../utils/motion.js";
 
 const ACTIVE_STATUSES = ["pending", "accepted", "confirmed"];
 const ASSIGNED_STATUSES = ["accepted", "confirmed"];
@@ -138,12 +141,72 @@ function getProfileName(profile) {
 }
 
 /**
+ * Chooses a friendly greeting from the current local hour.
+ * @param {Date} date - Current local date and time.
+ * @returns {string} Morning, afternoon, or evening greeting.
+ * @sideEffects None.
+ */
+function getTimeOfDayGreeting(date) {
+  const hour = date.getHours();
+
+  if (hour < 12) {
+    return "Good morning";
+  }
+
+  if (hour < 18) {
+    return "Good afternoon";
+  }
+
+  return "Good evening";
+}
+
+/**
+ * Formats today's local date for the dashboard context chip.
+ * @param {Date} date - Current local date.
+ * @returns {string} Weekday and medium calendar date.
+ * @sideEffects None.
+ */
+function formatToday(date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+/**
+ * Displays a short count-up for numeric metrics while respecting reduced motion.
+ * @param {{value: number|string, reduceMotion: boolean|null}} props - Metric value and motion preference.
+ * @returns {import("react").ReactElement} Animated number or unchanged text.
+ * @sideEffects Runs a brief visual count animation for numeric values.
+ */
+function DashboardMetricValue({ value, reduceMotion }) {
+  if (typeof value !== "number" || reduceMotion) {
+    return <strong>{value}</strong>;
+  }
+
+  return (
+    <strong>
+      <CountUp
+        end={value}
+        duration={0.75}
+        separator=","
+        preserveValue
+      />
+    </strong>
+  );
+}
+
+/**
  * Renders the family care-coordination dashboard.
  * @returns {import("react").ReactElement} Profiles, bookings, subscription, and care actions.
  * @sideEffects Loads family profiles, bookings, and subscription access.
  */
 export function DashboardPage() {
   const { user } = useAuth();
+  const reduceMotion = useReducedMotion();
+  const currentDate = new Date();
+  const greeting = getTimeOfDayGreeting(currentDate);
   const [careState, setCareState] = useState({
     loading: true,
     bookings: [],
@@ -350,10 +413,19 @@ export function DashboardPage() {
     <main>
       <AppHeader />
       <div className="feature-page family-dashboard-page">
-        <section className="family-dashboard-hero">
+        <motion.section
+          className="family-dashboard-hero"
+          {...createRevealMotion(reduceMotion, { distance: 18 })}
+        >
           <div>
-            <span className="eyebrow">Family care workspace</span>
-            <h1>Good to see you, {user.name}.</h1>
+            <div className="family-dashboard-hero__context">
+              <span className="eyebrow">Family care workspace</span>
+              <time dateTime={currentDate.toISOString()}>
+                <CalendarIcon size={14} />
+                {formatToday(currentDate)}
+              </time>
+            </div>
+            <h1>{greeting}, {user.name}.</h1>
             <p>
               Keep care recipients, caregiver schedules, and health updates
               connected from one calm workspace.
@@ -368,7 +440,7 @@ export function DashboardPage() {
               View care profiles
             </Link>
           </div>
-        </section>
+        </motion.section>
 
         {careState.loading && (
           <div className="page-loader-inline">
@@ -399,26 +471,65 @@ export function DashboardPage() {
           </Link>
         )}
 
-        <section className="family-dashboard-metrics" aria-label="Family care summary">
+        <motion.section
+          className="family-dashboard-metrics"
+          aria-label="Family care summary"
+          {...createRevealMotion(reduceMotion, { delay: 0.05, distance: 12 })}
+        >
           <Card>
-            <UsersIcon />
-            <div><strong>{careState.profiles.length}</strong><span>Care profiles</span></div>
+            <span className="family-dashboard-metric__icon" aria-hidden="true">
+              <UsersIcon />
+            </span>
+            <div>
+              <DashboardMetricValue
+                value={careState.profiles.length}
+                reduceMotion={reduceMotion}
+              />
+              <span>Care profiles</span>
+            </div>
           </Card>
           <Card>
-            <CalendarIcon />
-            <div><strong>{assignedCount}</strong><span>Assigned schedules</span></div>
+            <span className="family-dashboard-metric__icon" aria-hidden="true">
+              <CalendarIcon />
+            </span>
+            <div>
+              <DashboardMetricValue
+                value={assignedCount}
+                reduceMotion={reduceMotion}
+              />
+              <span>Assigned schedules</span>
+            </div>
           </Card>
           <Card className={pendingCount ? "family-dashboard-metric--attention" : ""}>
-            <ClockIcon />
-            <div><strong>{pendingCount}</strong><span>Awaiting response</span></div>
+            <span className="family-dashboard-metric__icon" aria-hidden="true">
+              <ClockIcon />
+            </span>
+            <div>
+              <DashboardMetricValue
+                value={pendingCount}
+                reduceMotion={reduceMotion}
+              />
+              <span>Awaiting response</span>
+            </div>
           </Card>
           <Card>
-            <ShieldCheckIcon />
-            <div><strong>{hasPremium ? "Premium" : "Core"}</strong><span>Current access</span></div>
+            <span className="family-dashboard-metric__icon" aria-hidden="true">
+              <ShieldCheckIcon />
+            </span>
+            <div>
+              <DashboardMetricValue
+                value={hasPremium ? "Premium" : "Core"}
+                reduceMotion={reduceMotion}
+              />
+              <span>Current access</span>
+            </div>
           </Card>
-        </section>
+        </motion.section>
 
-        <div className="family-dashboard-primary-grid">
+        <motion.div
+          className="family-dashboard-primary-grid"
+          {...createRevealMotion(reduceMotion, { delay: 0.08 })}
+        >
           <Card className="family-next-care-card">
             <div className="family-dashboard-card-heading">
               <div><span className="eyebrow">Care calendar</span><h2>Next scheduled visit</h2></div>
@@ -485,9 +596,12 @@ export function DashboardPage() {
               <ArrowRightIcon size={16} />
             </Link>
           </Card>
-        </div>
+        </motion.div>
 
-        <div className="family-dashboard-secondary-grid">
+        <motion.div
+          className="family-dashboard-secondary-grid"
+          {...createRevealMotion(reduceMotion, { delay: 0.1 })}
+        >
           <Card className="family-profile-overview">
             <div className="family-dashboard-card-heading">
               <div><span className="eyebrow">Care recipients</span><h2>Elderly profiles</h2></div>
@@ -536,9 +650,12 @@ export function DashboardPage() {
               <ArrowRightIcon size={17} />
             </Link>
           </section>
-        </div>
+        </motion.div>
 
-        <section className="family-dashboard-subscription">
+        <motion.section
+          className="family-dashboard-subscription"
+          {...createRevealMotion(reduceMotion, { delay: 0.12 })}
+        >
           <div className="family-dashboard-section-heading">
             <span className="eyebrow">Account access</span>
             <h2>Subscription overview</h2>
@@ -547,7 +664,7 @@ export function DashboardPage() {
             state={subscriptionState.data}
             loading={subscriptionState.loading}
           />
-        </section>
+        </motion.section>
 
         <Card className="family-dashboard-completed-note">
           <BadgeCheckIcon />

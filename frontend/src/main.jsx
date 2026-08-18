@@ -9,6 +9,7 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 import "./styles/global.css";
 import "./styles/modern-theme.css";
 import "./styles/grocery.css";
+import "./styles/dashboard.css";
 
 /**
  * Mounts the React application with its global providers.
