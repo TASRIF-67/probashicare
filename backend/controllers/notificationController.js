@@ -62,13 +62,13 @@ export async function listNotifications(request, response) {
   if (status === "unread") {
     filter.readAt = null;
   }
-
+  // run three independent database operations at the same time
   const results = await Promise.all([
     Notification.find(filter)
       .sort({ createdAt: -1 })
       .skip(pagination.skip)
       .limit(pagination.limit)
-      .lean(),
+      .lean(), //returns pure JS notation
     Notification.countDocuments(filter),
     Notification.countDocuments({
       recipientUserId: request.user._id,
