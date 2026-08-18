@@ -1,0 +1,631 @@
+/* Family dashboard: information-first layout with quiet, consistent surfaces. */
+.family-dashboard-page {
+  display: grid;
+  gap: 18px;
+  padding-top: 28px;
+  padding-bottom: 84px;
+}
+
+.family-dashboard-page::before {
+  display: none;
+}
+
+.family-dashboard-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 28px;
+  min-height: 0;
+  padding: 30px 32px;
+  overflow: hidden;
+  color: #f4fbf7;
+  border: 0;
+  border-radius: 18px;
+  background: #123d32;
+  box-shadow: none;
+}
+
+.family-dashboard-hero::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 32%;
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.family-dashboard-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.family-dashboard-hero__context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.family-dashboard-hero__context .eyebrow {
+  margin: 0;
+  color: #a9e7d2;
+}
+
+.family-dashboard-hero__context time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  color: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.family-dashboard-hero h1 {
+  max-width: 700px;
+  margin: 11px 0 8px;
+  color: #ffffff;
+  font-size: clamp(2.1rem, 4vw, 3.25rem);
+  line-height: 1.04;
+  letter-spacing: -0.05em;
+}
+
+.family-dashboard-hero p {
+  max-width: 660px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.family-dashboard-hero__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.family-dashboard-hero__actions .button {
+  min-height: 42px;
+  border-radius: 9px;
+}
+
+.family-dashboard-hero__actions .button--primary {
+  color: #123d32;
+  border: 0;
+  background: #bcebdc;
+  box-shadow: none;
+}
+
+.family-dashboard-hero__actions .button--primary:hover {
+  background: #d7f5ea;
+}
+
+.family-dashboard-hero__actions .button--secondary {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.family-feedback-reminder {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, #b97922 30%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, #e9a646 8%, var(--surface));
+  text-decoration: none;
+}
+
+.family-feedback-reminder > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #a7650e;
+  border-radius: 9px;
+  background: color-mix(in srgb, #e9a646 17%, var(--surface));
+}
+
+.family-feedback-reminder > div {
+  display: grid;
+  gap: 2px;
+}
+
+.family-feedback-reminder small {
+  color: var(--muted);
+}
+
+.family-dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.family-dashboard-metrics .card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 96px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.family-dashboard-metrics .card::after {
+  display: none;
+}
+
+.family-dashboard-metrics .card:hover {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  box-shadow: none;
+  transform: none;
+}
+
+.family-dashboard-metrics .family-dashboard-metric__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  flex: none;
+  color: var(--primary);
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.family-dashboard-metrics .family-dashboard-metric__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.family-dashboard-metrics .card > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.family-dashboard-metrics strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-overflow: ellipsis;
+}
+
+.family-dashboard-metrics .card > div > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.family-dashboard-metrics .family-dashboard-metric--attention {
+  border-color: color-mix(in srgb, #cc7a16 25%, var(--border));
+}
+
+.family-dashboard-metrics .family-dashboard-metric--attention .family-dashboard-metric__icon {
+  color: #a8610d;
+  background: color-mix(in srgb, #e8a443 14%, var(--surface));
+}
+
+.family-dashboard-primary-grid,
+.family-dashboard-secondary-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.family-dashboard-primary-grid {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+.family-dashboard-secondary-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+}
+
+.family-next-care-card,
+.family-active-bookings-card,
+.family-profile-overview {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.family-dashboard-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.family-dashboard-card-heading .eyebrow {
+  margin: 0;
+  font-size: 0.58rem;
+}
+
+.family-dashboard-card-heading h2 {
+  margin: 4px 0 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.025em;
+}
+
+.family-dashboard-card-heading > .lucide,
+.family-dashboard-card-heading > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 8px;
+  color: var(--primary);
+  border: 0;
+  border-radius: 9px;
+  background: var(--accent);
+}
+
+.family-next-care {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 13px;
+  margin-top: 15px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 11px;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+
+.family-next-care > .profile-avatar,
+.family-dashboard-profile-list .profile-avatar {
+  color: var(--on-primary);
+  background: var(--primary);
+  box-shadow: none;
+}
+
+.family-next-care > div:not(.family-next-care__schedule) {
+  display: grid;
+  gap: 3px;
+}
+
+.family-next-care > div span,
+.family-next-care > div small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.family-next-care__schedule {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.family-next-care__schedule span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.family-next-care > .button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 38px;
+  border-radius: 8px;
+}
+
+.family-dashboard-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.family-dashboard-empty > .lucide {
+  margin-bottom: 5px;
+  color: var(--primary);
+}
+
+.family-dashboard-empty strong {
+  color: var(--text);
+}
+
+.family-dashboard-booking-list,
+.family-dashboard-profile-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.family-dashboard-booking-list > a,
+.family-dashboard-profile-list > a {
+  min-height: 64px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.family-dashboard-booking-list > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+  padding: 10px 11px;
+}
+
+.family-dashboard-profile-list > a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 11px;
+}
+
+.family-dashboard-booking-list > a:hover,
+.family-dashboard-profile-list > a:hover {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  background: var(--surface-soft);
+  transform: none;
+}
+
+.family-dashboard-booking-list > a > div,
+.family-dashboard-profile-list > a > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.family-dashboard-booking-list span,
+.family-dashboard-booking-list small,
+.family-dashboard-profile-list small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.family-dashboard-booking-list small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.family-dashboard-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.family-dashboard-card-link:hover {
+  gap: 8px;
+}
+
+.family-dashboard-quick-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.family-dashboard-quick-actions > a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  min-height: 76px;
+  padding: 13px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  text-decoration: none;
+}
+
+.family-dashboard-quick-actions > a:hover {
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  box-shadow: none;
+  transform: none;
+}
+
+.family-dashboard-quick-actions > a > span {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  place-items: center;
+  color: var(--primary);
+  border: 0;
+  border-radius: 9px;
+  background: var(--accent);
+}
+
+.family-dashboard-quick-actions > a > div {
+  display: grid;
+  gap: 2px;
+}
+
+.family-dashboard-quick-actions small {
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.family-dashboard-quick-actions > a > .lucide {
+  color: var(--muted);
+}
+
+.family-dashboard-quick-actions > a:hover > .lucide {
+  color: var(--primary);
+  transform: none;
+}
+
+.family-dashboard-subscription {
+  display: grid;
+  gap: 13px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.family-dashboard-section-heading h2 {
+  margin: 5px 0 0;
+  font-size: 1.2rem;
+}
+
+.family-dashboard-subscription .subscription-current,
+.family-dashboard-subscription .subscription-status-card,
+.family-dashboard-subscription .current-plan-card {
+  margin: 0;
+}
+
+.family-dashboard-completed-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.family-dashboard-completed-note > .lucide {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  color: var(--primary);
+  border-radius: 9px;
+  background: var(--accent);
+}
+
+.family-dashboard-completed-note > div {
+  display: grid;
+  gap: 2px;
+}
+
+.family-dashboard-completed-note span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.family-dashboard-completed-note a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (max-width: 940px) {
+  .family-dashboard-hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .family-dashboard-hero__actions {
+    justify-content: flex-start;
+  }
+
+  .family-dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .family-dashboard-primary-grid,
+  .family-dashboard-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .family-dashboard-page {
+    padding-top: 16px;
+  }
+
+  .family-dashboard-hero {
+    padding: 24px 20px;
+    border-radius: 14px;
+  }
+
+  .family-dashboard-hero::before {
+    display: none;
+  }
+
+  .family-dashboard-hero__context {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .family-dashboard-hero__actions,
+  .family-dashboard-hero__actions .button {
+    width: 100%;
+  }
+
+  .family-dashboard-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .family-dashboard-metrics .card {
+    min-height: 82px;
+  }
+
+  .family-feedback-reminder,
+  .family-dashboard-completed-note {
+    grid-template-columns: auto 1fr;
+  }
+
+  .family-feedback-reminder > .lucide,
+  .family-dashboard-completed-note a {
+    grid-column: 1 / -1;
+  }
+
+  .family-next-care-card,
+  .family-active-bookings-card,
+  .family-profile-overview,
+  .family-dashboard-subscription {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-dashboard-page *,
+  .family-dashboard-page *::before,
+  .family-dashboard-page *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

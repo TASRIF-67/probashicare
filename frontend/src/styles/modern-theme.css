@@ -31,6 +31,9 @@
   --shadow-md: 0 16px 40px rgba(18, 35, 29, .08);
   --shadow-lg: 0 28px 80px rgba(18, 35, 29, .14);
   --shadow: var(--shadow-md);
+  --gradient-primary: linear-gradient(135deg, #176b55 0%, #15916f 100%);
+  --gradient-primary-soft: linear-gradient(135deg, var(--surface) 0%, var(--accent-family-soft) 100%);
+  --shadow-primary: 0 14px 34px rgba(23, 107, 85, .16);
 }
 
 [data-theme="dark"] {
@@ -58,6 +61,20 @@
   --shadow-sm: 0 8px 22px rgba(0, 0, 0, .2);
   --shadow-md: 0 18px 46px rgba(0, 0, 0, .27);
   --shadow-lg: 0 30px 90px rgba(0, 0, 0, .38);
+  --gradient-primary: linear-gradient(135deg, #56c89f 0%, #83e3c1 100%);
+  --gradient-primary-soft: linear-gradient(135deg, var(--surface) 0%, var(--accent-family-soft) 100%);
+  --shadow-primary: 0 14px 34px rgba(93, 214, 171, .11);
+}
+
+.caregiver-theme {
+  --gradient-primary: linear-gradient(135deg, #a9571b 0%, #d8873b 100%);
+  --gradient-primary-soft: linear-gradient(135deg, var(--surface) 0%, var(--accent-caregiver-soft) 100%);
+  --shadow-primary: 0 14px 34px rgba(173, 100, 34, .15);
+}
+
+[data-theme="dark"] .caregiver-theme {
+  --gradient-primary: linear-gradient(135deg, #dd934b 0%, #f1b979 100%);
+  --shadow-primary: 0 14px 34px rgba(232, 164, 95, .1);
 }
 
 html {
@@ -124,11 +141,14 @@ a {
   height: 68px;
   margin: 12px auto 0;
   padding: 0 14px 0 18px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 17px;
-  background: color-mix(in srgb, var(--surface) 91%, transparent);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(18px);
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  box-shadow:
+    0 14px 38px color-mix(in srgb, var(--text) 7%, transparent),
+    0 0 0 1px color-mix(in srgb, #ffffff 18%, transparent) inset;
+  backdrop-filter: blur(22px) saturate(125%);
+  -webkit-backdrop-filter: blur(22px) saturate(125%);
 }
 
 .logo {
@@ -143,7 +163,18 @@ a {
   height: 33px;
   color: var(--on-primary);
   border-radius: 10px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  background: var(--gradient-primary);
+  box-shadow:
+    0 7px 18px color-mix(in srgb, var(--primary) 18%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, .14);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.logo:hover .logo__mark {
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--primary) 24%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, .18);
+  transform: translateY(-1px) rotate(-3deg);
 }
 
 .app-nav {
@@ -166,7 +197,9 @@ a {
 
 .app-nav a[aria-current="page"] {
   color: var(--primary);
-  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
+  background: color-mix(in srgb, var(--accent) 76%, transparent);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--primary) 7%, transparent);
 }
 
 .app-nav a[aria-current="page"] .lucide {
@@ -378,13 +411,14 @@ a {
 
 .button--primary {
   color: var(--on-primary);
-  background: var(--primary);
-  box-shadow: 0 5px 14px color-mix(in srgb, var(--primary) 18%, transparent);
+  border-color: transparent;
+  background: var(--gradient-primary);
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .button--primary:hover:not(:disabled) {
-  background: var(--primary-hover);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 22%, transparent);
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-primary);
 }
 
 .button--secondary {

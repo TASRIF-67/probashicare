@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CloseIcon, MenuIcon } from "../Icons.jsx";
 import { Logo } from "../Logo.jsx";
@@ -7,6 +7,52 @@ import { ThemeToggle } from "../ThemeToggle.jsx";
 /** Displays responsive public navigation. @returns {import("react").ReactElement} Public header. @sideEffects Updates mobile-menu state. */
 export function PublicHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
+
+  useEffect(() => {
+    const sectionIds = [
+      "platform",
+      "how-it-works",
+      "care-network",
+      "plans",
+    ];
+    const sections = [];
+
+    for (const sectionId of sectionIds) {
+      const section = document.getElementById(sectionId);
+
+      if (section) {
+        sections.push(section);
+      }
+    }
+
+    /**
+     * Records the public section currently crossing the central viewport band.
+     * @param {IntersectionObserverEntry[]} entries - Browser visibility updates.
+     * @returns {void}
+     * @sideEffects Updates the active public navigation state.
+     */
+    function handleSectionVisibility(entries) {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        }
+      }
+    }
+
+    const observer = new IntersectionObserver(handleSectionVisibility, {
+      rootMargin: "-35% 0px -55% 0px",
+      threshold: 0,
+    });
+
+    for (const section of sections) {
+      observer.observe(section);
+    }
+
+    return function stopSectionObservation() {
+      observer.disconnect();
+    };
+  }, []);
 
   /** Closes the mobile menu. @returns {void} No value. @sideEffects Updates local state. */
   function closeMenu() {
@@ -27,16 +73,32 @@ export function PublicHeader() {
           className={isMenuOpen ? "public-nav public-nav--open" : "public-nav"}
           aria-label="Main navigation"
         >
-          <a href="#platform" onClick={closeMenu}>
+          <a
+            href="#platform"
+            aria-current={activeSection === "platform" ? "location" : undefined}
+            onClick={closeMenu}
+          >
             Platform
           </a>
-          <a href="#how-it-works" onClick={closeMenu}>
+          <a
+            href="#how-it-works"
+            aria-current={activeSection === "how-it-works" ? "location" : undefined}
+            onClick={closeMenu}
+          >
             How it works
           </a>
-          <a href="#care-network" onClick={closeMenu}>
+          <a
+            href="#care-network"
+            aria-current={activeSection === "care-network" ? "location" : undefined}
+            onClick={closeMenu}
+          >
             Care network
           </a>
-          <a href="#plans" onClick={closeMenu}>
+          <a
+            href="#plans"
+            aria-current={activeSection === "plans" ? "location" : undefined}
+            onClick={closeMenu}
+          >
             Plans
           </a>
         </nav>
