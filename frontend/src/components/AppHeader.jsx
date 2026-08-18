@@ -30,6 +30,7 @@ export function AppHeader() {
         <NavLink to="/caregivers"><UsersIcon size={17} /> Caregivers</NavLink>
         <NavLink to="/bookings"><CalendarIcon size={17} /> Bookings</NavLink>
         <NavLink to="/groceries"><ShoppingBasketIcon size={17} /> Essentials</NavLink>
+        <NavLink to="/doctor-appointments"><CalendarIcon size={17} /> Doctor visits</NavLink>
         <NavLink to="/subscription"><ShieldCheckIcon size={17} /> Subscription</NavLink>
         <NavLink to="/elderly-profiles"><UsersIcon size={17} /> Elderly profiles</NavLink>
       </nav>

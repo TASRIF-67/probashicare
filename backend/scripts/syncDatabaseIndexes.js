@@ -17,6 +17,7 @@ import { WellnessInsight } from "../models/WellnessInsight.js";
 import { CaregiverComplaint } from "../models/CaregiverComplaint.js";
 import { CaregiverReview } from "../models/CaregiverReview.js";
 import { GroceryRequest } from "../models/GroceryRequest.js";
+import { DoctorAppointment } from "../models/DoctorAppointment.js";
 
 /**
  * Synchronizes declared model indexes during controlled development migrations.
@@ -44,9 +45,10 @@ async function syncDatabaseIndexes() {
     CaregiverReview.syncIndexes(),
     CaregiverComplaint.syncIndexes(),
     GroceryRequest.syncIndexes(),
+    DoctorAppointment.syncIndexes(),
   ]);
   console.log(
-    "User, caregiver, booking, feedback, subscription, notification, assignment, wellness, and grocery indexes synchronized.",
+    "User, caregiver, booking, feedback, subscription, notification, assignment, wellness, grocery, and doctor appointment indexes synchronized.",
   );
 }
 
