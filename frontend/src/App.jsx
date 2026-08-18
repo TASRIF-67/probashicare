@@ -23,6 +23,7 @@ import { AdminCaregiverReviewPage } from "./pages/admin/AdminCaregiverReviewPage
 import { CaregiverApplicationPage } from "./pages/caregiver/CaregiverApplicationPage.jsx";
 import { CaregiverApplicationStatusPage } from "./pages/caregiver/CaregiverApplicationStatusPage.jsx";
 import { CaregiverDashboardPage } from "./pages/caregiver/CaregiverDashboardPage.jsx";
+import { CaregiverTasksPage } from "./pages/caregiver/CaregiverTasksPage.jsx";
 import { CaregiverProfilePage } from "./pages/caregiver/CaregiverProfilePage.jsx";
 import { FamilyBookingsPage } from "./pages/family/FamilyBookingsPage.jsx";
 import { CaregiverBookingsPage } from "./pages/caregiver/CaregiverBookingsPage.jsx";
@@ -93,6 +94,7 @@ export default function App() {
           </Route>
           <Route element={<CaregiverApplicationRoute allowedStatuses={["approved"]} />}>
             <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
+            <Route path="/caregiver/tasks" element={<CaregiverTasksPage />} />
             <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
             <Route path="/caregiver/bookings" element={<CaregiverBookingsPage />} />
             <Route path="/caregiver/reviews" element={<CaregiverReviewsPage />} />

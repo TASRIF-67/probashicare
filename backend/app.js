@@ -15,6 +15,7 @@ import wellnessReportRoutes from "./routes/wellnessReportRoutes.js";
 import wellnessInsightRoutes from "./routes/wellnessInsightRoutes.js";
 import groceryRequestRoutes from "./routes/groceryRequestRoutes.js";
 import storeLocatorRoutes from "./routes/storeLocatorRoutes.js";
+import careVisitRoutes from "./routes/careVisitRoutes.js";
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/wellness-reports", wellnessReportRoutes);
 app.use("/api/grocery-requests", groceryRequestRoutes);
 app.use("/api/store-locator", storeLocatorRoutes);
+app.use("/api/care-visit", careVisitRoutes);
 // Keep this broad `/api` router after specific feature routers because it applies
 // a family-only gate before checking its own wellness-insight route patterns.
 app.use("/api", wellnessInsightRoutes);

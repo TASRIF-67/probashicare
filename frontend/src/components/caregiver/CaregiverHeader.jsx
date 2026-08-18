@@ -36,6 +36,10 @@ export function CaregiverHeader() {
             <CalendarIcon size={17} />
             Bookings
           </NavLink>
+          <NavLink to="/caregiver/tasks">
+            <ClipboardListIcon size={17} />
+            Tasks
+          </NavLink>
           <NavLink to="/caregiver/wellness-reports">
             <ClipboardListIcon size={17} />
             Reports
