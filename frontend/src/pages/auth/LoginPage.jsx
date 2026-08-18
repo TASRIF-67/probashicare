@@ -17,6 +17,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useAuthRedirect } from "../../hooks/useAuthRedirect.js";
 import { normalizeApiError } from "../../services/api.js";
+import { authService } from "../../services/authService.js";
 
 /**
  * Renders family, caregiver, and administrator email login with Family Google login.
@@ -34,7 +35,10 @@ export function LoginPage() {
     password: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [resendFeedback, setResendFeedback] = useState("");
   const { login, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const redirectAfterLogin = useAuthRedirect();
@@ -55,6 +59,11 @@ export function LoginPage() {
         [fieldName]: fieldValue,
       };
     });
+
+    if (fieldName === "email") {
+      setVerificationRequired(false);
+      setResendFeedback("");
+    }
   }
 
   /**
@@ -67,6 +76,8 @@ export function LoginPage() {
     event.preventDefault();
     setIsSubmitting(true);
     setError("");
+    setVerificationRequired(false);
+    setResendFeedback("");
 
     try {
       const user = await login(form);
@@ -75,8 +86,41 @@ export function LoginPage() {
     } catch (requestError) {
       const normalizedError = normalizeApiError(requestError);
       setError(normalizedError.message);
+      setVerificationRequired(
+        normalizedError.details?.code
+          === "EMAIL_VERIFICATION_REQUIRED",
+      );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  /**
+   * Requests another verification email for the entered account address.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the resend API and updates visible feedback.
+   */
+  async function handleResendVerification() {
+    const email = form.email.trim();
+
+    if (!email) {
+      setResendFeedback(
+        "Enter your account email before requesting another link.",
+      );
+      return;
+    }
+
+    setIsResending(true);
+    setResendFeedback("");
+
+    try {
+      const result = await authService.resendVerification(email);
+      setResendFeedback(result.message);
+    } catch (requestError) {
+      const normalizedError = normalizeApiError(requestError);
+      setResendFeedback(normalizedError.message);
+    } finally {
+      setIsResending(false);
     }
   }
 
@@ -162,6 +206,34 @@ export function LoginPage() {
         {error && (
           <div className="alert alert--error" role="alert">
             {error}
+          </div>
+        )}
+
+        {verificationRequired && (
+          <div className="auth-resend-panel">
+            <div>
+              <strong>Did not receive the email?</strong>
+              <p>
+                Request a new verification link for
+                {" "}
+                {isCaregiverMode
+                  ? "this caregiver account"
+                  : "this family account"}.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              isLoading={isResending}
+              onClick={handleResendVerification}
+            >
+              Resend verification email
+            </Button>
+            {resendFeedback && (
+              <p className="auth-resend-feedback" role="status">
+                {resendFeedback}
+              </p>
+            )}
           </div>
         )}
 
