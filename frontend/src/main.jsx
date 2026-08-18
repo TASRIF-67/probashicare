@@ -10,6 +10,8 @@ import "./styles/global.css";
 import "./styles/modern-theme.css";
 import "./styles/grocery.css";
 import "./styles/dashboard.css";
+import "./styles/navigation.css";
+import "./styles/doctor-appointments.css";
 
 /**
  * Mounts the React application with its global providers.

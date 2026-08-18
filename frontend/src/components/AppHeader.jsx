@@ -13,6 +13,53 @@ import {
   UsersIcon,
 } from "./Icons.jsx";
 import { NotificationBell } from "./notifications/NotificationBell.jsx";
+import { NavigationMenu } from "./NavigationMenu.jsx";
+
+const FAMILY_PRIMARY_LINKS = [
+  {
+    to: "/dashboard",
+    label: "Dashboard",
+    icon: DashboardIcon,
+  },
+  {
+    to: "/caregivers",
+    label: "Caregivers",
+    icon: UsersIcon,
+  },
+  {
+    to: "/bookings",
+    label: "Bookings",
+    icon: CalendarIcon,
+  },
+  {
+    to: "/doctor-appointments",
+    label: "Doctor visits",
+    icon: CalendarIcon,
+  },
+];
+
+const FAMILY_SECONDARY_LINKS = [
+  {
+    to: "/groceries",
+    label: "Essentials",
+    icon: ShoppingBasketIcon,
+  },
+  {
+    to: "/subscription",
+    label: "Subscription",
+    icon: ShieldCheckIcon,
+  },
+  {
+    to: "/elderly-profiles",
+    label: "Elderly profiles",
+    icon: UsersIcon,
+  },
+];
+
+const ALL_FAMILY_LINKS = [
+  ...FAMILY_PRIMARY_LINKS,
+  ...FAMILY_SECONDARY_LINKS,
+];
 
 /**
  * Renders authenticated family navigation and account actions.
@@ -25,15 +72,30 @@ export function AppHeader() {
   return (
     <header className="topbar app-topbar">
       <Logo />
-      <nav className="app-nav" aria-label="Family navigation">
-        <NavLink to="/dashboard"><DashboardIcon size={17} /> Dashboard</NavLink>
-        <NavLink to="/caregivers"><UsersIcon size={17} /> Caregivers</NavLink>
-        <NavLink to="/bookings"><CalendarIcon size={17} /> Bookings</NavLink>
-        <NavLink to="/groceries"><ShoppingBasketIcon size={17} /> Essentials</NavLink>
-        <NavLink to="/doctor-appointments"><CalendarIcon size={17} /> Doctor visits</NavLink>
-        <NavLink to="/subscription"><ShieldCheckIcon size={17} /> Subscription</NavLink>
-        <NavLink to="/elderly-profiles"><UsersIcon size={17} /> Elderly profiles</NavLink>
+      <nav
+        className="app-nav app-nav--primary"
+        aria-label="Family navigation"
+      >
+        {FAMILY_PRIMARY_LINKS.map((link) => {
+          const LinkIcon = link.icon;
+
+          return (
+            <NavLink key={link.to} to={link.to}>
+              <LinkIcon size={17} />
+              {link.label}
+            </NavLink>
+          );
+        })}
       </nav>
+      <NavigationMenu
+        className="app-nav-menu--desktop"
+        links={FAMILY_SECONDARY_LINKS}
+      />
+      <NavigationMenu
+        className="app-nav-menu--mobile"
+        links={ALL_FAMILY_LINKS}
+        label="Menu"
+      />
       <div className="topbar__actions">
         <NavLink
           className="icon-button"
@@ -45,7 +107,10 @@ export function AppHeader() {
         </NavLink>
         <NotificationBell />
         <ThemeToggle />
-        <Button variant="ghost" onClick={logout}><LogOutIcon size={17} /> Sign out</Button>
+        <Button variant="ghost" onClick={logout}>
+          <LogOutIcon size={17} />
+          Sign out
+        </Button>
       </div>
     </header>
   );
