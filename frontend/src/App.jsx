@@ -34,6 +34,8 @@ import { FamilySubscriptionPage } from "./pages/family/FamilySubscriptionPage.js
 import { NotificationsPage } from "./pages/NotificationsPage.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
 import { FamilyAccountPage } from "./pages/family/FamilyAccountPage.jsx";
+import { DoctorAppointmentPlanner } from "./components/doctor/DoctorAppointmentPlanner.jsx";
+import { CaregiverDoctorVisits } from "./components/doctor/CaregiverDoctorVisits.jsx";
 
 /**
  * Declares public and role-protected application routes.
@@ -60,6 +62,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/caregivers" element={<CaregiverBrowsePage />} />
         <Route path="/bookings" element={<FamilyBookingsPage />} />
+        <Route path="/doctor-appointments" element={<DoctorAppointmentPlanner />} />
         <Route path="/subscription" element={<FamilySubscriptionPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/elderly-profiles/:profileId" element={<ElderlyProfileDetailPage />} />
@@ -89,6 +92,7 @@ export default function App() {
             <Route path="/caregiver/dashboard" element={<CaregiverDashboardPage />} />
             <Route path="/caregiver/profile" element={<CaregiverProfilePage />} />
             <Route path="/caregiver/bookings" element={<CaregiverBookingsPage />} />
+            <Route path="/caregiver/doctor-visits" element={<CaregiverDoctorVisits />} />
             <Route path="/caregiver/notifications" element={<NotificationsPage />} />
             <Route path="/caregiver/wellness-reports" element={<WellnessReportListPage />} />
             <Route path="/caregiver/wellness-reports/new" element={<WellnessReportEditorPage />} />

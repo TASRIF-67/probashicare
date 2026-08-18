@@ -33,6 +33,7 @@ const notificationSchema = new mongoose.Schema(
         "booking-cancelled",
         "booking-completed",
         "wellness-report-submitted",
+        "doctor-appointment-assigned",
       ],
       required: true,
       index: true,
