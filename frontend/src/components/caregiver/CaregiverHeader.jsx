@@ -27,11 +27,6 @@ const CAREGIVER_PRIMARY_LINKS = [
     icon: CalendarIcon,
   },
   {
-    to: "/caregiver/tasks",
-    label: "Tasks",
-    icon: ClipboardListIcon,
-  },
-  {
     to: "/caregiver/wellness-reports",
     label: "Reports",
     icon: ClipboardListIcon,
@@ -39,6 +34,11 @@ const CAREGIVER_PRIMARY_LINKS = [
 ];
 
 const CAREGIVER_SECONDARY_LINKS = [
+  {
+    to: "/caregiver/tasks",
+    label: "Care tasks",
+    icon: ClipboardListIcon,
+  },
   {
     to: "/caregiver/doctor-visits",
     label: "Doctor visits",
@@ -98,6 +98,7 @@ export function CaregiverHeader() {
           <NavigationMenu
             className="app-nav-menu--desktop"
             links={CAREGIVER_SECONDARY_LINKS}
+            label="Care tools"
           />
           <NavigationMenu
             className="app-nav-menu--mobile"
@@ -109,9 +110,14 @@ export function CaregiverHeader() {
       <div className="topbar__actions">
         <NotificationBell />
         <ThemeToggle />
-        <Button variant="ghost" onClick={logout}>
+        <Button
+          className="app-signout-button"
+          variant="ghost"
+          title="Sign out"
+          onClick={logout}
+        >
           <LogOutIcon size={17} />
-          Sign out
+          <span>Sign out</span>
         </Button>
       </div>
     </header>

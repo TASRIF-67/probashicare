@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   dismissNotification,
   listNotifications,
+  markAllNotificationsRead,
   markNotificationRead,
 } from "../controllers/notificationController.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -15,6 +16,10 @@ const router = Router();
 
 router.use(asyncHandler(requireAuth));
 router.get("/", asyncHandler(listNotifications));
+router.patch(
+  "/read-all",
+  asyncHandler(markAllNotificationsRead),
+);
 router.patch(
   "/:notificationId/read",
   validateSubscriptionObjectId("notificationId"),

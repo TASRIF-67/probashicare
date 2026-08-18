@@ -31,14 +31,14 @@ const FAMILY_PRIMARY_LINKS = [
     label: "Bookings",
     icon: CalendarIcon,
   },
+];
+
+const FAMILY_SECONDARY_LINKS = [
   {
     to: "/doctor-appointments",
     label: "Doctor visits",
     icon: CalendarIcon,
   },
-];
-
-const FAMILY_SECONDARY_LINKS = [
   {
     to: "/groceries",
     label: "Essentials",
@@ -90,6 +90,7 @@ export function AppHeader() {
       <NavigationMenu
         className="app-nav-menu--desktop"
         links={FAMILY_SECONDARY_LINKS}
+        label="Care tools"
       />
       <NavigationMenu
         className="app-nav-menu--mobile"
@@ -98,7 +99,7 @@ export function AppHeader() {
       />
       <div className="topbar__actions">
         <NavLink
-          className="icon-button"
+          className="icon-button app-account-link"
           to="/account"
           aria-label="My account"
           title="My account"
@@ -107,9 +108,14 @@ export function AppHeader() {
         </NavLink>
         <NotificationBell />
         <ThemeToggle />
-        <Button variant="ghost" onClick={logout}>
+        <Button
+          className="app-signout-button"
+          variant="ghost"
+          title="Sign out"
+          onClick={logout}
+        >
           <LogOutIcon size={17} />
-          Sign out
+          <span>Sign out</span>
         </Button>
       </div>
     </header>

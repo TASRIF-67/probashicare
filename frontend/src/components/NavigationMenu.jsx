@@ -20,6 +20,26 @@ function hasActiveDestination(pathname, links) {
 }
 
 /**
+ * Finds the visible label for the active dropdown destination.
+ * @param {string} pathname - Current browser route.
+ * @param {Array<{to: string, label: string}>} links - Routes shown inside the menu.
+ * @returns {string} Active destination label, or an empty string when none match.
+ * @sideEffects None.
+ */
+function getActiveDestinationLabel(pathname, links) {
+  for (const link of links) {
+    if (
+      pathname === link.to
+      || pathname.startsWith(link.to + "/")
+    ) {
+      return link.label;
+    }
+  }
+
+  return "";
+}
+
+/**
  * Renders an accessible compact navigation menu for secondary or narrow-screen links.
  * @param {{links: Array<{to: string, label: string, icon: import("react").ComponentType<{size?: number}>}>, label?: string, className?: string}} props - Menu links, visible label, and optional style class.
  * @returns {import("react").ReactElement} Menu trigger and dropdown links.
@@ -37,6 +57,11 @@ export function NavigationMenu({
     location.pathname,
     links,
   );
+  const activeDestinationLabel = getActiveDestinationLabel(
+    location.pathname,
+    links,
+  );
+  const visibleLabel = activeDestinationLabel || label;
 
   useEffect(() => {
     if (!isOpen) {
@@ -114,7 +139,11 @@ export function NavigationMenu({
         onClick={toggleMenu}
       >
         <MenuIcon size={17} />
-        <span>{label}</span>
+        <span>{visibleLabel}</span>
+        <span
+          className="app-nav-menu__chevron"
+          aria-hidden="true"
+        />
       </button>
 
       {isOpen && (
