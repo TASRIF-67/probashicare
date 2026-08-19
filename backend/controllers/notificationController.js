@@ -74,6 +74,44 @@ export async function markNotificationRead(request, response) {
 }
 
 /**
+ * PATCH /api/notifications/read-all
+ * Auth: any authenticated user; recipient comes from request.user.
+ * Body/query/params: unused.
+ * Success 200: number of caller-owned unread notifications changed to read.
+ * @param {import("express").Request} request - Authenticated notification owner.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects Updates all unread notifications owned by the caller.
+ */
+export async function markAllNotificationsRead(
+  request,
+  response,
+) {
+  const readAt = new Date();
+  const result = await Notification.updateMany(
+    {
+      recipient: request.user._id,
+      isRead: false,
+    },
+    {
+      $set: {
+        isRead: true,
+        readAt,
+      },
+    },
+  );
+
+  response.json({
+    success: true,
+    data: {
+      modifiedCount: result.modifiedCount,
+      unreadCount: 0,
+      readAt,
+    },
+  });
+}
+
+/**
  * PATCH /api/notifications/:notificationId/dismiss
  * Auth: authenticated notification owner.
  * Params: notificationId; body: validated dismissal hours.

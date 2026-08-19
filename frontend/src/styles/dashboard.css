@@ -202,13 +202,22 @@
   min-width: 0;
 }
 
-.family-dashboard-metrics strong {
+.family-dashboard-metrics .family-dashboard-metric__value {
   overflow: hidden;
   color: var(--text);
   font-size: 1.35rem;
   line-height: 1.1;
   letter-spacing: -0.035em;
   text-overflow: ellipsis;
+}
+
+/* CountUp creates a nested span. It must inherit the metric value typography
+   instead of the older global rule used for descriptive metric labels. */
+.family-dashboard-metrics .family-dashboard-metric__value > span {
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
 }
 
 .family-dashboard-metrics .card > div > span {

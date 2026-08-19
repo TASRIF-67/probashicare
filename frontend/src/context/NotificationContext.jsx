@@ -112,8 +112,9 @@ export function NotificationProvider({ children }) {
    * @sideEffects Calls the bulk API and updates context state.
    */
   const markAllAsRead = useCallback(async () => {
-    await notificationService.markAllAsRead();
-    const readAt = new Date().toISOString();
+    const data = await notificationService.markAllAsRead();
+    const readAt =
+      data.readAt || new Date().toISOString();
 
     setNotifications((current) => {
       const updated = [];
@@ -121,6 +122,7 @@ export function NotificationProvider({ children }) {
       for (const notification of current) {
         updated.push({
           ...notification,
+          isRead: true,
           readAt: notification.readAt || readAt,
         });
       }

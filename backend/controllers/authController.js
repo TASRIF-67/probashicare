@@ -105,9 +105,11 @@ export async function caregiverSignup(request, response) {
     isVerified: false,
   });
 
+  let deliveryResult;
+
   try {
     await CaregiverProfile.create({ userId: user._id, phone, applicationStatus: "draft" });
-    await issueVerificationEmail(user);
+    deliveryResult = await issueVerificationEmail(user);
   } catch (error) {
     await Promise.all([
       User.deleteOne({ _id: user._id }),
@@ -117,9 +119,21 @@ export async function caregiverSignup(request, response) {
     throw error;
   }
 
+  const usedDevelopmentConsole =
+    deliveryResult?.messageId === "development-console-delivery";
+  const message = usedDevelopmentConsole
+    ? "SMTP is not configured. Open the caregiver verification link printed in the backend terminal."
+    : "Check your inbox to verify your caregiver account.";
+
   response.status(201).json({
     success: true,
-    data: { message: "Check your inbox to verify your caregiver account.", email: user.email },
+    data: {
+      message,
+      email: user.email,
+      deliveryMethod: usedDevelopmentConsole
+        ? "development-console"
+        : "email",
+    },
   });
 }
 
@@ -185,7 +199,14 @@ export async function login(request, response) {
     throw new ApiError(403, "Authentication for this role is not available yet.");
   }
   if (!user.isVerified) {
-    throw new ApiError(403, "Verify your email before signing in.");
+    throw new ApiError(
+      403,
+      "Verify your email before signing in.",
+      {
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        role: user.role,
+      },
+    );
   }
 
   await completeLogin(response, user);

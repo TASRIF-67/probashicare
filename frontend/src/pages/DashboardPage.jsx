@@ -182,11 +182,15 @@ function formatToday(date) {
  */
 function DashboardMetricValue({ value, reduceMotion }) {
   if (typeof value !== "number" || reduceMotion) {
-    return <strong>{value}</strong>;
+    return (
+      <strong className="family-dashboard-metric__value">
+        {value}
+      </strong>
+    );
   }
 
   return (
-    <strong>
+    <strong className="family-dashboard-metric__value">
       <CountUp
         end={value}
         duration={0.75}

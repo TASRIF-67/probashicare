@@ -20,3 +20,14 @@ export function normalizeApiError(error) {
     status: error?.response?.status || null,
   };
 }
+
+export function buildCareTaskPayload(task) {
+  return {
+    title: task.title,
+    instructions: task.instructions || "",
+    priority: task.priority || "medium",
+    visitDate: task.visitDate || "",
+    elderlyProfileId: task.elderlyProfileId,
+    caregiverUserId: task.caregiverUserId || undefined,
+  };
+}

@@ -64,6 +64,18 @@ export function SignupPage({ initialMode = "family" }) {
     family: "",
     caregiver: "",
   });
+  const [resendStateByMode, setResendStateByMode] = useState({
+    family: {
+      isSending: false,
+      message: "",
+      error: "",
+    },
+    caregiver: {
+      isSending: false,
+      message: "",
+      error: "",
+    },
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { loginWithGoogle } = useAuth();
   const { setAccentMode } = useTheme();
@@ -160,6 +172,16 @@ export function SignupPage({ initialMode = "family" }) {
           [mode]: data.message,
         };
       });
+      setResendStateByMode(function clearOldResendState(current) {
+        return {
+          ...current,
+          [mode]: {
+            isSending: false,
+            message: "",
+            error: "",
+          },
+        };
+      });
     } catch (requestError) {
       const normalizedError = normalizeApiError(requestError);
 
@@ -222,11 +244,66 @@ export function SignupPage({ initialMode = "family" }) {
     });
   }
 
+  /**
+   * Requests a replacement verification email for the completed signup mode.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the resend API and updates visible delivery feedback.
+   */
+  async function handleResendVerification() {
+    const activeForm = mode === "family"
+      ? familyForm
+      : caregiverForm;
+    const email = activeForm.email.trim();
+
+    setResendStateByMode(function markResendBusy(current) {
+      return {
+        ...current,
+        [mode]: {
+          isSending: true,
+          message: "",
+          error: "",
+        },
+      };
+    });
+
+    try {
+      const result = await authService.resendVerification(email);
+
+      setResendStateByMode(function showResendSuccess(current) {
+        return {
+          ...current,
+          [mode]: {
+            isSending: false,
+            message: result.message,
+            error: "",
+          },
+        };
+      });
+    } catch (requestError) {
+      const normalizedError = normalizeApiError(requestError);
+
+      setResendStateByMode(function showResendError(current) {
+        return {
+          ...current,
+          [mode]: {
+            isSending: false,
+            message: "",
+            error: normalizedError.message,
+          },
+        };
+      });
+    }
+  }
+
   const copy = SIGNUP_COPY[mode];
   const errors = errorsByMode[mode];
   const message = messagesByMode[mode];
+  const resendState = resendStateByMode[mode];
   const isFamilyMode = mode === "family";
   const loginPath = isFamilyMode ? "/login" : "/login?mode=caregiver";
+  const verificationEmail = isFamilyMode
+    ? familyForm.email
+    : caregiverForm.email;
 
   return (
     <AuthLayout
@@ -279,10 +356,40 @@ export function SignupPage({ initialMode = "family" }) {
             <div>
               <h3>Check your inbox</h3>
               <p>{message}</p>
+              <p className="auth-verification-recipient">
+                Verification address:
+                {" "}
+                <strong>{verificationEmail}</strong>
+              </p>
             </div>
-            <Link className="button button--primary" to={loginPath}>
-              Return to sign in
-            </Link>
+            {resendState.message && (
+              <p
+                className="auth-resend-feedback auth-resend-feedback--success"
+                role="status"
+              >
+                {resendState.message}
+              </p>
+            )}
+            {resendState.error && (
+              <p
+                className="auth-resend-feedback auth-resend-feedback--error"
+                role="alert"
+              >
+                {resendState.error}
+              </p>
+            )}
+            <div className="auth-verification-actions">
+              <Button
+                variant="secondary"
+                isLoading={resendState.isSending}
+                onClick={handleResendVerification}
+              >
+                Resend verification email
+              </Button>
+              <Link className="button button--primary" to={loginPath}>
+                Return to sign in
+              </Link>
+            </div>
           </div>
         ) : (
           <>
