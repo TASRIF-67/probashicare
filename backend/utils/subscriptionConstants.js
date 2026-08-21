@@ -17,7 +17,9 @@ export const PAYMENT_METHODS = [
   "test_card",
   "test_mobile_banking",
   "test_wallet",
+  "stripe_checkout",
 ];
+export const PAYMENT_PROVIDERS = ["prototype", "stripe"];
 export const DURATION_TYPES = ["hours", "months", "years"];
 export const ENTITLEMENTS = {
   CAREGIVER_BOOKING: "caregiver_booking",

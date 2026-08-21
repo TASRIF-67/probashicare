@@ -3,6 +3,7 @@ import {
   ACCESS_LEVELS,
   DURATION_TYPES,
   PAYMENT_METHODS,
+  PAYMENT_PROVIDERS,
   PAYMENT_STATUSES,
   PREMIUM_ENTITLEMENTS,
   SUBSCRIPTION_PLAN_CODES,
@@ -95,6 +96,12 @@ const subscriptionPaymentSchema = new mongoose.Schema(
       enum: PAYMENT_METHODS,
       required: true,
     },
+    provider: {
+      type: String,
+      enum: PAYMENT_PROVIDERS,
+      default: "prototype",
+      required: true,
+    },
     status: {
       type: String,
       enum: PAYMENT_STATUSES,
@@ -133,6 +140,18 @@ const subscriptionPaymentSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    stripeCheckoutSessionId: {
+      type: String,
+      trim: true,
+    },
+    stripePaymentIntentId: {
+      type: String,
+      trim: true,
+    },
+    stripeEventId: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -152,6 +171,33 @@ subscriptionPaymentSchema.index({ family: 1, createdAt: -1 });
 subscriptionPaymentSchema.index({ family: 1, status: 1 });
 subscriptionPaymentSchema.index({ status: 1, createdAt: -1 });
 subscriptionPaymentSchema.index({ status: 1, completedAt: -1 });
+subscriptionPaymentSchema.index(
+  { stripeCheckoutSessionId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      stripeCheckoutSessionId: { $type: "string" },
+    },
+  },
+);
+subscriptionPaymentSchema.index(
+  { stripePaymentIntentId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      stripePaymentIntentId: { $type: "string" },
+    },
+  },
+);
+subscriptionPaymentSchema.index(
+  { stripeEventId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      stripeEventId: { $type: "string" },
+    },
+  },
+);
 
 export const SubscriptionPayment = mongoose.model(
   "SubscriptionPayment",

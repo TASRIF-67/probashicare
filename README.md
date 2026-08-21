@@ -177,19 +177,20 @@ npm run db:sync-indexes --prefix backend
 npm run db:sync-subscription-plans --prefix backend
 ```
 
-## Family Subscription and Prototype Payments
+## Family Subscription and Stripe Sandbox Payments
 
 One Family subscription covers all elderly profiles linked to that account.
 Core access preserves stored care information and ongoing-care actions.
 Premium unlocks new caregiver bookings and reusable wellness entitlements.
 
-The explicit free trial lasts seven days. Prototype plans are Day Pass,
-Monthly, and Yearly, with manual renewal only.
+The explicit free trial lasts seven days. Plans are Day Pass, Monthly, and
+Yearly, with manual renewal only.
 
-This is not a real payment gateway. Never enter real financial information.
-Prototype BDT prices are demonstration values. Configure backend/.env with
-PROTOTYPE_PAYMENTS_ENABLED=true, FAMILY_TRIAL_DAYS=7, and
-SUBSCRIPTION_CURRENCY=BDT. See FAMILY_SUBSCRIPTION_DOCUMENTATION.md.
+Stripe-hosted Checkout is available in sandbox mode. Test transactions do not
+move money, and Premium is activated only after a signed Stripe webhook. The
+older prototype simulator remains an optional local fallback. Never enter real
+card information while using test keys. See FAMILY_SUBSCRIPTION_DOCUMENTATION.md
+for the required test keys and Stripe CLI command.
 
 Families manage plans and paginated payment history from the Subscription page.
 The My account page remains focused on identity and security. Administrators can
@@ -200,6 +201,7 @@ Run subscription verification with:
 
 ```bash
 npm run test:subscriptions --prefix backend
+npm run test:stripe --prefix backend
 npm run test:subscriptions:integration --prefix backend
 ```
 

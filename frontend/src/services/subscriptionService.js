@@ -1,9 +1,9 @@
 ﻿import { api } from "./api.js";
 
-/** Loads backend-controlled plans. @returns {Promise<object[]>} Active plans. @sideEffects Calls the API. */
+/** Loads plans and available payment providers. @returns {Promise<{plans: object[], paymentOptions: object}>} Plan catalog. @sideEffects Calls the API. */
 async function listPlans() {
   const response = await api.get("/subscriptions/plans");
-  return response.data.data.plans;
+  return response.data.data;
 }
 
 /** Loads current Family access and reminder. @returns {Promise<object>} Subscription state. @sideEffects Calls the API and may synchronize expiry/reminders. */
@@ -48,6 +48,46 @@ async function cancelPayment(id) {
   return response.data.data;
 }
 
+/**
+ * Creates a Stripe-hosted sandbox Checkout Session.
+ * @param {string} planCode - Backend-controlled plan code.
+ * @returns {Promise<{payment: object, checkoutUrl: string, sessionId: string}>} Checkout details.
+ * @sideEffects Calls the API and creates a pending payment.
+ */
+async function createStripeCheckout(planCode) {
+  const response = await api.post("/subscriptions/stripe/checkout", {
+    planCode,
+  });
+  return response.data.data;
+}
+
+/**
+ * Loads the local result written by the verified Stripe webhook.
+ * @param {string} sessionId - Stripe Checkout Session ID.
+ * @returns {Promise<object>} Caller-owned local payment.
+ * @sideEffects Calls the API.
+ */
+async function getStripeCheckoutStatus(sessionId) {
+  const encodedSessionId = encodeURIComponent(sessionId);
+  const response = await api.get(
+    "/subscriptions/stripe/checkouts/" + encodedSessionId,
+  );
+  return response.data.data.payment;
+}
+
+/**
+ * Cancels an open caller-owned Stripe Checkout Session.
+ * @param {string} paymentId - Local SubscriptionPayment ID.
+ * @returns {Promise<object>} Cancelled or terminal local payment.
+ * @sideEffects Calls Stripe through the backend and updates MongoDB.
+ */
+async function cancelStripeCheckout(paymentId) {
+  const response = await api.post(
+    "/subscriptions/stripe/payments/" + paymentId + "/cancel",
+  );
+  return response.data.data.payment;
+}
+
 /** Lists caller-owned payment history. @param {{page?: number, limit?: number}} [options] - Pagination options. @returns {Promise<object>} Payment history. @sideEffects Calls the API. */
 async function listPayments(options = {}) {
   const response = await api.get("/subscriptions/payments", { params: options });
@@ -70,6 +110,9 @@ export const subscriptionService = {
   simulateSuccess,
   simulateFailure,
   cancelPayment,
+  createStripeCheckout,
+  getStripeCheckoutStatus,
+  cancelStripeCheckout,
   listPayments,
   dismissReminder,
 };

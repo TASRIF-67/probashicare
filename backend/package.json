@@ -17,6 +17,7 @@
     "test:bookings:integration": "node scripts/smokeBookings.js",
     "test:caregiver-feedback": "node scripts/smokeBookings.js",
     "test:subscriptions": "node --test test/subscriptionPeriod.test.js test/subscriptionAccess.test.js test/subscriptionPaymentHelpers.test.js",
+    "test:stripe": "node --test test/stripePaymentHelpers.test.js",
     "test:subscriptions:integration": "node scripts/smokeSubscriptions.js",
     "test:wellness-reports": "node scripts/smokeWellnessReports.js",
     "test:wellness-insights": "node --test test/wellnessInsights.test.js",
@@ -39,6 +40,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.1",
     "multer": "^2.2.0",
-    "nodemailer": "^7.0.3"
+    "nodemailer": "^7.0.3",
+    "stripe": "^22.5.0"
   }
 }

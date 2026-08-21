@@ -12,6 +12,7 @@ import bookingRoutes from "./routes/bookingRoutes.js";
 import doctorAppointmentRoutes from "./routes/doctorAppointmentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import stripeWebhookRoutes from "./routes/stripeWebhookRoutes.js";
 import wellnessReportRoutes from "./routes/wellnessReportRoutes.js";
 import wellnessInsightRoutes from "./routes/wellnessInsightRoutes.js";
 import groceryRequestRoutes from "./routes/groceryRequestRoutes.js";
@@ -22,6 +23,13 @@ const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: env.clientUrl, credentials: true }));
+// Stripe verifies the exact bytes it signed. This route must therefore run
+// before the general JSON parser changes the request body into an object.
+app.use(
+  "/api/subscriptions/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhookRoutes,
+);
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 

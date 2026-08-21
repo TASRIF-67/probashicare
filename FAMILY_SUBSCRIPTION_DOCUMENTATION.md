@@ -1,4 +1,4 @@
-# Family Subscription, Premium Access, and Prototype Payments
+# Family Subscription, Premium Access, and Stripe Sandbox Payments
 
 ## Purpose
 
@@ -40,12 +40,41 @@ Configure backend/.env:
 
 Simulation must be disabled outside development.
 
+## Stripe sandbox setup
+
+Create a Stripe account, select a sandbox, and copy the test secret key. Then
+configure backend/.env:
+
+    STRIPE_PAYMENTS_ENABLED=true
+    STRIPE_SECRET_KEY=sk_test_your_test_secret
+    STRIPE_WEBHOOK_SECRET=whsec_from_stripe_cli
+    SUBSCRIPTION_CURRENCY=BDT
+
+Install and sign in to Stripe CLI, then forward signed events while the backend
+is running:
+
+    stripe login
+    stripe listen --forward-to localhost:5000/api/subscriptions/stripe/webhook
+
+Copy the displayed whsec value into STRIPE_WEBHOOK_SECRET and restart the
+backend. Use 4242 4242 4242 4242, any future expiry date, and any three-digit
+CVC. Test mode never moves real money and real card details must not be used.
+
+The backend creates amounts from SubscriptionPlan records and converts BDT to
+Stripe minor units. Browser redirects never activate access. Only a verified
+checkout.session.completed event can complete the local transaction and extend
+Premium access.
+
 ## APIs
 
     GET    /api/subscriptions/plans
     GET    /api/subscriptions/me
     POST   /api/subscriptions/trial/activate
     POST   /api/subscriptions/purchase
+    POST   /api/subscriptions/stripe/checkout
+    GET    /api/subscriptions/stripe/checkouts/:sessionId
+    POST   /api/subscriptions/stripe/payments/:paymentId/cancel
+    POST   /api/subscriptions/stripe/webhook
     PATCH  /api/subscriptions/me/cancel
     GET    /api/subscriptions/payments
     POST   /api/subscriptions/payments/:paymentId/simulate-success
@@ -101,27 +130,31 @@ authoritative.
 ## Frontend
 
 The Family page is /subscription. It shows access, expiry, trial, plans,
-benefits, prototype checkout, and payment history.
+benefits, Stripe sandbox checkout, simulator fallback, and payment history.
 
 ## Verification
 
     npm.cmd run test:subscriptions --prefix backend
+    npm.cmd run test:stripe --prefix backend
     npm.cmd run test:subscriptions:integration --prefix backend
     npm.cmd run test:bookings --prefix backend
     npm.cmd run build --prefix frontend
 
 Integration testing requires development MongoDB and enabled simulation.
 
-## Real provider integration
+## Provider behavior
 
-A future gateway should replace simulation actions in
-prototypePaymentService.js. A verified webhook should locate the pending
-payment and reuse idempotent transactional activation. Secrets stay backend
-only and real financial credentials must never be stored.
+Stripe Checkout uses the official backend SDK and a hosted card form. The
+webhook route receives raw request bytes before express.json so Stripe signature
+verification remains valid. Completed Session amount, currency, ownership, and
+local payment identifiers must all match before activation. Repeated webhook
+delivery remains idempotent through the completed payment state and unique
+provider identifiers.
 
 ## Limitations
 
-- No real provider or recurring billing
+- Stripe is integrated in sandbox mode; live merchant activation is not configured
+- No recurring automatic billing
 - No functional refunds
 - Lazy reminders instead of a scheduled worker
 - Demonstration BDT prices

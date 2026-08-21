@@ -36,6 +36,30 @@ export function validateSubscriptionPurchase(request, _response, next) {
 }
 
 /**
+ * Validates the plan selected for a Stripe-hosted Checkout Session.
+ * @param {import("express").Request} request - Express request body.
+ * @param {import("express").Response} _response - Unused response.
+ * @param {import("express").NextFunction} next - Express continuation.
+ * @returns {void}
+ * @sideEffects Attaches the normalized plan code or forwards a 422 error.
+ */
+export function validateStripeCheckout(request, _response, next) {
+  const planCode = String(request.body?.planCode || "").trim();
+
+  if (!SUBSCRIPTION_PLAN_CODES.includes(planCode)) {
+    next(
+      new ApiError(422, "Check the Stripe checkout details.", {
+        planCode: "Choose an active subscription plan.",
+      }),
+    );
+    return;
+  }
+
+  request.stripeCheckoutInput = { planCode };
+  next();
+}
+
+/**
  * Validates a MongoDB payment or notification route identifier.
  * @param {string} parameterName - Express parameter key.
  * @returns {import("express").RequestHandler} Parameter validation middleware.

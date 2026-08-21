@@ -107,6 +107,7 @@ export function FamilySubscriptionPage() {
   const [state, setState] = useState({
     loading: true,
     plans: [],
+    paymentOptions: null,
     subscription: null,
     access: null,
     reminder: null,
@@ -119,6 +120,7 @@ export function FamilySubscriptionPage() {
   const [paymentPage, setPaymentPage] = useState(1);
   const [busy, setBusy] = useState("");
   const settledPaymentIds = useRef(new Set());
+  const stripeReturnHandled = useRef(false);
   const { showToast } = useToast();
   const { refreshSubscription } = useSubscription();
   const reminderDismissalHasEnded =
@@ -142,7 +144,8 @@ export function FamilySubscriptionPage() {
       ]);
       setState({
         loading: false,
-        plans: results[0],
+        plans: results[0].plans,
+        paymentOptions: results[0].paymentOptions,
         subscription: results[1].subscription,
         access: results[1].access,
         reminder: results[1].reminder,
@@ -162,6 +165,74 @@ export function FamilySubscriptionPage() {
   useEffect(() => {
     loadPage();
   }, [loadPage]);
+
+  useEffect(() => {
+    if (stripeReturnHandled.current) {
+      return;
+    }
+
+    const parameters = new URLSearchParams(window.location.search);
+    const stripeResult = parameters.get("stripe");
+    const sessionId = parameters.get("session_id");
+    const paymentId = parameters.get("payment_id");
+
+    if (!stripeResult) {
+      return;
+    }
+
+    stripeReturnHandled.current = true;
+
+    /**
+     * Reconciles the browser return with caller-owned backend payment state.
+     * @returns {Promise<void>}
+     * @sideEffects Calls the API, refreshes subscription data, and cleans the URL.
+     */
+    async function handleStripeReturn() {
+      try {
+        if (stripeResult === "success" && sessionId) {
+          let payment = null;
+
+          // Webhook delivery can finish just after Stripe redirects the browser.
+          // These short checks read only caller-owned local status and stop early.
+          for (let attempt = 0; attempt < 6; attempt += 1) {
+            payment =
+              await subscriptionService.getStripeCheckoutStatus(sessionId);
+
+            if (payment.status !== "pending") {
+              break;
+            }
+
+            await new Promise((resolveDelay) => {
+              window.setTimeout(resolveDelay, 1000);
+            });
+          }
+
+          if (payment?.status === "completed") {
+            showToast(
+              "Stripe test payment completed. Premium access is active.",
+              "success",
+            );
+          } else {
+            showToast(
+              "Stripe accepted the test checkout. The signed webhook is still processing.",
+              "info",
+            );
+          }
+        } else if (stripeResult === "cancelled" && paymentId) {
+          await subscriptionService.cancelStripeCheckout(paymentId);
+          showToast("Stripe test checkout was cancelled.", "info");
+        }
+
+        await loadPage();
+      } catch (error) {
+        showToast(normalizeApiError(error).message, "error");
+      } finally {
+        window.history.replaceState({}, "", "/subscription");
+      }
+    }
+
+    handleStripeReturn();
+  }, [loadPage, showToast]);
 
   const pendingPaymentId = checkout?.payment?._id || "";
 
@@ -195,6 +266,29 @@ export function FamilySubscriptionPage() {
     } catch (error) {
       showToast(normalizeApiError(error).message, "error");
     } finally {
+      setBusy("");
+    }
+  }
+
+  /**
+   * Creates a real Stripe sandbox Session and opens its hosted payment page.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the API and navigates the browser to Stripe Checkout.
+   */
+  async function beginStripeCheckout() {
+    if (!checkout?.plan) {
+      return;
+    }
+
+    setBusy("stripe-checkout");
+
+    try {
+      const result = await subscriptionService.createStripeCheckout(
+        checkout.plan.code,
+      );
+      window.location.assign(result.checkoutUrl);
+    } catch (error) {
+      showToast(normalizeApiError(error).message, "error");
       setBusy("");
     }
   }
@@ -294,6 +388,10 @@ export function FamilySubscriptionPage() {
     setState((current) => ({ ...current, reminder: null }));
   }
 
+  const stripeEnabled = Boolean(
+    state.paymentOptions?.stripeEnabled,
+  );
+
   if (state.loading) {
     return <main><AppHeader /><div className="page-loader"><span className="spinner" /> Loading subscription</div></main>;
   }
@@ -313,7 +411,9 @@ export function FamilySubscriptionPage() {
           </div>
           <span className="subscription-page-heading__note">
             <ShieldCheckIcon size={17} />
-            Prototype payments for testing
+            {stripeEnabled
+              ? "Stripe secure sandbox payments"
+              : "Prototype payments for testing"}
           </span>
         </header>
         {state.error && <div className="alert alert--error">{state.error}</div>}
@@ -380,13 +480,13 @@ export function FamilySubscriptionPage() {
           </div>
         </section>
         <section className="subscription-history" id="payment-history">
-          <div className="page-heading"><span className="eyebrow">Prototype receipts</span><h2>Payment history</h2></div>
-          {!state.payments.length && <div className="empty-state">No prototype payments yet.</div>}
+          <div className="page-heading"><span className="eyebrow">Payment records</span><h2>Payment history</h2></div>
+          {!state.payments.length && <div className="empty-state">No payments yet.</div>}
           {state.payments.map((payment) => (
             <div className="subscription-payment-row" key={payment._id}>
               <div><strong>{payment.planSnapshot.name}</strong><span>Transaction ID: {payment.transactionReference}</span>{payment.confirmationReference && <small>Confirmation: {payment.confirmationReference}</small>}</div>
               <span>BDT {payment.amount.toLocaleString()}</span>
-              <span>{payment.paymentMethod.replaceAll("_", " ")}</span>
+              <span>{payment.provider === "stripe" ? "Stripe sandbox" : payment.paymentMethod.replaceAll("_", " ")}</span>
               <span className={"status-badge status-badge--" + payment.status}>{payment.status}</span>
               <time>{formatDateTime(payment.completedAt || payment.createdAt)}</time>
             </div>
@@ -394,20 +494,102 @@ export function FamilySubscriptionPage() {
           {state.paymentPagination && <Pagination page={state.paymentPagination.page} pages={state.paymentPagination.pages} total={state.paymentPagination.total} label="payments" disabled={state.loading} onPageChange={setPaymentPage} />}
         </section>
       </div>
-      <Modal isOpen={Boolean(checkout)} title="Prototype checkout" onClose={closeCheckout}>
+      <Modal
+        isOpen={Boolean(checkout)}
+        title={stripeEnabled ? "Stripe test checkout" : "Prototype checkout"}
+        onClose={closeCheckout}
+      >
         {checkout && (
           <div className="subscription-modal-content">
-            <div className="alert alert--warning">Development payment simulation. Do not enter real financial information.</div>
-            <div className="subscription-checkout-summary"><MoneyIcon /><div><strong>{checkout.plan.name}</strong><span>BDT {checkout.plan.price.toLocaleString()}</span></div></div>
-            {!checkout.payment ? (
+            <div className="alert alert--warning">
+              {stripeEnabled
+                ? "Stripe sandbox mode uses test cards and never moves real money."
+                : "Development simulation. Do not enter real financial information."}
+            </div>
+            <div className="subscription-checkout-summary">
+              <MoneyIcon />
+              <div>
+                <strong>{checkout.plan.name}</strong>
+                <span>BDT {checkout.plan.price.toLocaleString()}</span>
+              </div>
+            </div>
+            {stripeEnabled ? (
               <>
-                <label className="field"><span>Test payment method</span><select className="input" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{PAYMENT_METHODS.map((method) => <option value={method.value} key={method.value}>{method.label}</option>)}</select></label>
-                <div className="modal-actions"><Button variant="secondary" onClick={closeCheckout}>Cancel</Button><Button isLoading={busy === "create-payment"} onClick={beginCheckout}>Create test payment</Button></div>
+                <p>
+                  Stripe will open its secure hosted test page. Use card
+                  4242 4242 4242 4242, any future expiry, and any CVC.
+                </p>
+                <div className="modal-actions">
+                  <Button variant="secondary" onClick={closeCheckout}>
+                    Cancel
+                  </Button>
+                  <Button
+                    isLoading={busy === "stripe-checkout"}
+                    disabled={Boolean(busy)}
+                    onClick={beginStripeCheckout}
+                  >
+                    Continue to Stripe sandbox
+                  </Button>
+                </div>
+              </>
+            ) : !checkout.payment ? (
+              <>
+                <label className="field">
+                  <span>Test payment method</span>
+                  <select
+                    className="input"
+                    value={paymentMethod}
+                    onChange={(event) => setPaymentMethod(event.target.value)}
+                  >
+                    {PAYMENT_METHODS.map((method) => (
+                      <option value={method.value} key={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="modal-actions">
+                  <Button variant="secondary" onClick={closeCheckout}>
+                    Cancel
+                  </Button>
+                  <Button
+                    isLoading={busy === "create-payment"}
+                    onClick={beginCheckout}
+                  >
+                    Create test payment
+                  </Button>
+                </div>
               </>
             ) : (
               <>
-                <p><ClockIcon size={16} /> Transaction ID: {checkout.payment.transactionReference}</p>
-                <div className="prototype-actions"><Button isLoading={busy === "success"} disabled={Boolean(busy)} onClick={() => finishCheckout("success")}>Simulate success</Button><Button variant="secondary" isLoading={busy === "failure"} disabled={Boolean(busy)} onClick={() => finishCheckout("failure")}>Simulate failure</Button><Button variant="ghost" disabled={Boolean(busy)} onClick={() => finishCheckout("cancel")}>Cancel payment</Button></div>
+                <p>
+                  <ClockIcon size={16} />
+                  Transaction ID: {checkout.payment.transactionReference}
+                </p>
+                <div className="prototype-actions">
+                  <Button
+                    isLoading={busy === "success"}
+                    disabled={Boolean(busy)}
+                    onClick={() => finishCheckout("success")}
+                  >
+                    Simulate success
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    isLoading={busy === "failure"}
+                    disabled={Boolean(busy)}
+                    onClick={() => finishCheckout("failure")}
+                  >
+                    Simulate failure
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={Boolean(busy)}
+                    onClick={() => finishCheckout("cancel")}
+                  >
+                    Cancel payment
+                  </Button>
+                </div>
               </>
             )}
           </div>

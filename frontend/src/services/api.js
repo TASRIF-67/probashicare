@@ -1,10 +1,19 @@
 import axios from "axios";
 
+let requestTimeout = 12000;
+const configuredTimeout = Number(import.meta.env.VITE_API_TIMEOUT_MS);
+
+// A hosted free backend can take close to a minute to wake after being idle.
+// Number converts the text-based Vite environment value into milliseconds.
+if (Number.isFinite(configuredTimeout) && configuredTimeout > 0) {
+  requestTimeout = configuredTimeout;
+}
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
-  timeout: 12000,
+  timeout: requestTimeout,
 });
 
 /**

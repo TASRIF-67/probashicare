@@ -43,6 +43,36 @@ export function validateEnvironment(names = requiredVariables) {
     );
   }
 
+  const stripeSetting = process.env.STRIPE_PAYMENTS_ENABLED;
+
+  if (
+    stripeSetting
+    && stripeSetting !== "true"
+    && stripeSetting !== "false"
+  ) {
+    throw new Error("STRIPE_PAYMENTS_ENABLED must be true or false.");
+  }
+
+  if (stripeSetting === "true") {
+    const stripeVariables = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"];
+    const missingStripeVariables = stripeVariables.filter(
+      (name) => !process.env[name]?.trim(),
+    );
+
+    if (missingStripeVariables.length > 0) {
+      throw new Error(
+        "Stripe payments are enabled, but these variables are missing: "
+        + missingStripeVariables.join(", "),
+      );
+    }
+
+    if (!process.env.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
+      throw new Error(
+        "STRIPE_SECRET_KEY must use a Stripe test-mode key for this project.",
+      );
+    }
+  }
+
   const earlyCompletionSetting = process.env.ALLOW_EARLY_BOOKING_COMPLETION;
 
   if (
@@ -77,6 +107,10 @@ export const env = {
   subscriptionCurrency: process.env.SUBSCRIPTION_CURRENCY || "BDT",
   prototypePaymentsEnabled:
     process.env.PROTOTYPE_PAYMENTS_ENABLED === "true",
+  stripePaymentsEnabled:
+    process.env.STRIPE_PAYMENTS_ENABLED === "true",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   allowEarlyBookingCompletion:
     process.env.NODE_ENV !== "production"
     && process.env.ALLOW_EARLY_BOOKING_COMPLETION === "true",

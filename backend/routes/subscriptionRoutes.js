@@ -3,7 +3,10 @@ import {
   activateMyTrial,
   cancelMySubscription,
   cancelPrototypePayment,
+  cancelStripeCheckout,
+  createStripeCheckout,
   getMySubscription,
+  getMyStripeCheckoutStatus,
   listMySubscriptionPayments,
   listSubscriptionPlans,
   purchaseSubscription,
@@ -15,6 +18,7 @@ import {
   validateSubscriptionCancellation,
   validateSubscriptionObjectId,
   validateSubscriptionPurchase,
+  validateStripeCheckout,
 } from "../middleware/validateSubscription.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -29,6 +33,20 @@ router.post(
   "/purchase",
   validateSubscriptionPurchase,
   asyncHandler(purchaseSubscription),
+);
+router.post(
+  "/stripe/checkout",
+  validateStripeCheckout,
+  asyncHandler(createStripeCheckout),
+);
+router.get(
+  "/stripe/checkouts/:sessionId",
+  asyncHandler(getMyStripeCheckoutStatus),
+);
+router.post(
+  "/stripe/payments/:paymentId/cancel",
+  validateSubscriptionObjectId("paymentId"),
+  asyncHandler(cancelStripeCheckout),
 );
 router.patch(
   "/me/cancel",

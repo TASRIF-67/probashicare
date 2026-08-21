@@ -234,6 +234,11 @@ export async function expireStalePrototypePayments(options = {}) {
   const cutoff = new Date(now.getTime() - maxAgeMinutes * 60 * 1000);
   const filter = {
     status: "pending",
+    $or: [
+      { provider: "prototype" },
+      // Payments created before provider tracking are prototype records.
+      { provider: { $exists: false } },
+    ],
     createdAt: { $lte: cutoff },
   };
 

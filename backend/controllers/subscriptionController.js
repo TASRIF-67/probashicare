@@ -2,6 +2,7 @@
 import { SubscriptionPayment } from "../models/SubscriptionPayment.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
 import { ApiError } from "../utils/ApiError.js";
+import { env } from "../config/env.js";
 import {
   activateFamilyTrial,
   getFamilySubscriptionAccess,
@@ -14,6 +15,11 @@ import {
   finishPrototypePayment,
 } from "../services/prototypePaymentService.js";
 import { synchronizeSubscriptionPlans } from "../services/subscriptionPlanService.js";
+import {
+  cancelOwnedStripeCheckout,
+  createStripeCheckoutSession,
+  getStripeCheckoutStatus,
+} from "../services/stripePaymentService.js";
 
 /**
  * GET /api/subscriptions/plans
@@ -38,7 +44,76 @@ export async function listSubscriptionPlans(_request, response) {
       .lean();
   }
 
-  response.json({ success: true, data: { plans } });
+  response.json({
+    success: true,
+    data: {
+      plans,
+      paymentOptions: {
+        stripeEnabled: env.stripePaymentsEnabled,
+        prototypeEnabled:
+          env.prototypePaymentsEnabled && env.nodeEnv !== "production",
+        stripeMode: env.stripePaymentsEnabled ? "test" : "disabled",
+      },
+    },
+  });
+}
+
+/**
+ * POST /api/subscriptions/stripe/checkout
+ * Auth: authenticated Family account.
+ * Body: validated planCode only; prices and duration come from MongoDB.
+ * Success 201: caller-owned payment plus a Stripe-hosted test Checkout URL.
+ * Failure 404/422/502/503: plan, input, Stripe API, or configuration error.
+ * @param {import("express").Request} request - Validated Family request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects Creates a pending payment and a Stripe Checkout Session.
+ */
+export async function createStripeCheckout(request, response) {
+  const result = await createStripeCheckoutSession(
+    request.user._id,
+    request.user.email,
+    request.stripeCheckoutInput.planCode,
+  );
+  response.status(201).json({ success: true, data: result });
+}
+
+/**
+ * GET /api/subscriptions/stripe/checkouts/:sessionId
+ * Auth: authenticated Family owner.
+ * Params: Stripe Checkout Session ID; body/query unused.
+ * Success 200: caller-owned local payment status.
+ * Failure 404: the Session is not linked to the authenticated Family.
+ * @param {import("express").Request} request - Family status request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects Reads caller-owned payment state from MongoDB.
+ */
+export async function getMyStripeCheckoutStatus(request, response) {
+  const payment = await getStripeCheckoutStatus(
+    request.user._id,
+    String(request.params.sessionId || "").trim(),
+  );
+  response.json({ success: true, data: { payment } });
+}
+
+/**
+ * POST /api/subscriptions/stripe/payments/:paymentId/cancel
+ * Auth: authenticated Family owner.
+ * Params: validated local payment ID; body/query unused.
+ * Success 200: cancelled or already-terminal payment.
+ * Failure 404/409/503: wrong owner, closed Checkout, or disabled Stripe.
+ * @param {import("express").Request} request - Family cancellation request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects Expires an open Stripe Session and updates its local payment.
+ */
+export async function cancelStripeCheckout(request, response) {
+  const payment = await cancelOwnedStripeCheckout(
+    request.user._id,
+    request.params.paymentId,
+  );
+  response.json({ success: true, data: { payment } });
 }
 
 /**
