@@ -11,7 +11,9 @@ import {
 } from "../controllers/wellnessReportController.js";
 import { allowRoles, requireAuth } from "../middleware/auth.js";
 import { checkCaregiverApplicationStatus } from "../middleware/caregiverApplication.js";
+import { requireFamilyEntitlement } from "../middleware/requireFamilyEntitlement.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ENTITLEMENTS } from "../utils/subscriptionConstants.js";
 
 const router = Router();
 const approvedCaregiver = [
@@ -48,6 +50,7 @@ router.post(
 router.get(
   "/elderly/:profileId/vitals",
   allowRoles("family"),
+  asyncHandler(requireFamilyEntitlement(ENTITLEMENTS.ADVANCED_VITALS)),
   asyncHandler(getElderlyVitalsTrends),
 );
 router.get(

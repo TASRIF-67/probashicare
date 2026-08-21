@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { NotificationProvider } from "./context/NotificationContext.jsx";
+import { SubscriptionProvider } from "./context/SubscriptionContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import "./styles/global.css";
@@ -14,6 +15,8 @@ import "./styles/dashboard.css";
 import "./styles/navigation.css";
 import "./styles/doctor-appointments.css";
 import "./styles/notifications.css";
+import "./styles/experience.css";
+import "./styles/product-polish.css";
 
 /**
  * Mounts the React application with its global providers.
@@ -29,9 +32,11 @@ function mountApplication(rootElement) {
           <ThemeProvider>
             <ToastProvider>
               <AuthProvider>
-                <NotificationProvider>
-                  <App />
-                </NotificationProvider>
+                <SubscriptionProvider>
+                  <NotificationProvider>
+                    <App />
+                  </NotificationProvider>
+                </SubscriptionProvider>
               </AuthProvider>
             </ToastProvider>
           </ThemeProvider>

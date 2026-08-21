@@ -113,3 +113,48 @@ export async function sendVerificationEmail({ to, name, verificationUrl }) {
     messageId: result.messageId,
   };
 }
+
+/**
+ * Sends a one-time ProbashiCare password-reset link.
+ * @param {{to: string, name: string, resetUrl: string}} message - Recipient and one-time reset link.
+ * @returns {Promise<{messageId: string}>} Mail provider message identifier.
+ * @sideEffects Sends email through SMTP or prints the link in development without SMTP.
+ */
+export async function sendPasswordResetEmail({
+  to,
+  name,
+  resetUrl,
+}) {
+  if (
+    env.nodeEnv === "development" &&
+    (!env.smtpHost || !env.smtpUser || !env.smtpPass)
+  ) {
+    console.log(`Development password-reset link for ${to}: ${resetUrl}`);
+    return {
+      messageId: "development-console-delivery",
+    };
+  }
+
+  requireMailConfiguration();
+
+  const safeName = escapeHtml(name);
+  const safeResetUrl = escapeHtml(resetUrl);
+  const result = await getTransporter().sendMail({
+    from: env.mailFrom,
+    to,
+    subject: "Reset your ProbashiCare password",
+    text:
+      `Hello ${name}, reset your ProbashiCare password: ${resetUrl}. ` +
+      "This link expires in one hour.",
+    html:
+      `<p>Hello ${safeName},</p>` +
+      "<p>We received a request to reset your ProbashiCare password.</p>" +
+      `<p><a href="${safeResetUrl}">Reset password</a></p>` +
+      "<p>This one-time link expires in one hour.</p>" +
+      "<p>If you did not request this change, you can safely ignore this email.</p>",
+  });
+
+  return {
+    messageId: result.messageId,
+  };
+}

@@ -52,6 +52,7 @@ export function NavigationMenu({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const triggerRef = useRef(null);
   const location = useLocation();
   const containsActivePage = hasActiveDestination(
     location.pathname,
@@ -92,6 +93,7 @@ export function NavigationMenu({
     function handleEscape(event) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        triggerRef.current?.focus();
       }
     }
 
@@ -104,13 +106,19 @@ export function NavigationMenu({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
+
   /**
    * Toggles the dropdown visibility.
    * @returns {void}
    * @sideEffects Updates local menu state.
    */
   function toggleMenu() {
-    setIsOpen((currentValue) => !currentValue);
+    setIsOpen(function updateMenuVisibility(currentValue) {
+      return !currentValue;
+    });
   }
 
   /**
@@ -128,6 +136,7 @@ export function NavigationMenu({
       ref={menuRef}
     >
       <button
+        ref={triggerRef}
         className={
           containsActivePage
             ? "app-nav-menu__trigger app-nav-menu__trigger--active"

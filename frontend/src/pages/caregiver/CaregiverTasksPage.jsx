@@ -2,16 +2,69 @@ import { useEffect, useState } from "react";
 import { Card } from "../../components/Card.jsx";
 import { CaregiverHeader } from "../../components/caregiver/CaregiverHeader.jsx";
 import { CaregiverChecklist } from "../../components/CaregiverChecklist.jsx";
-import { ClipboardListIcon } from "../../components/Icons.jsx";
+import {
+  CareTasksIcon,
+  UserIcon,
+} from "../../components/Icons.jsx";
 import { bookingService } from "../../services/bookingService.js";
 import { normalizeApiError } from "../../services/api.js";
 
-const ASSIGNED_BOOKING_STATUSES = ["accepted", "confirmed"];
+/**
+ * Builds one unique profile option for every accepted caregiver booking.
+ * @param {object[]} bookings - Caregiver booking response records.
+ * @returns {{id: string, name: string}[]} Unique assigned elderly profiles.
+ * @sideEffects None.
+ */
+function buildAssignedProfiles(bookings) {
+  const profiles = [];
 
+  for (const booking of bookings) {
+    const hasActiveStatus =
+      booking.status === "accepted" || booking.status === "confirmed";
+
+    if (!hasActiveStatus) {
+      continue;
+    }
+
+    const profileId =
+      booking.elderlyProfileId?.toString?.() ||
+      booking.elderlyProfile?._id;
+    const profileName = booking.elderlyProfile?.name || "Care recipient";
+
+    if (!profileId) {
+      continue;
+    }
+
+    let alreadyIncluded = false;
+
+    for (const profile of profiles) {
+      if (String(profile.id) === String(profileId)) {
+        alreadyIncluded = true;
+        break;
+      }
+    }
+
+    if (!alreadyIncluded) {
+      profiles.push({
+        id: profileId,
+        name: profileName,
+      });
+    }
+  }
+
+  return profiles;
+}
+
+/**
+ * Displays caregiver task lists separated by assigned elderly profile.
+ * @param {void} _unused - This page accepts no props.
+ * @returns {import("react").ReactElement} Caregiver task workspace.
+ * @sideEffects Loads caregiver bookings and renders API-backed task checklists.
+ */
 export function CaregiverTasksPage() {
   const [state, setState] = useState({
     loading: true,
-    bookings: [],
+    profiles: [],
     error: "",
   });
   const [selectedProfileId, setSelectedProfileId] = useState("");
@@ -19,22 +72,29 @@ export function CaregiverTasksPage() {
   useEffect(() => {
     let active = true;
 
+    /**
+     * Loads active caregiver assignments used to separate task lists.
+     * @returns {Promise<void>} Resolves after assignment state is prepared.
+     * @sideEffects Calls the booking API and updates React state.
+     */
     async function loadAssignedProfiles() {
       try {
         const result = await bookingService.listCaregiverBookings();
+        const profiles = buildAssignedProfiles(result.bookings || []);
 
         if (active) {
           setState({
             loading: false,
-            bookings: result.bookings || [],
+            profiles,
             error: "",
           });
+          setSelectedProfileId(profiles[0]?.id || "");
         }
       } catch (requestError) {
         if (active) {
           setState({
             loading: false,
-            bookings: [],
+            profiles: [],
             error: normalizeApiError(requestError).message,
           });
         }
@@ -43,47 +103,51 @@ export function CaregiverTasksPage() {
 
     loadAssignedProfiles();
 
-    return () => {
+    return function stopAssignmentLoad() {
       active = false;
     };
   }, []);
 
-  const assignedProfiles = [];
-
-  for (const booking of state.bookings) {
-    if (!ASSIGNED_BOOKING_STATUSES.includes(booking.status)) {
-      continue;
-    }
-
-    const profileId = booking.elderlyProfileId?.toString?.() || booking.elderlyProfile?._id;
-    const profileName = booking.elderlyProfile?.name || "Care recipient";
-
-    if (!profileId || assignedProfiles.some((profile) => profile.id === profileId)) {
-      continue;
-    }
-
-    assignedProfiles.push({ id: profileId, name: profileName });
+  /**
+   * Opens the checklist for one assigned elderly profile.
+   * @param {string} profileId - ElderlyProfile identifier.
+   * @returns {void}
+   * @sideEffects Updates the selected profile state.
+   */
+  function selectProfile(profileId) {
+    setSelectedProfileId(profileId);
   }
 
-  useEffect(() => {
-    if (!selectedProfileId && assignedProfiles[0]) {
-      setSelectedProfileId(assignedProfiles[0].id);
-    }
-  }, [assignedProfiles, selectedProfileId]);
+  let selectedProfile = null;
 
-  const selectedProfile = assignedProfiles.find((profile) => profile.id === selectedProfileId) || assignedProfiles[0] || null;
+  for (const profile of state.profiles) {
+    if (String(profile.id) === String(selectedProfileId)) {
+      selectedProfile = profile;
+      break;
+    }
+  }
+
+  if (!selectedProfile && state.profiles[0]) {
+    selectedProfile = state.profiles[0];
+  }
 
   return (
     <main>
       <CaregiverHeader />
-      <div className="caregiver-page" style={{ display: "grid", gap: "1rem" }}>
-        <section className="page-heading page-heading--action">
+      <div className="caregiver-page caregiver-task-page">
+        <header className="caregiver-task-hero">
           <div>
-            <span className="eyebrow">Care tasks</span>
-            <h1>Assigned patient tasks</h1>
-            <p>Keep each elderly profile’s care checklist separate and stay focused on the right patient.</p>
+            <span className="eyebrow">Visit preparation</span>
+            <h1>Care task checklist</h1>
+            <p>
+              Review family instructions and update each item during the
+              correct care recipient&apos;s visit.
+            </p>
           </div>
-        </section>
+          <span className="caregiver-task-hero__icon">
+            <CareTasksIcon />
+          </span>
+        </header>
 
         {state.loading && (
           <div className="page-loader-inline">
@@ -94,51 +158,50 @@ export function CaregiverTasksPage() {
 
         {state.error && <div className="alert alert--error">{state.error}</div>}
 
-        {!state.loading && !state.error && assignedProfiles.length === 0 && (
-          <Card>
-            <div className="caregiver-card-empty" style={{ padding: "2rem" }}>
-              <ClipboardListIcon />
-              <strong>No assigned patients yet</strong>
-              <span>Accepted or confirmed bookings will appear here as separate care task lists.</span>
-            </div>
+        {!state.loading && !state.error && state.profiles.length === 0 && (
+          <Card className="caregiver-task-page__empty">
+            <span><CareTasksIcon /></span>
+            <h2>No assigned care tasks</h2>
+            <p>
+              Accepted or confirmed bookings will appear here as separate
+              visit checklists.
+            </p>
           </Card>
         )}
 
-        {!state.loading && !state.error && assignedProfiles.length > 0 && (
-          <Card>
-            <div className="caregiver-card-heading" style={{ marginBottom: "1rem" }}>
+        {!state.loading && !state.error && state.profiles.length > 0 && (
+          <>
+            <nav className="caregiver-profile-switcher" aria-label="Care recipients">
+              <span>Choose care recipient</span>
               <div>
-                <span className="eyebrow">Current patient</span>
-                <h2>Task list</h2>
+                {state.profiles.map((profile) => (
+                  <button
+                    className={
+                      selectedProfile?.id === profile.id
+                        ? "caregiver-profile-option caregiver-profile-option--active"
+                        : "caregiver-profile-option"
+                    }
+                    type="button"
+                    aria-pressed={selectedProfile?.id === profile.id}
+                    onClick={() => selectProfile(profile.id)}
+                    key={profile.id}
+                  >
+                    <span><UserIcon /></span>
+                    {profile.name}
+                  </button>
+                ))}
               </div>
-              <ClipboardListIcon />
-            </div>
+            </nav>
 
-            {assignedProfiles.length > 1 && (
-              <div style={{ marginBottom: "1rem" }}>
-                <label htmlFor="caregiver-task-profile" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
-                  Elderly profile
-                </label>
-                <select
-                  id="caregiver-task-profile"
-                  value={selectedProfile?.id || ""}
-                  onChange={(event) => setSelectedProfileId(event.target.value)}
-                  style={{ width: "100%", padding: "0.7rem", borderRadius: 10, border: "1px solid #cbd5e1" }}
-                >
-                  {assignedProfiles.map((profile) => (
-                    <option key={profile.id} value={profile.id}>{profile.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {selectedProfile && (
-              <CaregiverChecklist
-                elderlyProfileId={selectedProfile.id}
-                elderlyName={selectedProfile.name}
-              />
-            )}
-          </Card>
+            <Card className="caregiver-task-page__checklist">
+              {selectedProfile && (
+                <CaregiverChecklist
+                  elderlyProfileId={selectedProfile.id}
+                  elderlyName={selectedProfile.name}
+                />
+              )}
+            </Card>
+          </>
         )}
       </div>
     </main>

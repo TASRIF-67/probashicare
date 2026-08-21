@@ -3,16 +3,37 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   ActivityIcon,
   ArrowLeftIcon,
+  ArrowRightIcon,
   BadgeCheckIcon,
   BellIcon,
   CalendarIcon,
   CheckIcon,
+  ClockIcon,
   ShieldCheckIcon,
 } from "./Icons.jsx";
 import { Logo } from "./Logo.jsx";
 import { ThemeToggle } from "./ThemeToggle.jsx";
 import "../styles/auth.css";
 import { createRevealMotion } from "../utils/motion.js";
+
+/**
+ * Formats the current time for a local or named IANA time zone.
+ * @param {string|undefined} timeZone - Optional IANA time-zone name such as Asia/Dhaka.
+ * @returns {string} Current hour and minute in the requested zone.
+ * @sideEffects Reads the browser's current time and locale.
+ */
+function formatZoneTime(timeZone) {
+  const options = {
+    hour: "numeric",
+    minute: "2-digit",
+  };
+
+  if (timeZone) {
+    options.timeZone = timeZone;
+  }
+
+  return new Intl.DateTimeFormat(undefined, options).format(new Date());
+}
 
 /**
  * Provides the shared public authentication page shell.
@@ -47,6 +68,9 @@ export function AuthLayout({
     safeVariant = "caregiver";
   }
 
+  const localTime = formatZoneTime();
+  const dhakaTime = formatZoneTime("Asia/Dhaka");
+
   return (
     <main className={`auth-shell auth-shell--${safeVariant}`}>
       <header className="auth-topbar">
@@ -72,44 +96,65 @@ export function AuthLayout({
             <p>{description}</p>
           </div>
 
-          <div className="auth-care-preview" aria-label="Example care workspace">
-            <div className="auth-care-preview__header">
-              <div>
-                <span className="auth-care-preview__avatar" aria-hidden="true">
-                  M
-                </span>
-                <span>
-                  <strong>Masnun&apos;s care</strong>
-                  <small>Dhaka, Bangladesh</small>
-                </span>
-              </div>
-              <span className="auth-care-preview__status">
-                <BadgeCheckIcon size={14} />
-                All well
-              </span>
+          <div className="auth-time-bridge" aria-label="Connected local and Dhaka time">
+            <span>
+              <ClockIcon size={14} aria-hidden="true" />
+              <strong>{localTime}</strong>
+              Local
+            </span>
+            <ArrowRightIcon size={15} aria-hidden="true" />
+            <span>
+              <ClockIcon size={14} aria-hidden="true" />
+              <strong>{dhakaTime}</strong>
+              Dhaka
+            </span>
+          </div>
+
+          <div className="auth-connection-preview">
+            <div className="auth-care-route" aria-hidden="true">
+              <span>You</span>
+              <i />
             </div>
 
-            <div className="auth-care-preview__grid">
-              <div>
-                <CalendarIcon aria-hidden="true" />
-                <span>
-                  <small>Next visit</small>
-                  <strong>Tomorrow, 9:00 AM</strong>
+            <div className="auth-care-preview" aria-label="Example care workspace">
+              <div className="auth-care-preview__header">
+                <div>
+                  <span className="auth-care-preview__avatar" aria-hidden="true">
+                    M
+                  </span>
+                  <span>
+                    <strong>Masnun&apos;s care</strong>
+                    <small>Dhaka, Bangladesh</small>
+                  </span>
+                </div>
+                <span className="auth-care-preview__status">
+                  <BadgeCheckIcon size={14} />
+                  All well
                 </span>
               </div>
-              <div>
-                <ActivityIcon aria-hidden="true" />
-                <span>
-                  <small>Latest update</small>
-                  <strong>Vitals recorded</strong>
-                </span>
-              </div>
-              <div>
-                <BellIcon aria-hidden="true" />
-                <span>
-                  <small>Family status</small>
-                  <strong>Up to date</strong>
-                </span>
+
+              <div className="auth-care-preview__grid">
+                <div>
+                  <CalendarIcon aria-hidden="true" />
+                  <span>
+                    <small>Next visit</small>
+                    <strong>Tomorrow, 9:00 AM</strong>
+                  </span>
+                </div>
+                <div>
+                  <ActivityIcon aria-hidden="true" />
+                  <span>
+                    <small>Latest update</small>
+                    <strong>Vitals recorded</strong>
+                  </span>
+                </div>
+                <div>
+                  <BellIcon aria-hidden="true" />
+                  <span>
+                    <small>Family status</small>
+                    <strong>Up to date</strong>
+                  </span>
+                </div>
               </div>
             </div>
           </div>

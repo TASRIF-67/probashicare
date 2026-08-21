@@ -14,6 +14,7 @@ import { Logo } from "../Logo.jsx";
 import { ThemeToggle } from "../ThemeToggle.jsx";
 import { NotificationBell } from "../notifications/NotificationBell.jsx";
 import { NavigationMenu } from "../NavigationMenu.jsx";
+import { WorkspaceSearch } from "../WorkspaceSearch.jsx";
 
 const CAREGIVER_PRIMARY_LINKS = [
   {
@@ -75,51 +76,102 @@ const ALL_CAREGIVER_LINKS = [
 export function CaregiverHeader() {
   const { user, logout } = useAuth();
   const isApproved = user.caregiverApplicationStatus === "approved";
-  return (
-    <header className="topbar app-topbar">
-      <Logo />
-      {isApproved && (
-        <>
-          <nav
-            className="app-nav app-nav--primary"
-            aria-label="Caregiver navigation"
-          >
-            {CAREGIVER_PRIMARY_LINKS.map((link) => {
-              const LinkIcon = link.icon;
+  const navigationLinks = [
+    ...CAREGIVER_PRIMARY_LINKS,
+    ...CAREGIVER_SECONDARY_LINKS,
+  ];
 
-              return (
-                <NavLink key={link.to} to={link.to}>
-                  <LinkIcon size={17} />
-                  {link.label}
-                </NavLink>
-              );
-            })}
-          </nav>
-          <NavigationMenu
-            className="app-nav-menu--desktop"
-            links={CAREGIVER_SECONDARY_LINKS}
-            label="Care tools"
-          />
-          <NavigationMenu
-            className="app-nav-menu--mobile"
-            links={ALL_CAREGIVER_LINKS}
-            label="Menu"
-          />
-        </>
-      )}
-      <div className="topbar__actions">
-        <NotificationBell />
-        <ThemeToggle />
-        <Button
-          className="app-signout-button"
-          variant="ghost"
-          title="Sign out"
-          onClick={logout}
-        >
-          <LogOutIcon size={17} />
-          <span>Sign out</span>
-        </Button>
-      </div>
-    </header>
+  return (
+    <>
+      <aside className="app-sidebar" aria-label="Caregiver workspace">
+        <div className="app-sidebar__brand">
+          <Logo />
+          <span>Caregiver workspace</span>
+        </div>
+        {isApproved && (
+          <>
+            <nav className="app-side-nav" aria-label="Caregiver navigation">
+              <span className="app-side-nav__label">Workspace</span>
+              {navigationLinks.map((link) => {
+                const LinkIcon = link.icon;
+
+                return (
+                  <NavLink key={link.to} to={link.to}>
+                    <LinkIcon size={17} />
+                    {link.label}
+                  </NavLink>
+                );
+              })}
+            </nav>
+            <NavigationMenu
+              className="app-nav-menu--mobile"
+              links={ALL_CAREGIVER_LINKS}
+              label="Menu"
+            />
+          </>
+        )}
+        <div className="topbar__actions">
+          <div className="app-sidebar__utilities app-sidebar__utilities--mobile">
+            <NotificationBell />
+            <ThemeToggle />
+          </div>
+          {isApproved && (
+            <NavLink className="app-sidebar__user" to="/caregiver/profile">
+              <span className="app-sidebar__avatar" aria-hidden="true">
+                {user?.name?.[0] || "C"}
+              </span>
+              <span>
+                <strong>{user?.name || "Caregiver"}</strong>
+                <small>Approved caregiver</small>
+              </span>
+            </NavLink>
+          )}
+          <Button
+            className="app-signout-button app-signout-button--mobile"
+            variant="ghost"
+            title="Sign out"
+            onClick={logout}
+          >
+            <LogOutIcon size={17} />
+            <span>Sign out</span>
+          </Button>
+        </div>
+      </aside>
+
+      <header className="app-workspace-bar">
+        {isApproved ? (
+          <WorkspaceSearch links={ALL_CAREGIVER_LINKS} />
+        ) : (
+          <div className="app-workspace-bar__label">
+            Caregiver application workspace
+          </div>
+        )}
+        <div className="app-workspace-bar__actions">
+          <NotificationBell />
+          <ThemeToggle />
+          {isApproved && (
+            <NavLink
+              className="app-topbar-account"
+              to="/caregiver/profile"
+              aria-label="Open my caregiver profile"
+              title={user?.name || "My profile"}
+            >
+              <span aria-hidden="true">
+                {user?.name?.[0] || "C"}
+              </span>
+            </NavLink>
+          )}
+          <Button
+            className="app-topbar-signout"
+            variant="ghost"
+            title="Sign out"
+            onClick={logout}
+          >
+            <LogOutIcon size={17} />
+            <span>Sign out</span>
+          </Button>
+        </div>
+      </header>
+    </>
   );
 }

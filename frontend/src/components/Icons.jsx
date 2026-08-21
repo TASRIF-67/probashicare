@@ -13,6 +13,7 @@ export {
   ClipboardList as ClipboardListIcon,
   Clock3 as ClockIcon,
   CalendarDays as CalendarIcon,
+  ListChecks as CareTasksIcon,
   BadgeCheck as BadgeCheckIcon,
   Bell as BellIcon,
   Banknote as MoneyIcon,

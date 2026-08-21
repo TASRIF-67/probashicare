@@ -12,6 +12,7 @@ import {
   ShieldCheckIcon,
 } from "../../components/Icons.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import { useSubscription } from "../../context/SubscriptionContext.jsx";
 import { normalizeApiError } from "../../services/api.js";
 import { subscriptionService } from "../../services/subscriptionService.js";
 
@@ -119,6 +120,7 @@ export function FamilySubscriptionPage() {
   const [busy, setBusy] = useState("");
   const settledPaymentIds = useRef(new Set());
   const { showToast } = useToast();
+  const { refreshSubscription } = useSubscription();
   const reminderDismissalHasEnded =
     state.reminder?.dismissedUntil &&
     new Date(state.reminder.dismissedUntil).getTime() <= Date.now();
@@ -135,7 +137,7 @@ export function FamilySubscriptionPage() {
     try {
       const results = await Promise.all([
         subscriptionService.listPlans(),
-        subscriptionService.getMySubscription(),
+        refreshSubscription(),
         subscriptionService.listPayments({ page: paymentPage, limit: 3 }),
       ]);
       setState({
@@ -155,7 +157,7 @@ export function FamilySubscriptionPage() {
         error: normalizeApiError(error).message,
       }));
     }
-  }, [paymentPage]);
+  }, [paymentPage, refreshSubscription]);
 
   useEffect(() => {
     loadPage();
@@ -377,7 +379,7 @@ export function FamilySubscriptionPage() {
           ))}
           </div>
         </section>
-        <section className="subscription-history">
+        <section className="subscription-history" id="payment-history">
           <div className="page-heading"><span className="eyebrow">Prototype receipts</span><h2>Payment history</h2></div>
           {!state.payments.length && <div className="empty-state">No prototype payments yet.</div>}
           {state.payments.map((payment) => (

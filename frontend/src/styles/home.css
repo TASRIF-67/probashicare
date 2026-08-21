@@ -33,14 +33,14 @@
 
 .public-home--calm,
 .public-home--calm button {
-  font-family: "DM Sans", sans-serif;
+  font-family: "Inter", "Segoe UI", sans-serif;
 }
 
 .public-home--calm h1,
 .public-home--calm h2,
 .public-home--calm h3 {
   color: inherit;
-  font-family: "Manrope", sans-serif;
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
 }
 
 .public-home--calm p {
@@ -662,7 +662,7 @@
 
 .calm-step > span {
   color: var(--home-primary);
-  font-family: "Manrope", sans-serif;
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
   font-size: 0.72rem;
   font-weight: 850;
 }

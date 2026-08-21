@@ -163,11 +163,13 @@ export function LoginPage() {
 
   const content = (
     <AuthLayout
-      eyebrow={isCaregiverMode ? "Caregiver access" : "Welcome back"}
-      title={isCaregiverMode ? "Continue the care work that matters." : "Your family care space is ready."}
+      eyebrow={isCaregiverMode ? "Caregiver workspace" : "Family workspace"}
+      title={isCaregiverMode
+        ? "Care work, organized in one dependable place."
+        : "Care that travels with you, wherever home is."}
       description={isCaregiverMode
-        ? "Sign in to review assignments, record care, and keep families informed."
-        : "Sign in to see the latest care activity from home, without searching through messages and calls."}
+        ? "Review assignments, record care, and keep families informed from one secure workspace."
+        : "Appointments, health updates, and family coordination stay together in one calm, secure space."}
       trustItems={isCaregiverMode
         ? ["Verified care network", "Private care records"]
         : ["Authorized family access", "Private health context"]}
@@ -189,7 +191,10 @@ export function LoginPage() {
         </div>
 
         <div className="auth-card__heading">
-          <h2>Sign in</h2>
+          <h2>
+            Sign in
+            <span className="auth-heading-emoji" aria-hidden="true">👋</span>
+          </h2>
           <p>Enter the email and password connected to your account.</p>
         </div>
 
@@ -243,22 +248,34 @@ export function LoginPage() {
             name="email"
             type="email"
             label="Email address"
+            placeholder="you@example.com"
             autoComplete="email"
             value={form.email}
             onChange={handleChange}
             required
           />
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            label="Password"
-            showPasswordToggle
-            autoComplete="current-password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="auth-password-field">
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              label="Password"
+              placeholder="Enter your password"
+              showPasswordToggle
+              autoComplete="current-password"
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
+            <Link
+              className="auth-forgot-link"
+              to={isCaregiverMode
+                ? "/forgot-password?mode=caregiver"
+                : "/forgot-password"}
+            >
+              Forgot password?
+            </Link>
+          </div>
           <Button type="submit" isLoading={isSubmitting}>
             <LogInIcon size={18} />
             Sign in securely

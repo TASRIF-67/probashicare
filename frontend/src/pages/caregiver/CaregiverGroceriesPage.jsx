@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../../components/Button.jsx";
 import { Pagination } from "../../components/Pagination.jsx";
 import { CaregiverHeader } from "../../components/caregiver/CaregiverHeader.jsx";
 import { GroceryPurchaseModal } from "../../components/grocery/GroceryPurchaseModal.jsx";
 import { GroceryRequestCard } from "../../components/grocery/GroceryRequestCard.jsx";
-import { GroceryRequestModal } from "../../components/grocery/GroceryRequestModal.jsx";
 import { ClipboardListIcon, PlusIcon, UploadIcon } from "../../components/Icons.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { normalizeApiError } from "../../services/api.js";
@@ -48,7 +48,6 @@ export function CaregiverGroceriesPage() {
   const [workingId, setWorkingId] = useState("");
   const [error, setError] = useState("");
   const [modalError, setModalError] = useState("");
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [purchaseRequest, setPurchaseRequest] = useState(null);
 
   /**
@@ -87,28 +86,6 @@ export function CaregiverGroceriesPage() {
   function changeView(nextView) {
     setView(nextView);
     setPage(1);
-  }
-
-  /**
-   * Creates a caregiver request and refreshes the workspace.
-   * @param {object} payload - Valid request form contract.
-   * @returns {Promise<void>}
-   * @sideEffects Calls the create API, reloads data, closes the modal, and shows a toast.
-   */
-  async function createRequest(payload) {
-    setWorkingId("create");
-    setModalError("");
-
-    try {
-      const data = await groceryRequestService.createRequest(payload);
-      await loadWorkspace();
-      setRequestModalOpen(false);
-      showToast(data.message, "success");
-    } catch (requestError) {
-      setModalError(normalizeApiError(requestError).message);
-    } finally {
-      setWorkingId("");
-    }
   }
 
   /**
@@ -230,16 +207,17 @@ export function CaregiverGroceriesPage() {
               purchase without requiring a cash memo.
             </p>
           </div>
-          <Button
-            disabled={!assignments.length}
-            onClick={() => {
-              setModalError("");
-              setRequestModalOpen(true);
-            }}
-          >
-            <PlusIcon size={18} />
-            New request
-          </Button>
+          {assignments.length ? (
+            <Link className="button button--primary" to="/caregiver/groceries/new">
+              <PlusIcon size={18} />
+              New request
+            </Link>
+          ) : (
+            <Button disabled>
+              <PlusIcon size={18} />
+              New request
+            </Button>
+          )}
         </div>
         {!loading && !assignments.length && (
           <div className="grocery-context-note">
@@ -356,14 +334,6 @@ export function CaregiverGroceriesPage() {
           onPageChange={setPage}
         />
       </div>
-      <GroceryRequestModal
-        isOpen={requestModalOpen}
-        assignments={assignments}
-        isSubmitting={workingId === "create"}
-        error={modalError}
-        onClose={() => setRequestModalOpen(false)}
-        onSubmit={createRequest}
-      />
       <GroceryPurchaseModal
         request={purchaseRequest}
         role="caregiver"

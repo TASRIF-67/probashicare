@@ -74,7 +74,9 @@ export function WellnessReportDetailPage() {
   const [state, setState] = useState({ loading: true, report: null, error: "" });
   const isCaregiver = user.role === "caregiver";
   const Header = isCaregiver ? CaregiverHeader : AppHeader;
-  const backPath = isCaregiver ? "/caregiver/wellness-reports" : `/elderly-profiles/${profileId}/wellness`;
+  const backPath = isCaregiver
+    ? "/caregiver/wellness-reports"
+    : "/wellness/" + profileId;
 
   useEffect(() => {
     /**

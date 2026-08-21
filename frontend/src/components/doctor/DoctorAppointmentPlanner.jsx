@@ -32,6 +32,20 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const DOCTOR_SPECIALTIES = [
+  "General medicine",
+  "Cardiology",
+  "Neurology",
+  "Orthopedics",
+  "Endocrinology",
+  "Nephrology",
+  "Gastroenterology",
+  "Pulmonology",
+  "Dermatology",
+  "Psychiatry",
+  "Geriatric medicine",
+];
+
 /**
  * Formats an appointment date for the user's locale.
  * @param {string|Date} value - Stored date value.
@@ -852,7 +866,21 @@ export function DoctorAppointmentPlanner() {
             </div>
             <div className="form-grid">
               <Input id="doctorName" name="doctorName" label="Doctor name" value={form.doctorName} error={formErrors.doctorName} onChange={handleChange} required />
-              <Input id="specialty" name="specialty" label="Specialty or department" value={form.specialty} error={formErrors.specialty} onChange={handleChange} required />
+              <Input
+                id="specialty"
+                name="specialty"
+                label="Specialty or department"
+                list="doctor-specialty-options"
+                value={form.specialty}
+                error={formErrors.specialty}
+                onChange={handleChange}
+                required
+              />
+              <datalist id="doctor-specialty-options">
+                {DOCTOR_SPECIALTIES.map((specialty) => (
+                  <option value={specialty} key={specialty} />
+                ))}
+              </datalist>
               <Input id="clinicName" name="clinicName" label="Clinic or hospital" value={form.clinicName} error={formErrors.clinicName} onChange={handleChange} required />
               <Input id="contactPhone" name="contactPhone" label="Clinic contact" value={form.contactPhone} error={formErrors.contactPhone} onChange={handleChange} required />
               <Input id="clinicAddress" name="clinicAddress" label="Clinic address" value={form.clinicAddress} error={formErrors.clinicAddress} onChange={handleChange} required />

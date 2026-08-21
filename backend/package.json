@@ -22,6 +22,7 @@
     "test:wellness-insights": "node --test test/wellnessInsights.test.js",
     "test:groceries": "node scripts/smokeGroceryRequests.js",
     "test:email": "node scripts/testEmailDelivery.js",
+    "test:auth": "node --test test/passwordReset.test.js",
     "test:calendar-service": "node --test test/googleCalendarService.test.js",
     "test:calendar": "node scripts/testGoogleCalendarAccess.js"
   },

@@ -22,6 +22,11 @@ import { subscriptionService } from "../services/subscriptionService.js";
 import { SubscriptionStatusCard } from "../components/subscription/SubscriptionStatusCard.jsx";
 import { SubscriptionExpiryModal } from "../components/subscription/SubscriptionExpiryModal.jsx";
 import { CaregiverFeedbackModal } from "../components/booking/CaregiverFeedbackModal.jsx";
+import { DashboardWeekStrip } from "../components/dashboard/DashboardWeekStrip.jsx";
+import {
+  FamilyCareTeamCard,
+  FamilyRecentActivityCard,
+} from "../components/dashboard/FamilyDashboardVisuals.jsx";
 import { createRevealMotion } from "../utils/motion.js";
 
 const ACTIVE_STATUSES = ["pending", "accepted", "confirmed"];
@@ -475,6 +480,41 @@ export function DashboardPage() {
           </Link>
         )}
 
+        {visibleProfiles.length > 0 && (
+          <section
+            className="family-care-overview"
+            aria-label="Primary care recipient overview"
+          >
+            <div className="family-care-overview__identity">
+              <span className="family-care-overview__avatar" aria-hidden="true">
+                {getProfileName(visibleProfiles[0])[0]}
+              </span>
+              <div>
+                <strong>{getProfileName(visibleProfiles[0])}</strong>
+                <span>
+                  {visibleProfiles[0].personalInformation?.district || "Care profile"}
+                </span>
+              </div>
+            </div>
+            <div className="family-care-overview__item">
+              <small>Next visit</small>
+              <strong>
+                {nextVisit
+                  ? displayDate(nextVisit.occurrence.date)
+                  : "Not scheduled"}
+              </strong>
+            </div>
+            <div className="family-care-overview__item">
+              <small>Active bookings</small>
+              <strong>{activeBookings.length}</strong>
+            </div>
+            <div className="family-care-overview__item">
+              <small>Completed care</small>
+              <strong>{completedCount}</strong>
+            </div>
+          </section>
+        )}
+
         <motion.section
           className="family-dashboard-metrics"
           aria-label="Family care summary"
@@ -491,6 +531,9 @@ export function DashboardPage() {
               />
               <span>Care profiles</span>
             </div>
+            <Link className="family-dashboard-metric__link" to="/elderly-profiles">
+              View all
+            </Link>
           </Card>
           <Card>
             <span className="family-dashboard-metric__icon" aria-hidden="true">
@@ -503,6 +546,9 @@ export function DashboardPage() {
               />
               <span>Assigned schedules</span>
             </div>
+            <Link className="family-dashboard-metric__link" to="/bookings">
+              View all
+            </Link>
           </Card>
           <Card className={pendingCount ? "family-dashboard-metric--attention" : ""}>
             <span className="family-dashboard-metric__icon" aria-hidden="true">
@@ -515,6 +561,9 @@ export function DashboardPage() {
               />
               <span>Awaiting response</span>
             </div>
+            <Link className="family-dashboard-metric__link" to="/bookings?status=pending">
+              View requests
+            </Link>
           </Card>
           <Card>
             <span className="family-dashboard-metric__icon" aria-hidden="true">
@@ -527,46 +576,28 @@ export function DashboardPage() {
               />
               <span>Current access</span>
             </div>
+            <Link className="family-dashboard-metric__link" to="/subscription">
+              Manage plan
+            </Link>
           </Card>
         </motion.section>
+
+        <DashboardWeekStrip
+          bookings={careState.bookings}
+          schedulePath="/bookings"
+          title="View bookings"
+        />
 
         <motion.div
           className="family-dashboard-primary-grid"
           {...createRevealMotion(reduceMotion, { delay: 0.08 })}
         >
-          <Card className="family-next-care-card">
-            <div className="family-dashboard-card-heading">
-              <div><span className="eyebrow">Care calendar</span><h2>Next scheduled visit</h2></div>
-              <CalendarIcon />
-            </div>
-            {nextVisit ? (
-              <div className="family-next-care">
-                <span className="profile-avatar">
-                  {(nextVisit.booking.elderlyProfile?.name || "E")[0]}
-                </span>
-                <div>
-                  <strong>{nextVisit.booking.elderlyProfile?.name || "Care recipient"}</strong>
-                  <span>with {nextVisit.booking.caregiver?.name || "Caregiver"}</span>
-                  <small>{nextVisit.booking.serviceType}</small>
-                </div>
-                <div className="family-next-care__schedule">
-                  <span><CalendarIcon size={15} /> {displayDate(nextVisit.occurrence.date)}</span>
-                  <span><ClockIcon size={15} /> {nextVisit.occurrence.timeSlot}</span>
-                </div>
-                <Link className="button button--secondary" to="/bookings">
-                  Open booking
-                  <ArrowRightIcon size={16} />
-                </Link>
-              </div>
-            ) : (
-              <div className="family-dashboard-empty">
-                <CalendarIcon />
-                <strong>No scheduled visit ahead</strong>
-                <span>Accepted caregiver visits will appear here.</span>
-                <Link to="/caregivers">Browse verified caregivers</Link>
-              </div>
-            )}
-          </Card>
+          <FamilyCareTeamCard
+            bookings={careState.bookings}
+            profileName={visibleProfiles.length > 0
+              ? getProfileName(visibleProfiles[0])
+              : "your family"}
+          />
 
           <Card className="family-active-bookings-card">
             <div className="family-dashboard-card-heading">
@@ -583,6 +614,9 @@ export function DashboardPage() {
               <div className="family-dashboard-booking-list">
                 {visibleBookings.map((booking) => (
                   <Link to="/bookings" key={booking._id}>
+                    <span className="family-booking-avatar" aria-hidden="true">
+                      {(booking.caregiver?.name || "C")[0]}
+                    </span>
                     <div>
                       <strong>{booking.caregiver?.name || "Caregiver"}</strong>
                       <span>For {booking.elderlyProfile?.name || "care recipient"}</span>
@@ -606,36 +640,7 @@ export function DashboardPage() {
           className="family-dashboard-secondary-grid"
           {...createRevealMotion(reduceMotion, { delay: 0.1 })}
         >
-          <Card className="family-profile-overview">
-            <div className="family-dashboard-card-heading">
-              <div><span className="eyebrow">Care recipients</span><h2>Elderly profiles</h2></div>
-              <UsersIcon />
-            </div>
-            {!visibleProfiles.length ? (
-              <div className="family-dashboard-empty">
-                <UsersIcon />
-                <strong>No care profile yet</strong>
-                <Link to="/elderly-profiles/new">Create the first profile</Link>
-              </div>
-            ) : (
-              <div className="family-dashboard-profile-list">
-                {visibleProfiles.map((profile) => (
-                  <Link to={"/elderly-profiles/" + profile._id} key={profile._id}>
-                    <span className="profile-avatar">{getProfileName(profile)[0]}</span>
-                    <div>
-                      <strong>{getProfileName(profile)}</strong>
-                      <small>{profile.personalInformation?.district || "Location not added"}</small>
-                    </div>
-                    <ArrowRightIcon size={16} />
-                  </Link>
-                ))}
-              </div>
-            )}
-            <Link className="family-dashboard-card-link" to="/elderly-profiles">
-              View all profiles
-              <ArrowRightIcon size={16} />
-            </Link>
-          </Card>
+          <FamilyRecentActivityCard bookings={careState.bookings} />
 
           <section className="family-dashboard-quick-actions" aria-label="Family care actions">
             <Link to="/caregivers">
@@ -643,9 +648,9 @@ export function DashboardPage() {
               <div><strong>Caregiver network</strong><small>Compare services and availability</small></div>
               <ArrowRightIcon size={17} />
             </Link>
-            <Link to="/elderly-profiles">
+            <Link to="/wellness">
               <span><HeartPulseIcon /></span>
-              <div><strong>Wellness and vitals</strong><small>Open a profile to review care reports</small></div>
+              <div><strong>Wellness and vitals</strong><small>Review reports, insights, and vital trends</small></div>
               <ArrowRightIcon size={17} />
             </Link>
             <Link to="/subscription">
