@@ -1,13 +1,19 @@
 import bcrypt from "bcryptjs";
 import { EmailVerificationToken } from "../models/EmailVerificationToken.js";
+import { PasswordResetToken } from "../models/PasswordResetToken.js";
 import { User } from "../models/User.js";
 import { env } from "../config/env.js";
-import { sendVerificationEmail } from "../services/emailService.js";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "../services/emailService.js";
 import { verifyGoogleCredential } from "../services/googleAuthService.js";
 import { ApiError } from "../utils/ApiError.js";
 import {
+  createPasswordResetToken,
   createSessionToken,
   createVerificationToken,
+  hashPasswordResetToken,
   hashVerificationToken,
 } from "../utils/authTokens.js";
 import { toPublicUser } from "../utils/userResponse.js";
@@ -42,6 +48,37 @@ async function issueVerificationEmail(user) {
     to: user.email,
     name: user.name,
     verificationUrl: verificationUrl.toString(),
+  });
+}
+
+/**
+ * Replaces any older reset token and sends a new one-hour password-reset link.
+ * @param {{_id: import("mongoose").Types.ObjectId, email: string, name: string, role: string}} user - Password account requesting recovery.
+ * @returns {Promise<{messageId: string}>} SMTP or development delivery result.
+ * @sideEffects Replaces a PasswordResetToken document and sends an email.
+ */
+async function issuePasswordResetEmail(user) {
+  const { rawToken, tokenHash } = createPasswordResetToken();
+  await PasswordResetToken.deleteMany({
+    userId: user._id,
+  });
+  await PasswordResetToken.create({
+    userId: user._id,
+    tokenHash,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+  });
+
+  const resetUrl = new URL("/reset-password", env.clientUrl);
+  resetUrl.searchParams.set("token", rawToken);
+
+  if (user.role === "caregiver") {
+    resetUrl.searchParams.set("mode", "caregiver");
+  }
+
+  return sendPasswordResetEmail({
+    to: user.email,
+    name: user.name,
+    resetUrl: resetUrl.toString(),
   });
 }
 
@@ -105,9 +142,11 @@ export async function caregiverSignup(request, response) {
     isVerified: false,
   });
 
+  let deliveryResult;
+
   try {
     await CaregiverProfile.create({ userId: user._id, phone, applicationStatus: "draft" });
-    await issueVerificationEmail(user);
+    deliveryResult = await issueVerificationEmail(user);
   } catch (error) {
     await Promise.all([
       User.deleteOne({ _id: user._id }),
@@ -117,9 +156,21 @@ export async function caregiverSignup(request, response) {
     throw error;
   }
 
+  const usedDevelopmentConsole =
+    deliveryResult?.messageId === "development-console-delivery";
+  const message = usedDevelopmentConsole
+    ? "SMTP is not configured. Open the caregiver verification link printed in the backend terminal."
+    : "Check your inbox to verify your caregiver account.";
+
   response.status(201).json({
     success: true,
-    data: { message: "Check your inbox to verify your caregiver account.", email: user.email },
+    data: {
+      message,
+      email: user.email,
+      deliveryMethod: usedDevelopmentConsole
+        ? "development-console"
+        : "email",
+    },
   });
 }
 
@@ -185,10 +236,107 @@ export async function login(request, response) {
     throw new ApiError(403, "Authentication for this role is not available yet.");
   }
   if (!user.isVerified) {
-    throw new ApiError(403, "Verify your email before signing in.");
+    throw new ApiError(
+      403,
+      "Verify your email before signing in.",
+      {
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        role: user.role,
+      },
+    );
   }
 
   await completeLogin(response, user);
+}
+
+/**
+ * POST /api/auth/forgot-password
+ * Body: `{ email: string }`.
+ * Success 200: neutral confirmation whether or not the account exists.
+ * Auth: public; only password-based accounts receive a one-hour reset email.
+ * @param {import("express").Request} request - Validated email request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects May create a reset token and send an SMTP email.
+ */
+export async function forgotPassword(request, response) {
+  const user = await User.findOne({
+    email: request.body.email,
+    role: {
+      $in: ["family", "caregiver", "admin"],
+    },
+  }).select("+password");
+
+  if (user?.password) {
+    await issuePasswordResetEmail(user);
+  }
+
+  response.json({
+    success: true,
+    data: {
+      message:
+        "If a password account exists for this email, a reset link has been sent.",
+    },
+  });
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Body: `{ token: string, password: string, confirmPassword: string }`.
+ * Success 200: confirms the password changed and clears the current browser session.
+ * Failure 400: token is invalid, expired, or already used.
+ * Auth: public; possession of the one-time token authorizes the password change.
+ * @param {import("express").Request} request - Validated token and password request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>}
+ * @sideEffects Updates the password hash, deletes reset tokens, and clears a session cookie.
+ */
+export async function resetPassword(request, response) {
+  const tokenHash = hashPasswordResetToken(request.body.token);
+  const resetRecord = await PasswordResetToken.findOne({
+    tokenHash,
+    expiresAt: {
+      $gt: new Date(),
+    },
+  });
+
+  if (!resetRecord) {
+    throw new ApiError(
+      400,
+      "This password-reset link is invalid or has expired.",
+    );
+  }
+
+  const user = await User.findById(resetRecord.userId).select("+password");
+
+  if (!user || !user.password) {
+    await PasswordResetToken.deleteMany({
+      userId: resetRecord.userId,
+    });
+    throw new ApiError(
+      400,
+      "This password-reset link is invalid or has expired.",
+    );
+  }
+
+  user.password = await bcrypt.hash(request.body.password, 12);
+  await user.save();
+  await PasswordResetToken.deleteMany({
+    userId: user._id,
+  });
+
+  response
+    .clearCookie("session", {
+      httpOnly: true,
+      secure: env.nodeEnv === "production",
+      sameSite: env.nodeEnv === "production" ? "none" : "lax",
+    })
+    .json({
+      success: true,
+      data: {
+        message: "Password updated. You can now sign in with your new password.",
+      },
+    });
 }
 
 /**

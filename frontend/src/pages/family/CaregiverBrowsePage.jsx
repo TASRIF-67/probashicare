@@ -9,6 +9,7 @@ import {
   MapPinIcon,
   SearchIcon,
   ShieldCheckIcon,
+  StarIcon,
 } from "../../components/Icons.jsx";
 import { Pagination } from "../../components/Pagination.jsx";
 import { api, normalizeApiError } from "../../services/api.js";
@@ -106,6 +107,16 @@ function CaregiverCard({ caregiver, onBook }) {
               Verified professional
             </span>
             <h2>{caregiver.name}</h2>
+            <span className="family-caregiver-card__rating">
+              <StarIcon size={14} />
+              {caregiver.reviewCount
+                ? caregiver.averageRating.toFixed(1)
+                : "New"}
+              <small>
+                {caregiver.reviewCount} verified review
+                {caregiver.reviewCount === 1 ? "" : "s"}
+              </small>
+            </span>
             <span className="family-caregiver-card__location">
               <MapPinIcon size={14} />
               {caregiver.serviceArea || "Local service area"}

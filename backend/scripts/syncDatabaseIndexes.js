@@ -14,6 +14,11 @@ import { CareAssignment } from "../models/CareAssignment.js";
 import { WellnessReport } from "../models/WellnessReport.js";
 import { WellnessAlert } from "../models/WellnessAlert.js";
 import { WellnessInsight } from "../models/WellnessInsight.js";
+import { CaregiverComplaint } from "../models/CaregiverComplaint.js";
+import { CaregiverReview } from "../models/CaregiverReview.js";
+import { GroceryRequest } from "../models/GroceryRequest.js";
+import { DoctorAppointment } from "../models/DoctorAppointment.js";
+import { PasswordResetToken } from "../models/PasswordResetToken.js";
 
 /**
  * Synchronizes declared model indexes during controlled development migrations.
@@ -38,9 +43,14 @@ async function syncDatabaseIndexes() {
     WellnessReport.syncIndexes(),
     WellnessAlert.syncIndexes(),
     WellnessInsight.syncIndexes(),
+    CaregiverReview.syncIndexes(),
+    CaregiverComplaint.syncIndexes(),
+    GroceryRequest.syncIndexes(),
+    DoctorAppointment.syncIndexes(),
+    PasswordResetToken.syncIndexes(),
   ]);
   console.log(
-    "User, caregiver, booking, caregiver reservation, family-date reservation, subscription, notification, assignment, and wellness indexes synchronized.",
+    "User, password reset, caregiver, booking, feedback, subscription, notification, assignment, wellness, grocery, and doctor appointment indexes synchronized.",
   );
 }
 

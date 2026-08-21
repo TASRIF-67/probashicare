@@ -59,10 +59,16 @@ async function updateApprovedProfile(payload) {
   return response.data.data;
 }
 
+async function listCaregivers(params = {}) {
+  const response = await api.get("/caregivers", { params });
+  return response.data.data;
+}
+
 export const caregiverService = {
   getApplication,
   saveDraft,
   uploadDocument,
   submitApplication,
   updateApprovedProfile,
+  listCaregivers,
 };

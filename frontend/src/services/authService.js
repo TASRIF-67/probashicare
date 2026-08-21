@@ -99,6 +99,30 @@ async function resendVerification(email) {
   return response.data.data;
 }
 
+/**
+ * Requests a one-hour password-reset email without revealing account existence.
+ * @param {string} email - Password account email entered by the visitor.
+ * @returns {Promise<{message: string}>} Neutral email-delivery confirmation.
+ * @sideEffects Calls POST `/auth/forgot-password` and may trigger an email.
+ */
+async function forgotPassword(email) {
+  const response = await api.post("/auth/forgot-password", {
+    email,
+  });
+  return response.data.data;
+}
+
+/**
+ * Replaces a password using the one-time token from the recovery email.
+ * @param {{token: string, password: string, confirmPassword: string}} input - Reset token and matching passwords.
+ * @returns {Promise<{message: string}>} Password-update confirmation.
+ * @sideEffects Calls POST `/auth/reset-password` and invalidates the reset token.
+ */
+async function resetPassword(input) {
+  const response = await api.post("/auth/reset-password", input);
+  return response.data.data;
+}
+
 /*
  * To add a similar frontend API, create a typed-by-documentation method here or in
  * a feature service, return only `response.data.data`, expose it through a context
@@ -114,4 +138,6 @@ export const authService = {
   logout,
   verifyEmail,
   resendVerification,
+  forgotPassword,
+  resetPassword,
 };

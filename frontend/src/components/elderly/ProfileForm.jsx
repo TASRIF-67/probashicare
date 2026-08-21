@@ -11,11 +11,187 @@ import {
 
 const STEPS = [
   { key: "personalInformation", label: "Personal" },
-  { key: "medicalHistory", label: "History" },
-  { key: "health", label: "Health details" },
-  { key: "medications", label: "Medications" },
+  { key: "health", label: "Health" },
   { key: "emergencyContacts", label: "Emergency" },
   { key: "review", label: "Review" },
+];
+
+const FAMILY_RELATIONSHIPS = [
+  "Daughter",
+  "Son",
+  "Spouse",
+  "Granddaughter",
+  "Grandson",
+  "Sister",
+  "Brother",
+  "Niece",
+  "Nephew",
+  "Other",
+];
+
+const PREFERRED_LANGUAGES = [
+  "Bangla",
+  "English",
+  "Hindi",
+  "Urdu",
+  "Other",
+];
+
+const BANGLADESH_DIVISIONS = [
+  "Barishal",
+  "Chattogram",
+  "Dhaka",
+  "Khulna",
+  "Mymensingh",
+  "Rajshahi",
+  "Rangpur",
+  "Sylhet",
+];
+
+const BANGLADESH_DISTRICTS = [
+  "Bagerhat",
+  "Bandarban",
+  "Barguna",
+  "Barishal",
+  "Bhola",
+  "Bogura",
+  "Brahmanbaria",
+  "Chandpur",
+  "Chapainawabganj",
+  "Chattogram",
+  "Chuadanga",
+  "Cox's Bazar",
+  "Cumilla",
+  "Dhaka",
+  "Dinajpur",
+  "Faridpur",
+  "Feni",
+  "Gaibandha",
+  "Gazipur",
+  "Gopalganj",
+  "Habiganj",
+  "Jamalpur",
+  "Jashore",
+  "Jhalokati",
+  "Jhenaidah",
+  "Joypurhat",
+  "Khagrachhari",
+  "Khulna",
+  "Kishoreganj",
+  "Kurigram",
+  "Kushtia",
+  "Lakshmipur",
+  "Lalmonirhat",
+  "Madaripur",
+  "Magura",
+  "Manikganj",
+  "Meherpur",
+  "Moulvibazar",
+  "Munshiganj",
+  "Mymensingh",
+  "Naogaon",
+  "Narail",
+  "Narayanganj",
+  "Narsingdi",
+  "Natore",
+  "Netrokona",
+  "Nilphamari",
+  "Noakhali",
+  "Pabna",
+  "Panchagarh",
+  "Patuakhali",
+  "Pirojpur",
+  "Rajbari",
+  "Rajshahi",
+  "Rangamati",
+  "Rangpur",
+  "Satkhira",
+  "Shariatpur",
+  "Sherpur",
+  "Sirajganj",
+  "Sunamganj",
+  "Sylhet",
+  "Tangail",
+  "Thakurgaon",
+];
+
+const DISTRICT_TO_DIVISION = {
+  Bagerhat: "Khulna",
+  Bandarban: "Chattogram",
+  Barguna: "Barishal",
+  Barishal: "Barishal",
+  Bhola: "Barishal",
+  Bogura: "Rajshahi",
+  Brahmanbaria: "Chattogram",
+  Chandpur: "Chattogram",
+  Chapainawabganj: "Rajshahi",
+  Chattogram: "Chattogram",
+  Chuadanga: "Khulna",
+  "Cox's Bazar": "Chattogram",
+  Cumilla: "Chattogram",
+  Dhaka: "Dhaka",
+  Dinajpur: "Rangpur",
+  Faridpur: "Dhaka",
+  Feni: "Chattogram",
+  Gaibandha: "Rangpur",
+  Gazipur: "Dhaka",
+  Gopalganj: "Dhaka",
+  Habiganj: "Sylhet",
+  Jamalpur: "Mymensingh",
+  Jashore: "Khulna",
+  Jhalokati: "Barishal",
+  Jhenaidah: "Khulna",
+  Joypurhat: "Rajshahi",
+  Khagrachhari: "Chattogram",
+  Khulna: "Khulna",
+  Kishoreganj: "Dhaka",
+  Kurigram: "Rangpur",
+  Kushtia: "Khulna",
+  Lakshmipur: "Chattogram",
+  Lalmonirhat: "Rangpur",
+  Madaripur: "Dhaka",
+  Magura: "Khulna",
+  Manikganj: "Dhaka",
+  Meherpur: "Khulna",
+  Moulvibazar: "Sylhet",
+  Munshiganj: "Dhaka",
+  Mymensingh: "Mymensingh",
+  Naogaon: "Rajshahi",
+  Narail: "Khulna",
+  Narayanganj: "Dhaka",
+  Narsingdi: "Dhaka",
+  Natore: "Rajshahi",
+  Netrokona: "Mymensingh",
+  Nilphamari: "Rangpur",
+  Noakhali: "Chattogram",
+  Pabna: "Rajshahi",
+  Panchagarh: "Rangpur",
+  Patuakhali: "Barishal",
+  Pirojpur: "Barishal",
+  Rajbari: "Dhaka",
+  Rajshahi: "Rajshahi",
+  Rangamati: "Chattogram",
+  Rangpur: "Rangpur",
+  Satkhira: "Khulna",
+  Shariatpur: "Dhaka",
+  Sherpur: "Mymensingh",
+  Sirajganj: "Rajshahi",
+  Sunamganj: "Sylhet",
+  Sylhet: "Sylhet",
+  Tangail: "Dhaka",
+  Thakurgaon: "Rangpur",
+};
+
+const MEDICINE_FORMS = [
+  "tablet",
+  "capsule",
+  "syrup",
+  "injection",
+  "inhaler",
+  "drops",
+  "cream",
+  "ointment",
+  "other",
 ];
 
 const EMPTY_PROFILE = {
@@ -67,7 +243,7 @@ const SECTION_FIELDS = {
     ["name", "Medicine name", "text", true],
     ["strength", "Strength"],
     ["dosage", "Dosage"],
-    ["form", "Form"],
+    ["form", "Form", "select", false, MEDICINE_FORMS],
     ["reason", "Reason"],
     ["prescribingDoctor", "Prescribing doctor"],
     ["startDate", "Start date", "date"],
@@ -76,7 +252,7 @@ const SECTION_FIELDS = {
   ],
   emergencyContacts: [
     ["name", "Contact name", "text", true],
-    ["relationship", "Relationship", "text", true],
+    ["relationship", "Relationship", "select", true, FAMILY_RELATIONSHIPS],
     ["phone", "Phone", "tel", true],
     ["alternativePhone", "Alternative phone", "tel"],
     ["address", "Address"],
@@ -177,13 +353,14 @@ function createSectionItem(section) {
   if (section === "medications") {
     return {
       name: "",
+      form: "tablet",
       isActive: true,
     };
   }
 
   return {
     name: "",
-    relationship: "",
+    relationship: FAMILY_RELATIONSHIPS[0],
     phone: "",
     priority: 1,
     isPrimary: false,
@@ -311,8 +488,21 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
                 <label className="field" key={key}>
                   <span>{label}</span>
                   {type === "select" ? (
-                    <select className="input" value={item[key] || options[0]} onChange={(event) => updateItem(index, key, event.target.value)}>
-                      {options.map((option) => <option value={option} key={option}>{option.replaceAll("-", " ")}</option>)}
+                    <select
+                      className="input"
+                      value={item[key] || options[0]}
+                      onChange={(event) => {
+                        updateItem(index, key, event.target.value);
+                      }}
+                    >
+                      {item[key] && !options.includes(item[key]) && (
+                        <option value={item[key]}>{item[key]}</option>
+                      )}
+                      {options.map((option) => (
+                        <option value={option} key={option}>
+                          {option.replaceAll("-", " ")}
+                        </option>
+                      ))}
                     </select>
                   ) : (
                     <input className={errors[`${section}.${index}.${key}`] ? "input input--error" : "input"} type={type} required={required} value={item[key] ?? ""} onChange={(event) => updateItem(index, key, type === "number" ? Number(event.target.value) : event.target.value)} />
@@ -393,6 +583,28 @@ export function ProfileForm({
         personalInformation: {
           ...current.personalInformation,
           [name]: fieldValue,
+        },
+      };
+    });
+  }
+
+  /**
+   * Stores a selected Bangladesh district and fills its division automatically.
+   * @param {import("react").ChangeEvent<HTMLSelectElement>} event - District selection event.
+   * @returns {void}
+   * @sideEffects Updates the district and division in local profile state.
+   */
+  function updateDistrict(event) {
+    const district = event.target.value;
+    const division = DISTRICT_TO_DIVISION[district] || value.personalInformation.division;
+
+    setValue((current) => {
+      return {
+        ...current,
+        personalInformation: {
+          ...current.personalInformation,
+          district,
+          division,
         },
       };
     });
@@ -492,70 +704,278 @@ export function ProfileForm({
 
       {step.key === "personalInformation" && (
         <section className="form-section">
-          <div className="section-heading"><div><h2>Personal information</h2><p>Basic information used throughout their care record.</p></div></div>
-          <div className="form-grid">
-            <Input id="fullName" name="fullName" label="Full name" value={value.personalInformation.fullName} onChange={updatePersonal} error={errors["personalInformation.fullName"]} required />
-            <Input id="preferredName" name="preferredName" label="Preferred name" value={value.personalInformation.preferredName} onChange={updatePersonal} />
-            <Input id="dateOfBirth" name="dateOfBirth" type="date" label="Date of birth" max={new Date().toISOString().slice(0, 10)} value={value.personalInformation.dateOfBirth} onChange={updatePersonal} error={errors["personalInformation.dateOfBirth"]} required />
-            <label className="field"><span>Gender</span><select className="input" name="gender" value={value.personalInformation.gender} onChange={updatePersonal} required><option value="">Select gender</option><option value="female">Female</option><option value="male">Male</option><option value="non-binary">Non-binary</option><option value="prefer-not-to-say">Prefer not to say</option></select></label>
-            <label className="field"><span>Blood group</span><select className="input" name="bloodGroup" value={value.personalInformation.bloodGroup} onChange={updatePersonal}>{["unknown", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((group) => <option value={group} key={group}>{group}</option>)}</select></label>
-            <Input id="phone" name="phone" type="tel" label="Phone number" value={value.personalInformation.phone} onChange={updatePersonal} error={errors["personalInformation.phone"]} />
-            <Input id="familyRelationship" name="familyRelationship" label="Your relationship" placeholder="For example, daughter" value={value.personalInformation.familyRelationship} onChange={updatePersonal} error={errors["personalInformation.familyRelationship"]} required />
-            <Input id="preferredLanguage" name="preferredLanguage" label="Preferred language" value={value.personalInformation.preferredLanguage} onChange={updatePersonal} />
-            <Input id="address" name="address" label="Home address" value={value.personalInformation.address} onChange={updatePersonal} error={errors["personalInformation.address"]} required />
-            <Input id="district" name="district" label="District" value={value.personalInformation.district} onChange={updatePersonal} error={errors["personalInformation.district"]} required />
-            <Input id="division" name="division" label="Division" value={value.personalInformation.division} onChange={updatePersonal} error={errors["personalInformation.division"]} required />
-            <label className="field field--wide"><span>General care notes</span><textarea className="input textarea" name="careNotes" value={value.personalInformation.careNotes} onChange={updatePersonal} /></label>
+          <div className="section-heading">
+            <div>
+              <h2>Personal information</h2>
+              <p>Basic information used throughout their care record.</p>
+            </div>
           </div>
+          <div className="form-grid">
+            <Input
+              id="fullName"
+              name="fullName"
+              label="Full name"
+              value={value.personalInformation.fullName}
+              onChange={updatePersonal}
+              error={errors["personalInformation.fullName"]}
+              required
+            />
+            <Input
+              id="dateOfBirth"
+              name="dateOfBirth"
+              type="date"
+              label="Date of birth"
+              max={new Date().toISOString().slice(0, 10)}
+              value={value.personalInformation.dateOfBirth}
+              onChange={updatePersonal}
+              error={errors["personalInformation.dateOfBirth"]}
+              required
+            />
+            <label className="field" htmlFor="profile-gender">
+              <span>Gender</span>
+              <select
+                id="profile-gender"
+                className="input"
+                name="gender"
+                value={value.personalInformation.gender}
+                onChange={updatePersonal}
+                required
+              >
+                <option value="">Select gender</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="non-binary">Non-binary</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
+              </select>
+            </label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              label="Phone number"
+              value={value.personalInformation.phone}
+              onChange={updatePersonal}
+              error={errors["personalInformation.phone"]}
+            />
+            <label className="field" htmlFor="familyRelationship">
+              <span>Your relationship</span>
+              <select
+                id="familyRelationship"
+                className={errors["personalInformation.familyRelationship"] ? "input input--error" : "input"}
+                name="familyRelationship"
+                value={value.personalInformation.familyRelationship}
+                onChange={updatePersonal}
+                required
+              >
+                <option value="">Choose relationship</option>
+                {value.personalInformation.familyRelationship
+                  && !FAMILY_RELATIONSHIPS.includes(value.personalInformation.familyRelationship) && (
+                    <option value={value.personalInformation.familyRelationship}>
+                      {value.personalInformation.familyRelationship}
+                    </option>
+                  )}
+                {FAMILY_RELATIONSHIPS.map((relationship) => (
+                  <option value={relationship} key={relationship}>{relationship}</option>
+                ))}
+              </select>
+              {errors["personalInformation.familyRelationship"] && (
+                <small className="field__error">
+                  {errors["personalInformation.familyRelationship"]}
+                </small>
+              )}
+            </label>
+            <Input
+              id="address"
+              name="address"
+              label="Home address"
+              value={value.personalInformation.address}
+              onChange={updatePersonal}
+              error={errors["personalInformation.address"]}
+              required
+            />
+            <label className="field" htmlFor="district">
+              <span>District</span>
+              <select
+                id="district"
+                className={errors["personalInformation.district"] ? "input input--error" : "input"}
+                name="district"
+                value={value.personalInformation.district}
+                onChange={updateDistrict}
+                required
+              >
+                <option value="">Choose district</option>
+                {value.personalInformation.district
+                  && !BANGLADESH_DISTRICTS.includes(value.personalInformation.district) && (
+                    <option value={value.personalInformation.district}>
+                      {value.personalInformation.district}
+                    </option>
+                  )}
+                {BANGLADESH_DISTRICTS.map((district) => (
+                  <option value={district} key={district}>{district}</option>
+                ))}
+              </select>
+              {errors["personalInformation.district"] && (
+                <small className="field__error">
+                  {errors["personalInformation.district"]}
+                </small>
+              )}
+            </label>
+            {DISTRICT_TO_DIVISION[value.personalInformation.district] ? (
+              <div className="profile-derived-field">
+                <span>Division</span>
+                <strong>{value.personalInformation.division}</strong>
+                <small>Filled automatically from the district.</small>
+              </div>
+            ) : value.personalInformation.district ? (
+              <label className="field" htmlFor="division">
+                <span>Division</span>
+                <select
+                  id="division"
+                  className={errors["personalInformation.division"] ? "input input--error" : "input"}
+                  name="division"
+                  value={value.personalInformation.division}
+                  onChange={updatePersonal}
+                  required
+                >
+                  <option value="">Choose division</option>
+                  {value.personalInformation.division
+                    && !BANGLADESH_DIVISIONS.includes(value.personalInformation.division) && (
+                      <option value={value.personalInformation.division}>
+                        {value.personalInformation.division}
+                      </option>
+                    )}
+                  {BANGLADESH_DIVISIONS.map((division) => (
+                    <option value={division} key={division}>{division}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
+          <details
+            className="progressive-details"
+            defaultOpen={Boolean(
+              value.personalInformation.preferredName
+              || value.personalInformation.careNotes
+              || value.personalInformation.bloodGroup !== "unknown"
+            )}
+          >
+            <summary>Add more personal details</summary>
+            <div className="form-grid progressive-details__content">
+              <Input
+                id="preferredName"
+                name="preferredName"
+                label="Preferred name"
+                value={value.personalInformation.preferredName}
+                onChange={updatePersonal}
+              />
+              <label className="field" htmlFor="profile-blood-group">
+                <span>Blood group</span>
+                <select
+                  id="profile-blood-group"
+                  className="input"
+                  name="bloodGroup"
+                  value={value.personalInformation.bloodGroup}
+                  onChange={updatePersonal}
+                >
+                  {["unknown", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((group) => (
+                    <option value={group} key={group}>{group}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field" htmlFor="preferredLanguage">
+                <span>Preferred language</span>
+                <select
+                  id="preferredLanguage"
+                  className="input"
+                  name="preferredLanguage"
+                  value={value.personalInformation.preferredLanguage}
+                  onChange={updatePersonal}
+                >
+                  {value.personalInformation.preferredLanguage
+                    && !PREFERRED_LANGUAGES.includes(value.personalInformation.preferredLanguage) && (
+                      <option value={value.personalInformation.preferredLanguage}>
+                        {value.personalInformation.preferredLanguage}
+                      </option>
+                    )}
+                  {PREFERRED_LANGUAGES.map((language) => (
+                    <option value={language} key={language}>{language}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field" htmlFor="careNotes">
+                <span>General care notes</span>
+                <textarea
+                  id="careNotes"
+                  className="input textarea"
+                  name="careNotes"
+                  value={value.personalInformation.careNotes}
+                  onChange={updatePersonal}
+                />
+              </label>
+            </div>
+          </details>
         </section>
       )}
-      {step.key === "medicalHistory" && (
-        <RepeatedSection
-          section="medicalHistory"
-          title="Medical history"
-          description="Past diagnoses, procedures, and significant medical events."
-          items={value.medicalHistory}
-          errors={errors}
-          onChange={(items) => {
-            updateSection("medicalHistory", items);
-          }}
-        />
-      )}
       {step.key === "health" && (
-        <div className="stacked-sections">
-          <RepeatedSection
-            section="allergies"
-            title="Allergies"
-            description="Known medicine, food, and environmental allergies."
-            items={value.allergies}
-            errors={errors}
-            onChange={(items) => {
-              updateSection("allergies", items);
-            }}
-          />
-          <RepeatedSection
-            section="chronicDiseases"
-            title="Chronic diseases"
-            description="Long-term conditions requiring ongoing awareness."
-            items={value.chronicDiseases}
-            errors={errors}
-            onChange={(items) => {
-              updateSection("chronicDiseases", items);
-            }}
-          />
+        <div className="profile-health-groups">
+          <div className="profile-health-groups__intro">
+            <span className="eyebrow">Add only what is known</span>
+            <h2>Health information</h2>
+            <p>These sections are not required to create the profile. Open only the sections you need.</p>
+          </div>
+          <details className="profile-health-group" defaultOpen={value.medicalHistory.length > 0}>
+            <summary>Medical history <span>{value.medicalHistory.length}</span></summary>
+            <RepeatedSection
+              section="medicalHistory"
+              title="Medical history"
+              description="Past diagnoses, procedures, and significant medical events."
+              items={value.medicalHistory}
+              errors={errors}
+              onChange={(items) => {
+                updateSection("medicalHistory", items);
+              }}
+            />
+          </details>
+          <details className="profile-health-group" defaultOpen={value.allergies.length > 0}>
+            <summary>Allergies <span>{value.allergies.length}</span></summary>
+            <RepeatedSection
+              section="allergies"
+              title="Allergies"
+              description="Known medicine, food, and environmental allergies."
+              items={value.allergies}
+              errors={errors}
+              onChange={(items) => {
+                updateSection("allergies", items);
+              }}
+            />
+          </details>
+          <details className="profile-health-group" defaultOpen={value.chronicDiseases.length > 0}>
+            <summary>Chronic diseases <span>{value.chronicDiseases.length}</span></summary>
+            <RepeatedSection
+              section="chronicDiseases"
+              title="Chronic diseases"
+              description="Long-term conditions requiring ongoing awareness."
+              items={value.chronicDiseases}
+              errors={errors}
+              onChange={(items) => {
+                updateSection("chronicDiseases", items);
+              }}
+            />
+          </details>
+          <details className="profile-health-group" defaultOpen={value.medications.length > 0}>
+            <summary>Current medications <span>{value.medications.length}</span></summary>
+            <RepeatedSection
+              section="medications"
+              title="Current medications"
+              description="Record medicines that are currently being taken."
+              items={value.medications}
+              errors={errors}
+              onChange={(items) => {
+                updateSection("medications", items);
+              }}
+            />
+          </details>
         </div>
-      )}
-      {step.key === "medications" && (
-        <RepeatedSection
-          section="medications"
-          title="Current medications"
-          description="Record current medicines only. Scheduling and reminders come later."
-          items={value.medications}
-          errors={errors}
-          onChange={(items) => {
-            updateSection("medications", items);
-          }}
-        />
       )}
       {step.key === "emergencyContacts" && (
         <RepeatedSection

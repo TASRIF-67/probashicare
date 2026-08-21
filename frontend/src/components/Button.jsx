@@ -12,14 +12,32 @@ export function Button({
   disabled,
   ...props
 }) {
+  const buttonClassName = [
+    "button",
+    `button--${variant}`,
+    isLoading ? "button--loading" : "",
+    className,
+  ].join(" ").trim();
+
   return (
     <button
-      className={`button button--${variant} ${isLoading ? "button--loading" : ""} ${className}`}
+      className={buttonClassName}
       disabled={disabled || isLoading}
       aria-busy={isLoading || undefined}
       {...props}
     >
-      {isLoading ? <span className="spinner" aria-label="Loading" /> : children}
+      <span
+        className="button__content"
+        aria-hidden={isLoading || undefined}
+      >
+        {children}
+      </span>
+      {isLoading && (
+        <span className="button__loading-indicator">
+          <span className="spinner" aria-hidden="true" />
+          <span className="sr-only">Loading, please wait</span>
+        </span>
+      )}
     </button>
   );
 }

@@ -9,10 +9,14 @@ import elderlyProfileRoutes from "./routes/elderlyProfileRoutes.js";
 import adminUserRoutes from "./routes/adminUserRoutes.js";
 import caregiverRoutes from "./routes/caregiverRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import doctorAppointmentRoutes from "./routes/doctorAppointmentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import wellnessReportRoutes from "./routes/wellnessReportRoutes.js";
 import wellnessInsightRoutes from "./routes/wellnessInsightRoutes.js";
+import groceryRequestRoutes from "./routes/groceryRequestRoutes.js";
+import storeLocatorRoutes from "./routes/storeLocatorRoutes.js";
+import careVisitRoutes from "./routes/careVisitRoutes.js";
 
 const app = express();
 
@@ -42,9 +46,15 @@ app.use("/api/elderly-profiles", elderlyProfileRoutes);
 app.use("/api/admin", adminUserRoutes);
 app.use("/api/caregivers", caregiverRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/doctor-appointments", doctorAppointmentRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/wellness-reports", wellnessReportRoutes);
+app.use("/api/grocery-requests", groceryRequestRoutes);
+app.use("/api/store-locator", storeLocatorRoutes);
+app.use("/api/care-visit", careVisitRoutes);
+// Keep this broad `/api` router after specific feature routers because it applies
+// a family-only gate before checking its own wellness-insight route patterns.
 app.use("/api", wellnessInsightRoutes);
 
 app.use(notFound);

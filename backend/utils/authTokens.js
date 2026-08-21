@@ -45,3 +45,23 @@ export function createVerificationToken(bytes = 32) {
 export function hashVerificationToken(rawToken) {
   return crypto.createHash("sha256").update(rawToken).digest("hex");
 }
+
+/**
+ * Creates a high-entropy password-reset token and a safe hash for MongoDB.
+ * @param {number} [bytes=32] - Number of cryptographically random bytes.
+ * @returns {{rawToken: string, tokenHash: string}} Raw email token and SHA-256 storage hash.
+ * @sideEffects Reads from the operating system cryptographic random source.
+ */
+export function createPasswordResetToken(bytes = 32) {
+  return createVerificationToken(bytes);
+}
+
+/**
+ * Hashes a password-reset token received from the browser for database lookup.
+ * @param {string} rawToken - Raw token from the password-reset URL.
+ * @returns {string} SHA-256 hexadecimal digest.
+ * @sideEffects None.
+ */
+export function hashPasswordResetToken(rawToken) {
+  return hashVerificationToken(rawToken);
+}

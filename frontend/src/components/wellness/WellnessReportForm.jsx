@@ -8,11 +8,8 @@ import {
   BloodIcon,
   CalendarIcon,
   ClockIcon,
-  HeartPulseIcon,
-  PillIcon,
   SaveIcon,
   SendIcon,
-  UtensilsIcon,
 } from "../Icons.jsx";
 
 const MOODS = ["excellent", "good", "okay", "low", "distressed"];
@@ -27,9 +24,7 @@ const MEDICINE_STATUSES = [
 const BLOOD_SUGAR_CONTEXTS = ["fasting", "before-meal", "after-meal", "random", "unknown"];
 const REPORT_STEPS = [
   "Visit",
-  "Daily wellness",
-  "Medicine",
-  "Vitals",
+  "Daily care",
   "Review",
 ];
 
@@ -315,6 +310,36 @@ function SelectField({ id, label, value, options, error, placeholder, onChange }
 }
 
 /**
+ * Renders a short group of visible one-tap choices.
+ * @param {{label: string, value: string, options: string[], error?: string, onChange: (value: string) => void}} props - Choice configuration and handler.
+ * @returns {import("react").ReactElement} Accessible choice-button field.
+ * @sideEffects Invokes the supplied change handler when a choice is pressed.
+ */
+function ChoiceField({ label, value, options, error, onChange }) {
+  return (
+    <fieldset className="wellness-choice-field">
+      <legend>{label}</legend>
+      <div className="wellness-choice-list">
+        {options.map((option) => (
+          <button
+            type="button"
+            className={value === option ? "is-selected" : ""}
+            aria-pressed={value === option}
+            key={option}
+            onClick={() => {
+              onChange(option);
+            }}
+          >
+            {humanize(option)}
+          </button>
+        ))}
+      </div>
+      {error && <small className="field__error">{error}</small>}
+    </fieldset>
+  );
+}
+
+/**
  * Renders the structured caregiver wellness-report editor.
  * @param {{report?: object|null, assignments: object[], errors?: object, isBusy?: boolean, onSaveDraft: Function, onRequestSubmit: Function}} props - Existing report, available assignments, feedback, and persistence actions.
  * @returns {import("react").ReactElement} Multi-section controlled report form.
@@ -344,9 +369,16 @@ export function WellnessReportForm({
     }
 
     const visitFields = ["careAssignmentId", "elderlyProfileId", "visitDate", "checkInAt", "checkOutAt", "nextVisitDate"];
-    const wellnessFields = ["mood", "mealStatus", "mealNotes", "exerciseDurationMinutes", "observations"];
-    const medicineFields = ["medicineIntakeStatus", "medicineNotes"];
-    let errorStep = 4;
+    const dailyCareFields = [
+      "mood",
+      "mealStatus",
+      "mealNotes",
+      "exerciseDurationMinutes",
+      "observations",
+      "medicineIntakeStatus",
+      "medicineNotes",
+    ];
+    let errorStep = 2;
 
     for (const field of errorFields) {
       if (visitFields.includes(field)) {
@@ -354,18 +386,8 @@ export function WellnessReportForm({
         break;
       }
 
-      if (wellnessFields.includes(field)) {
+      if (dailyCareFields.includes(field) || field.startsWith("vitals.")) {
         errorStep = 1;
-        break;
-      }
-
-      if (medicineFields.includes(field)) {
-        errorStep = 2;
-        break;
-      }
-
-      if (field.startsWith("vitals.")) {
-        errorStep = 3;
         break;
       }
     }
@@ -491,16 +513,15 @@ export function WellnessReportForm({
     }
 
     if (currentStep === 1) {
-      if (!value.mood || !value.mealStatus || !value.observations.trim()) {
-        return "Add the mood, meal status, and a brief health observation.";
+      if (
+        !value.mood
+        || !value.mealStatus
+        || !value.medicineIntakeStatus
+        || !value.observations.trim()
+      ) {
+        return "Choose mood, meals, and medicine status, then add a brief observation.";
       }
-    }
 
-    if (currentStep === 2 && !value.medicineIntakeStatus) {
-      return "Choose the medicine intake status before continuing.";
-    }
-
-    if (currentStep === 3) {
       const hasSystolic = value.vitals.systolic !== "";
       const hasDiastolic = value.vitals.diastolic !== "";
       const hasBloodSugar = value.vitals.bloodSugar !== "";
@@ -583,7 +604,44 @@ export function WellnessReportForm({
       {currentStep === 0 && <section className="wellness-form-section">
         <div className="wellness-form-section__heading"><span><ClockIcon /></span><div><h2>Visit details</h2><p>Connect this report to an assigned visit and record arrival information.</p></div></div>
         <div className="form-grid">
-          <label className="field field--wide" htmlFor="report-assignment"><span>Assigned care visit</span><select id="report-assignment" className={errors.careAssignmentId ? "input input--error" : "input"} value={value.careAssignmentId} onChange={handleAssignmentChange} disabled={Boolean(report)}><option value="">Choose an assigned visit</option>{assignments.map((assignment) => <option value={assignment.id} key={assignment.id}>{assignment.elderly.preferredName || assignment.elderly.fullName} · {humanize(assignment.assignmentType)} · {new Date(assignment.startsAt).toLocaleDateString("en-GB")}</option>)}</select>{errors.careAssignmentId && <small className="field__error">{errors.careAssignmentId}</small>}</label>
+          {assignments.length === 1 ? (
+            <div className="wellness-assignment-summary field--wide">
+              <span>Reporting care for</span>
+              <strong>
+                {assignments[0].elderly.preferredName || assignments[0].elderly.fullName}
+              </strong>
+              <small>
+                {humanize(assignments[0].assignmentType)}
+                {" · "}
+                {new Date(assignments[0].startsAt).toLocaleDateString("en-GB")}
+              </small>
+            </div>
+          ) : (
+            <label className="field field--wide" htmlFor="report-assignment">
+              <span>Assigned care visit</span>
+              <select
+                id="report-assignment"
+                className={errors.careAssignmentId ? "input input--error" : "input"}
+                value={value.careAssignmentId}
+                onChange={handleAssignmentChange}
+                disabled={Boolean(report)}
+              >
+                <option value="">Choose an assigned visit</option>
+                {assignments.map((assignment) => (
+                  <option value={assignment.id} key={assignment.id}>
+                    {assignment.elderly.preferredName || assignment.elderly.fullName}
+                    {" · "}
+                    {humanize(assignment.assignmentType)}
+                    {" · "}
+                    {new Date(assignment.startsAt).toLocaleDateString("en-GB")}
+                  </option>
+                ))}
+              </select>
+              {errors.careAssignmentId && (
+                <small className="field__error">{errors.careAssignmentId}</small>
+              )}
+            </label>
+          )}
           <ReportDateField
             value={value.visitDate}
             error={errors.visitDate}
@@ -608,44 +666,134 @@ export function WellnessReportForm({
             disabled={isBusy}
             onChange={handleChange}
           />
-          <Input id="report-next-visit" name="nextVisitDate" type="datetime-local" label="Next visit (optional)" value={value.nextVisitDate} onChange={handleChange} error={errors.nextVisitDate} />
         </div>
+        <details
+          className="progressive-details wellness-extra-details"
+          defaultOpen={Boolean(value.nextVisitDate || errors.nextVisitDate)}
+        >
+          <summary>Add a future visit date</summary>
+          <div className="progressive-details__content">
+            <Input
+              id="report-next-visit"
+              name="nextVisitDate"
+              type="datetime-local"
+              label="Next visit"
+              value={value.nextVisitDate}
+              onChange={handleChange}
+              error={errors.nextVisitDate}
+            />
+          </div>
+        </details>
       </section>}
 
       {currentStep === 1 && <section className="wellness-form-section">
-        <div className="wellness-form-section__heading"><span><ActivityIcon /></span><div><h2>Daily wellness</h2><p>Record mood, meals, movement, and a concise health observation.</p></div></div>
-        <div className="form-grid">
-          <SelectField id="report-mood" label="Mood" value={value.mood} options={MOODS} placeholder="Choose mood" error={errors.mood} onChange={(event) => setValue((current) => ({ ...current, mood: event.target.value }))} />
-          <SelectField id="report-meal-status" label="Meal status" value={value.mealStatus} options={MEAL_STATUSES} placeholder="Choose meal status" error={errors.mealStatus} onChange={(event) => setValue((current) => ({ ...current, mealStatus: event.target.value }))} />
-          <Input id="report-exercise" name="exerciseDurationMinutes" type="number" min="0" max="600" label="Exercise duration (minutes)" value={value.exerciseDurationMinutes} onChange={handleChange} error={errors.exerciseDurationMinutes} />
-          <label className="field field--wide" htmlFor="report-meal-notes"><span><UtensilsIcon size={16} /> Meal notes</span><textarea id="report-meal-notes" name="mealNotes" className={errors.mealNotes ? "input textarea input--error" : "input textarea"} value={value.mealNotes} onChange={handleChange} placeholder="What was offered and how much was eaten?" />{errors.mealNotes && <small className="field__error">{errors.mealNotes}</small>}</label>
-          <label className="field field--wide" htmlFor="report-observations"><span>Health observations</span><textarea id="report-observations" name="observations" className={errors.observations ? "input textarea input--error" : "input textarea"} value={value.observations} onChange={handleChange} placeholder="Describe alertness, comfort, mobility, pain, or changes noticed today." />{errors.observations && <small className="field__error">{errors.observations}</small>}</label>
+        <div className="wellness-form-section__heading">
+          <span><ActivityIcon /></span>
+          <div>
+            <h2>Daily care check-in</h2>
+            <p>Use the quick choices, then add one short observation.</p>
+          </div>
         </div>
+        <div className="wellness-quick-grid">
+          <ChoiceField
+            label="Mood"
+            value={value.mood}
+            options={MOODS}
+            error={errors.mood}
+            onChange={(mood) => {
+              setValue((current) => ({ ...current, mood }));
+            }}
+          />
+          <ChoiceField
+            label="Meals"
+            value={value.mealStatus}
+            options={MEAL_STATUSES}
+            error={errors.mealStatus}
+            onChange={(mealStatus) => {
+              setValue((current) => ({ ...current, mealStatus }));
+            }}
+          />
+          <ChoiceField
+            label="Medicine"
+            value={value.medicineIntakeStatus}
+            options={MEDICINE_STATUSES}
+            error={errors.medicineIntakeStatus}
+            onChange={(medicineIntakeStatus) => {
+              setValue((current) => ({ ...current, medicineIntakeStatus }));
+            }}
+          />
+        </div>
+        <label className="field" htmlFor="report-observations">
+          <span>What did you notice today?</span>
+          <textarea
+            id="report-observations"
+            name="observations"
+            className={errors.observations ? "input textarea input--error" : "input textarea"}
+            value={value.observations}
+            onChange={handleChange}
+            placeholder="For example: alert, comfortable, and walking normally."
+            required
+          />
+          {errors.observations && (
+            <small className="field__error">{errors.observations}</small>
+          )}
+        </label>
+        {(value.mealStatus === "partial" || value.mealStatus === "missed") && (
+          <label className="field" htmlFor="report-meal-notes">
+            <span>What happened with the meal?</span>
+            <textarea
+              id="report-meal-notes"
+              name="mealNotes"
+              className="input textarea"
+              value={value.mealNotes}
+              onChange={handleChange}
+            />
+          </label>
+        )}
+        {(value.medicineIntakeStatus === "partially-taken"
+          || value.medicineIntakeStatus === "missed") && (
+          <label className="field" htmlFor="report-medicine-notes">
+            <span>What happened with the medicine?</span>
+            <textarea
+              id="report-medicine-notes"
+              name="medicineNotes"
+              className="input textarea"
+              value={value.medicineNotes}
+              onChange={handleChange}
+            />
+          </label>
+        )}
+        <details
+          className="progressive-details wellness-extra-details"
+          defaultOpen={Boolean(
+            value.exerciseDurationMinutes
+            || value.vitals.systolic
+            || value.vitals.diastolic
+            || value.vitals.bloodSugar
+            || value.vitals.weightKg
+            || errors["vitals.systolic"]
+            || errors["vitals.diastolic"]
+            || errors["vitals.bloodSugar"]
+            || errors["vitals.weightKg"]
+          )}
+        >
+          <summary>Add exercise or vital measurements</summary>
+          <div className="progressive-details__content">
+            <div className="form-grid wellness-vitals-grid">
+              <Input id="report-exercise" name="exerciseDurationMinutes" type="number" min="0" max="600" label="Exercise duration (minutes)" value={value.exerciseDurationMinutes} onChange={handleChange} error={errors.exerciseDurationMinutes} />
+              <Input id="report-systolic" type="number" min="50" max="260" label="Systolic (mmHg)" value={value.vitals.systolic} onChange={(event) => handleVitalChange("systolic", event.target.value)} error={errors["vitals.systolic"]} />
+              <Input id="report-diastolic" type="number" min="30" max="180" label="Diastolic (mmHg)" value={value.vitals.diastolic} onChange={(event) => handleVitalChange("diastolic", event.target.value)} error={errors["vitals.diastolic"]} />
+              <Input id="report-blood-sugar" type="number" min="20" max="600" step="0.1" label="Blood sugar (mg/dL)" value={value.vitals.bloodSugar} onChange={(event) => handleVitalChange("bloodSugar", event.target.value)} error={errors["vitals.bloodSugar"]} />
+              <SelectField id="report-sugar-context" label="Blood sugar context" value={value.vitals.bloodSugarContext} options={BLOOD_SUGAR_CONTEXTS} placeholder="Choose measurement context" error={errors["vitals.bloodSugarContext"]} onChange={(event) => handleVitalChange("bloodSugarContext", event.target.value)} />
+              <Input id="report-weight" type="number" min="20" max="300" step="0.1" label="Weight (kg)" value={value.vitals.weightKg} onChange={(event) => handleVitalChange("weightKg", event.target.value)} error={errors["vitals.weightKg"]} />
+              <Input id="report-measured-at" type="datetime-local" label="Measurements taken at" value={value.vitals.measuredAt} onChange={(event) => handleVitalChange("measuredAt", event.target.value)} error={errors["vitals.measuredAt"]} />
+            </div>
+          </div>
+        </details>
       </section>}
 
       {currentStep === 2 && <section className="wellness-form-section">
-        <div className="wellness-form-section__heading"><span><PillIcon /></span><div><h2>Medicine summary</h2><p>Confirm the visit-level outcome. Individual schedules and refills remain in Medicine Management.</p></div></div>
-        <div className="form-grid">
-          <SelectField id="report-medicine" label="Medicine intake" value={value.medicineIntakeStatus} options={MEDICINE_STATUSES} placeholder="Choose medicine status" error={errors.medicineIntakeStatus} onChange={(event) => setValue((current) => ({ ...current, medicineIntakeStatus: event.target.value }))} />
-          <label className="field field--wide" htmlFor="report-medicine-notes"><span>Medicine notes</span><textarea id="report-medicine-notes" name="medicineNotes" className={errors.medicineNotes ? "input textarea input--error" : "input textarea"} value={value.medicineNotes} onChange={handleChange} placeholder="Mention a refusal, missed dose, or other relevant context." />{errors.medicineNotes && <small className="field__error">{errors.medicineNotes}</small>}</label>
-        </div>
-      </section>}
-
-      {currentStep === 3 && <section className="wellness-form-section">
-        <div className="wellness-form-section__heading"><span><HeartPulseIcon /></span><div><h2>Vitals</h2><p>Record only measurements taken during this visit. Values are displayed without automated diagnosis.</p></div></div>
-        <div className="form-grid wellness-vitals-grid">
-          <Input id="report-systolic" type="number" min="50" max="260" label="Systolic (mmHg)" value={value.vitals.systolic} onChange={(event) => handleVitalChange("systolic", event.target.value)} error={errors["vitals.systolic"]} />
-          <Input id="report-diastolic" type="number" min="30" max="180" label="Diastolic (mmHg)" value={value.vitals.diastolic} onChange={(event) => handleVitalChange("diastolic", event.target.value)} error={errors["vitals.diastolic"]} />
-          <Input id="report-blood-sugar" type="number" min="20" max="600" step="0.1" label="Blood sugar (mg/dL)" value={value.vitals.bloodSugar} onChange={(event) => handleVitalChange("bloodSugar", event.target.value)} error={errors["vitals.bloodSugar"]} />
-          <SelectField id="report-sugar-context" label="Blood sugar context" value={value.vitals.bloodSugarContext} options={BLOOD_SUGAR_CONTEXTS} placeholder="Choose measurement context" error={errors["vitals.bloodSugarContext"]} onChange={(event) => handleVitalChange("bloodSugarContext", event.target.value)} />
-          <Input id="report-weight" type="number" min="20" max="300" step="0.1" label="Weight (kg)" value={value.vitals.weightKg} onChange={(event) => handleVitalChange("weightKg", event.target.value)} error={errors["vitals.weightKg"]} />
-          <Input id="report-measured-at" type="datetime-local" label="Vitals measured at" value={value.vitals.measuredAt} onChange={(event) => handleVitalChange("measuredAt", event.target.value)} error={errors["vitals.measuredAt"]} />
-        </div>
-      </section>}
-
-      {currentStep === 4 && <section className="wellness-form-section">
         <div className="wellness-form-section__heading"><span><BloodIcon /></span><div><h2>Caregiver handoff</h2><p>Add useful context for the family or the next care visit.</p></div></div>
-        <label className="field" htmlFor="report-caregiver-notes"><span>Additional caregiver notes</span><textarea id="report-caregiver-notes" name="caregiverNotes" className={errors.caregiverNotes ? "input textarea input--error" : "input textarea"} value={value.caregiverNotes} onChange={handleChange} placeholder="Optional instructions, follow-up items, or context." />{errors.caregiverNotes && <small className="field__error">{errors.caregiverNotes}</small>}</label>
         <div className="wellness-review-summary">
           <h3>Report summary</h3>
           <div><span>Visit date</span><strong>{value.visitDate || "Not added"}</strong></div>
@@ -654,6 +802,25 @@ export function WellnessReportForm({
           <div><span>Medicine</span><strong>{value.medicineIntakeStatus ? humanize(value.medicineIntakeStatus) : "Not added"}</strong></div>
           <div><span>Observations</span><strong>{value.observations || "Not added"}</strong></div>
         </div>
+        <details
+          className="progressive-details wellness-extra-details"
+          defaultOpen={Boolean(value.caregiverNotes)}
+        >
+          <summary>Add a handoff note</summary>
+          <div className="progressive-details__content">
+            <label className="field" htmlFor="report-caregiver-notes">
+              <span>Handoff note</span>
+              <textarea
+                id="report-caregiver-notes"
+                name="caregiverNotes"
+                className="input textarea"
+                value={value.caregiverNotes}
+                onChange={handleChange}
+                placeholder="Instructions or follow-up information for the family."
+              />
+            </label>
+          </div>
+        </details>
       </section>}
 
       {stepError && <div className="alert alert--error">{stepError}</div>}

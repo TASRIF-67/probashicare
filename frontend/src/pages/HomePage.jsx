@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import "../styles/home.css";
 import { PublicFooter } from "../components/public/PublicFooter.jsx";
 import { PublicHeader } from "../components/public/PublicHeader.jsx";
@@ -14,6 +15,7 @@ import {
   ShieldCheckIcon,
   UsersIcon,
 } from "../components/Icons.jsx";
+import { createRevealMotion } from "../utils/motion.js";
 
 /**
  * Displays one concise platform capability.
@@ -21,18 +23,29 @@ import {
  * @param {import("react").ComponentType<object>} props.icon - Lucide icon component.
  * @param {string} props.title - Capability heading.
  * @param {string} props.description - Short capability explanation.
+ * @param {number} [props.delay=0] - Small entrance delay in seconds.
  * @returns {import("react").ReactElement} One capability item.
  * @sideEffects None.
  */
-function PlatformItem({ icon: IconComponent, title, description }) {
+function PlatformItem({
+  icon: IconComponent,
+  title,
+  description,
+  delay = 0,
+}) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <article className="calm-platform-item">
+    <motion.article
+      className="calm-platform-item"
+      {...createRevealMotion(reduceMotion, { delay })}
+    >
       <span className="calm-platform-item__icon" aria-hidden="true">
         <IconComponent />
       </span>
       <h3>{title}</h3>
       <p>{description}</p>
-    </article>
+    </motion.article>
   );
 }
 
@@ -42,18 +55,24 @@ function PlatformItem({ icon: IconComponent, title, description }) {
  * @param {string} props.number - Two-digit step number.
  * @param {string} props.title - Step heading.
  * @param {string} props.description - Step explanation.
+ * @param {number} [props.delay=0] - Small entrance delay in seconds.
  * @returns {import("react").ReactElement} One workflow step.
  * @sideEffects None.
  */
-function CareStep({ number, title, description }) {
+function CareStep({ number, title, description, delay = 0 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <article className="calm-step">
+    <motion.article
+      className="calm-step"
+      {...createRevealMotion(reduceMotion, { delay, distance: 12 })}
+    >
       <span>{number}</span>
       <div>
         <h3>{title}</h3>
         <p>{description}</p>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
@@ -65,6 +84,7 @@ function CareStep({ number, title, description }) {
  * @param {string} props.period - Access duration text.
  * @param {string} props.description - Short plan explanation.
  * @param {boolean} [props.featured=false] - Whether the plan receives the recommended treatment.
+ * @param {number} [props.delay=0] - Small entrance delay in seconds.
  * @returns {import("react").ReactElement} One concise plan preview.
  * @sideEffects None.
  */
@@ -74,7 +94,9 @@ function PublicPlanOffer({
   period,
   description,
   featured = false,
+  delay = 0,
 }) {
+  const reduceMotion = useReducedMotion();
   let className = "calm-offer-card";
 
   if (featured) {
@@ -82,7 +104,10 @@ function PublicPlanOffer({
   }
 
   return (
-    <article className={className}>
+    <motion.article
+      className={className}
+      {...createRevealMotion(reduceMotion, { delay, distance: 14 })}
+    >
       <div className="calm-offer-card__heading">
         <span>{period}</span>
         {featured && <small>Popular</small>}
@@ -90,7 +115,7 @@ function PublicPlanOffer({
       <h3>{name}</h3>
       <strong>{price}</strong>
       <p>{description}</p>
-    </article>
+    </motion.article>
   );
 }
 
@@ -100,19 +125,30 @@ function PublicPlanOffer({
  * @sideEffects React Router links navigate when activated.
  */
 export function HomePage() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <div className="public-home public-home--calm">
       <PublicHeader />
 
       <main>
         <section className="calm-hero" aria-labelledby="public-hero-title">
+          <span className="calm-hero__decor-1" aria-hidden="true" />
+          <span className="calm-hero__decor-2" aria-hidden="true" />
+          <span className="calm-hero__decor-3" aria-hidden="true" />
           <div className="public-container calm-hero__layout">
-            <div className="calm-hero__copy">
+            <motion.div
+              className="calm-hero__copy"
+              {...createRevealMotion(reduceMotion, { distance: 22 })}
+            >
               <span className="calm-eyebrow">
                 Remote elderly care coordination
               </span>
               <h1 id="public-hero-title">
-                Care for home, even when you are far away.
+                Care for home, even when{" "}
+                <span className="calm-hero__gradient-text">
+                  you are far away.
+                </span>
               </h1>
               <p>
                 Keep your family, loved one, and trusted local caregiver in one
@@ -140,16 +176,23 @@ export function HomePage() {
                   Verified caregivers
                 </span>
               </div>
-            </div>
+            </motion.div>
 
-            <aside className="care-today" aria-label="Example daily care overview">
+            <motion.aside
+              className="care-today"
+              aria-label="Example daily care overview"
+              {...createRevealMotion(reduceMotion, {
+                delay: 0.12,
+                distance: 26,
+              })}
+            >
               <header className="care-today__header">
                 <div>
                   <small>Today&apos;s care</small>
                   <h2>Everything is on track</h2>
                 </div>
                 <span className="care-today__status">
-                  <CheckIcon aria-hidden="true" />
+                  <i className="care-today__live-dot" aria-hidden="true" />
                   All well
                 </span>
               </header>
@@ -195,17 +238,20 @@ export function HomePage() {
                 <ActivityIcon aria-hidden="true" />
                 One simple view of the day&apos;s care
               </footer>
-            </aside>
+            </motion.aside>
           </div>
         </section>
 
         <section className="calm-capabilities" aria-label="Core capabilities">
-          <div className="public-container calm-capabilities__grid">
+          <motion.div
+            className="public-container calm-capabilities__grid"
+            {...createRevealMotion(reduceMotion, { distance: 10 })}
+          >
             <span><HeartPulseIcon /> Health context</span>
             <span><ClipboardListIcon /> Daily updates</span>
             <span><CalendarIcon /> Care bookings</span>
             <span><BellIcon /> Important signals</span>
-          </div>
+          </motion.div>
         </section>
 
         <section
@@ -214,7 +260,10 @@ export function HomePage() {
           aria-labelledby="platform-title"
         >
           <div className="public-container">
-            <header className="calm-section-heading">
+            <motion.header
+              className="calm-section-heading"
+              {...createRevealMotion(reduceMotion)}
+            >
               <span className="calm-eyebrow">The platform</span>
               <h2 id="platform-title">
                 The essentials of care, clearly connected.
@@ -223,21 +272,24 @@ export function HomePage() {
                 ProbashiCare brings the information and people involved in care
                 together without making the experience complicated.
               </p>
-            </header>
+            </motion.header>
 
             <div className="calm-platform__grid">
               <PlatformItem
                 icon={UsersIcon}
+                delay={0.02}
                 title="One family care space"
                 description="Keep personal details, medical history, medications, allergies, and emergency contacts organized around your loved one."
               />
               <PlatformItem
                 icon={BadgeCheckIcon}
+                delay={0.09}
                 title="Trusted local support"
                 description="Review caregiver availability, choose a suitable date, and follow each booking from request to completion."
               />
               <PlatformItem
                 icon={HeartPulseIcon}
+                delay={0.16}
                 title="Health-aware updates"
                 description="See wellness reports, vital trends, and important changes shared by the people providing daily care."
               />
@@ -251,7 +303,10 @@ export function HomePage() {
           aria-labelledby="network-title"
         >
           <div className="public-container calm-network__layout">
-            <div className="calm-network__copy">
+            <motion.div
+              className="calm-network__copy"
+              {...createRevealMotion(reduceMotion)}
+            >
               <span className="calm-eyebrow">Care network</span>
               <h2 id="network-title">The right update reaches the right person.</h2>
               <p>
@@ -263,9 +318,13 @@ export function HomePage() {
                 <li><CheckIcon /> Private health context</li>
                 <li><CheckIcon /> Clear care history</li>
               </ul>
-            </div>
+            </motion.div>
 
-            <div className="calm-network__flow" aria-label="Connected care roles">
+            <motion.div
+              className="calm-network__flow"
+              aria-label="Connected care roles"
+              {...createRevealMotion(reduceMotion, { delay: 0.1 })}
+            >
               <div>
                 <UsersIcon aria-hidden="true" />
                 <strong>Family</strong>
@@ -283,7 +342,7 @@ export function HomePage() {
                 <strong>Care recipient</strong>
                 <span>Always at the centre</span>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -293,24 +352,30 @@ export function HomePage() {
           aria-labelledby="process-title"
         >
           <div className="public-container">
-            <header className="calm-section-heading calm-section-heading--left">
+            <motion.header
+              className="calm-section-heading calm-section-heading--left"
+              {...createRevealMotion(reduceMotion)}
+            >
               <span className="calm-eyebrow">How it works</span>
               <h2 id="process-title">A straightforward path to better coordination.</h2>
-            </header>
+            </motion.header>
 
             <div className="calm-process__steps">
               <CareStep
                 number="01"
+                delay={0.02}
                 title="Create the care space"
                 description="Add the elderly profile and the family members who are allowed to help."
               />
               <CareStep
                 number="02"
+                delay={0.09}
                 title="Arrange trusted care"
                 description="Find a caregiver and choose a schedule that matches their availability."
               />
               <CareStep
                 number="03"
+                delay={0.16}
                 title="Stay informed"
                 description="Follow booking status, wellness reports, and important health changes."
               />
@@ -324,7 +389,10 @@ export function HomePage() {
           aria-labelledby="offers-title"
         >
           <div className="public-container">
-            <div className="calm-offers__intro">
+            <motion.div
+              className="calm-offers__intro"
+              {...createRevealMotion(reduceMotion)}
+            >
               <div>
                 <span className="calm-eyebrow">Premium options</span>
                 <h2 id="offers-title">More care tools, only when you need them.</h2>
@@ -339,7 +407,7 @@ export function HomePage() {
                   Eligible Family accounts can begin with a seven-day trial.
                 </span>
               </div>
-            </div>
+            </motion.div>
 
             <div className="calm-offers__plans">
               <PublicPlanOffer
@@ -347,6 +415,7 @@ export function HomePage() {
                 price="BDT 199"
                 period="24 hours"
                 description="Useful when you need Premium tools for a focused day of care."
+                delay={0.02}
               />
               <PublicPlanOffer
                 name="Monthly"
@@ -354,12 +423,14 @@ export function HomePage() {
                 period="1 month"
                 description="A practical choice for ongoing family care coordination."
                 featured
+                delay={0.09}
               />
               <PublicPlanOffer
                 name="Yearly"
                 price="BDT 14,999"
                 period="1 year"
                 description="Longer Premium access at the current prototype discount."
+                delay={0.16}
               />
             </div>
 
@@ -378,8 +449,16 @@ export function HomePage() {
 
         <section className="calm-roles" aria-labelledby="roles-title">
           <div className="public-container">
-            <h2 id="roles-title">Choose how you want to take part.</h2>
-            <div className="calm-roles__grid">
+            <motion.h2
+              id="roles-title"
+              {...createRevealMotion(reduceMotion)}
+            >
+              Choose how you want to take part.
+            </motion.h2>
+            <motion.div
+              className="calm-roles__grid"
+              {...createRevealMotion(reduceMotion, { delay: 0.08 })}
+            >
               <article>
                 <span>For families</span>
                 <h3>Stay present from anywhere.</h3>
@@ -398,12 +477,15 @@ export function HomePage() {
                   <ArrowRightIcon aria-hidden="true" />
                 </Link>
               </article>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         <section className="calm-final-cta" aria-labelledby="final-cta-title">
-          <div className="public-container calm-final-cta__layout">
+          <motion.div
+            className="public-container calm-final-cta__layout"
+            {...createRevealMotion(reduceMotion)}
+          >
             <div>
               <span>Begin with one family care space</span>
               <h2 id="final-cta-title">Make distance easier to care across.</h2>
@@ -412,7 +494,7 @@ export function HomePage() {
               Get started
               <ArrowRightIcon aria-hidden="true" />
             </Link>
-          </div>
+          </motion.div>
         </section>
       </main>
 

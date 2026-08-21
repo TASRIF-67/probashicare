@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "../../components/Card.jsx";
+import { CaregiverChecklist } from "../../components/CaregiverChecklist.jsx";
 import { CaregiverHeader } from "../../components/caregiver/CaregiverHeader.jsx";
+import { DashboardWeekStrip } from "../../components/dashboard/DashboardWeekStrip.jsx";
 import {
   ArrowRightIcon,
   BadgeCheckIcon,
@@ -117,6 +119,7 @@ export function CaregiverDashboardPage() {
     totalReports: 0,
     error: "",
   });
+  const [selectedProfileId, setSelectedProfileId] = useState("");
 
   useEffect(() => {
     let isActive = true;
@@ -171,6 +174,35 @@ export function CaregiverDashboardPage() {
     + countBookingsByStatus(state.bookings, "confirmed");
   const completedCount = countBookingsByStatus(state.bookings, "completed");
   const nextVisit = findNextVisit(state.bookings);
+  const assignedProfileOptions = [];
+
+  for (const booking of state.bookings) {
+    if (!ASSIGNED_BOOKING_STATUSES.includes(booking.status)) {
+      continue;
+    }
+
+    const profileId = booking.elderlyProfileId?.toString?.() || booking.elderlyProfile?._id;
+    const profileName = booking.elderlyProfile?.name || "Care recipient";
+
+    if (!profileId || assignedProfileOptions.some((option) => option.id === profileId)) {
+      continue;
+    }
+
+    assignedProfileOptions.push({ id: profileId, name: profileName });
+  }
+
+  const effectiveProfileId = assignedProfileOptions.some((option) => option.id === selectedProfileId)
+    ? selectedProfileId
+    : assignedProfileOptions[0]?.id || "";
+
+  const selectedProfileName = assignedProfileOptions.find((option) => option.id === effectiveProfileId)?.name || "Care recipient";
+
+  useEffect(() => {
+    if (effectiveProfileId && selectedProfileId !== effectiveProfileId) {
+      setSelectedProfileId(effectiveProfileId);
+    }
+  }, [effectiveProfileId, selectedProfileId]);
+
   const visibleBookings = [];
 
   for (let index = 0; index < currentBookings.length && index < 3; index += 1) {
@@ -227,23 +259,41 @@ export function CaregiverDashboardPage() {
             <CalendarIcon />
             <strong>{pendingCount}</strong>
             <span>Pending requests</span>
+            <Link className="caregiver-summary-card__link" to="/caregiver/bookings">
+              Review requests
+            </Link>
           </Card>
           <Card className="caregiver-summary-card">
             <ClockIcon />
             <strong>{acceptedCount}</strong>
             <span>Assigned schedules</span>
+            <Link className="caregiver-summary-card__link" to="/caregiver/bookings">
+              View schedule
+            </Link>
           </Card>
           <Card className="caregiver-summary-card">
             <ClipboardListIcon />
             <strong>{state.draftReports}</strong>
             <span>Report drafts</span>
+            <Link className="caregiver-summary-card__link" to="/caregiver/wellness-reports">
+              Continue reports
+            </Link>
           </Card>
           <Card className="caregiver-summary-card">
             <BadgeCheckIcon />
             <strong>{completedCount}</strong>
             <span>Completed bookings</span>
+            <Link className="caregiver-summary-card__link" to="/caregiver/bookings">
+              Open history
+            </Link>
           </Card>
         </section>
+
+        <DashboardWeekStrip
+          bookings={state.bookings}
+          schedulePath="/caregiver/bookings"
+          title="View schedule"
+        />
 
         <div className="caregiver-operations-grid">
           <Card className="caregiver-next-visit-card">

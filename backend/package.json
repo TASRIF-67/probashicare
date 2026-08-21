@@ -15,11 +15,16 @@
     "test:caregiver-applications": "node scripts/smokeCaregiverApplications.js",
     "test:bookings": "node --test test/bookingSchedule.test.js",
     "test:bookings:integration": "node scripts/smokeBookings.js",
+    "test:caregiver-feedback": "node scripts/smokeBookings.js",
     "test:subscriptions": "node --test test/subscriptionPeriod.test.js test/subscriptionAccess.test.js test/subscriptionPaymentHelpers.test.js",
     "test:subscriptions:integration": "node scripts/smokeSubscriptions.js",
     "test:wellness-reports": "node scripts/smokeWellnessReports.js",
     "test:wellness-insights": "node --test test/wellnessInsights.test.js",
-    "test:email": "node scripts/testEmailDelivery.js"
+    "test:groceries": "node scripts/smokeGroceryRequests.js",
+    "test:email": "node scripts/testEmailDelivery.js",
+    "test:auth": "node --test test/passwordReset.test.js",
+    "test:calendar-service": "node --test test/googleCalendarService.test.js",
+    "test:calendar": "node scripts/testGoogleCalendarAccess.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -29,6 +34,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "google-auth-library": "^9.15.1",
+    "googleapis": "^148.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.1",

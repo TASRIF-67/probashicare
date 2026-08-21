@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppHeader } from "../../components/AppHeader.jsx";
 import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
-import { CalendarIcon, ClockIcon } from "../../components/Icons.jsx";
+import {
+  CalendarIcon,
+  ClockIcon,
+  FlagIcon,
+  StarIcon,
+} from "../../components/Icons.jsx";
 import { Pagination } from "../../components/Pagination.jsx";
 import { bookingService } from "../../services/bookingService.js";
 import { normalizeApiError } from "../../services/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
+import { CaregiverFeedbackModal } from "../../components/booking/CaregiverFeedbackModal.jsx";
 
 const RECORDS_PER_PAGE = 3;
 const CURRENT_STATUSES = ["pending", "accepted", "confirmed"];
@@ -161,6 +168,7 @@ function getEmptyMessage(view) {
  */
 export function FamilyBookingsPage() {
   const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [state, setState] = useState({
     loading: true,
     bookings: [],
@@ -169,6 +177,8 @@ export function FamilyBookingsPage() {
   });
   const [selectedView, setSelectedView] = useState("current");
   const [page, setPage] = useState(1);
+  const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const [feedbackMode, setFeedbackMode] = useState("review");
 
   /**
    * Loads the latest family bookings from the API.
@@ -209,12 +219,28 @@ export function FamilyBookingsPage() {
         const result = await bookingService.listMyBookings();
 
         if (active) {
+          const requestedReviewId = searchParams.get("review");
+
           setState({
             loading: false,
             bookings: result.bookings,
             error: "",
             busyId: "",
           });
+
+          if (requestedReviewId) {
+            for (const booking of result.bookings) {
+              if (
+                booking._id === requestedReviewId
+                && booking.status === "completed"
+              ) {
+                setSelectedView("completed");
+                setFeedbackMode("review");
+                setFeedbackBooking(booking);
+                break;
+              }
+            }
+          }
         }
       } catch (requestError) {
         if (active) {
@@ -235,7 +261,7 @@ export function FamilyBookingsPage() {
     return function stopInitialLoad() {
       active = false;
     };
-  }, []);
+  }, [searchParams]);
 
   /**
    * Cancels an active booking after the family confirms the action.
@@ -285,6 +311,55 @@ export function FamilyBookingsPage() {
   function changeView(view) {
     setSelectedView(view);
     setPage(1);
+  }
+
+  /**
+   * Opens the verified rating form or its already-submitted result.
+   * @param {object} booking - Completed family booking.
+   * @returns {void}
+   * @sideEffects Selects a booking and opens the feedback modal.
+   */
+  function openReview(booking) {
+    setFeedbackMode("review");
+    setFeedbackBooking(booking);
+  }
+
+  /**
+   * Opens the private complaint form or its current status.
+   * @param {object} booking - Completed family booking.
+   * @returns {void}
+   * @sideEffects Selects a booking and opens the feedback modal.
+   */
+  function openComplaint(booking) {
+    setFeedbackMode("complaint");
+    setFeedbackBooking(booking);
+  }
+
+  /**
+   * Closes family feedback and removes a notification review query.
+   * @returns {void}
+   * @sideEffects Closes the modal and updates the current URL query.
+   */
+  function closeFeedback() {
+    setFeedbackBooking(null);
+
+    if (searchParams.has("review")) {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.delete("review");
+      setSearchParams(nextSearchParams, {
+        replace: true,
+      });
+    }
+  }
+
+  /**
+   * Reloads booking feedback after a successful review or complaint.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the booking API, updates history, and closes the modal.
+   */
+  async function handleFeedbackSaved() {
+    await loadBookings();
+    closeFeedback();
   }
 
   const counts = countBookings(state.bookings);
@@ -400,6 +475,12 @@ export function FamilyBookingsPage() {
                   {booking.occurrences?.length || 0} visit
                   {booking.occurrences?.length === 1 ? "" : "s"}
                 </span>
+                {booking.completedAt && (
+                  <span>
+                    <StarIcon size={16} />
+                    Completed {formatDate(booking.completedAt)}
+                  </span>
+                )}
               </div>
               {booking.statusReason && (
                 <div className="booking-record__reason-box">
@@ -422,6 +503,38 @@ export function FamilyBookingsPage() {
                   </Button>
                 </div>
               )}
+              {booking.status === "completed" && (
+                <div className="booking-record__feedback">
+                  <div>
+                    <strong>
+                      {booking.review
+                        ? "Feedback submitted"
+                        : "How was this care experience?"}
+                    </strong>
+                    <span>
+                      {booking.review
+                        ? booking.review.rating + " of 5 stars · visible anonymously"
+                        : "Your verified rating helps families choose confidently."}
+                    </span>
+                  </div>
+                  <div>
+                    <Button
+                      variant={booking.review ? "secondary" : "primary"}
+                      onClick={() => openReview(booking)}
+                    >
+                      <StarIcon size={16} />
+                      {booking.review ? "View feedback" : "Rate caregiver"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => openComplaint(booking)}
+                    >
+                      <FlagIcon size={16} />
+                      {booking.complaint ? "Complaint status" : "Report concern"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </div>
@@ -435,6 +548,12 @@ export function FamilyBookingsPage() {
           onPageChange={setPage}
         />
       </div>
+      <CaregiverFeedbackModal
+        booking={feedbackBooking}
+        initialMode={feedbackMode}
+        onClose={closeFeedback}
+        onSaved={handleFeedbackSaved}
+      />
     </main>
   );
 }

@@ -2,17 +2,37 @@
 import { CalendarIcon, ClockIcon, ShieldCheckIcon } from "../Icons.jsx";
 
 /**
- * Formats a stored subscription timestamp.
+ * Separates a stored subscription timestamp into readable date and time labels.
  * @param {string|Date|null} value - Stored date value.
- * @returns {string} Localized date and time or Not available.
+ * @returns {{date: string, time: string}} Localized date and exact local time labels.
  * @sideEffects None.
  */
-function formatDateTime(value) {
+function formatDateParts(value) {
   if (!value) {
-    return "Not available";
+    return {
+      date: "Not available",
+      time: "Time unavailable",
+    };
   }
 
-  return new Date(value).toLocaleString();
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      date: "Not available",
+      time: "Time unavailable",
+    };
+  }
+
+  return {
+    date: date.toLocaleDateString(undefined, {
+      dateStyle: "medium",
+    }),
+    time: date.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  };
 }
 
 /**
@@ -91,39 +111,42 @@ export function CurrentSubscriptionCard({ subscription, access }) {
   const expiryTime = access?.expiresAt || subscription?.currentPeriodEndsAt || null;
   const progress = calculateProgress(startTime, expiryTime);
   const status = access?.status || subscription?.status || "none";
+  const startDisplay = formatDateParts(startTime);
+  const expiryDisplay = formatDateParts(expiryTime);
+  const isExpired = expiryTime
+    ? new Date(expiryTime).getTime() <= Date.now()
+    : false;
 
   return (
     <Card className="current-plan-card">
-      <div className="current-plan-card__identity">
-        <span className="current-plan-card__icon">
-          <ShieldCheckIcon />
-        </span>
-        <div>
-          <span className="eyebrow">{access?.accessLevel || "core"} access</span>
-          <h2>{planName}</h2>
-          <span className={"status-badge status-badge--" + status}>
-            {status}
+      <header className="current-plan-card__header">
+        <div className="current-plan-card__identity">
+          <span className="current-plan-card__icon">
+            <ShieldCheckIcon />
           </span>
+          <div>
+            <span className="eyebrow">{access?.accessLevel || "core"} access</span>
+            <span className="current-plan-card__name-row">
+              <h2>{planName}</h2>
+              <span className={"status-badge status-badge--" + status}>
+                {status}
+              </span>
+            </span>
+          </div>
         </div>
-      </div>
-
-      <div className="current-plan-card__dates">
-        <div>
-          <span><CalendarIcon size={17} /> Activated</span>
-          <strong>{formatDateTime(startTime)}</strong>
-        </div>
-        <div>
-          <span><ClockIcon size={17} /> Exact expiry</span>
-          <strong>{formatDateTime(expiryTime)}</strong>
-        </div>
-      </div>
+        <a className="current-plan-card__action" href="#plan-options-title">
+          {expiryTime ? "Manage plan" : "Choose a plan"}
+          <span aria-hidden="true">→</span>
+        </a>
+      </header>
 
       {expiryTime && (
-        <div className="current-plan-card__timeline">
-          <div>
+        <div className="current-plan-card__period">
+          <div className="current-plan-card__period-summary">
             <strong>{formatRemainingTime(expiryTime)}</strong>
-            <span>{progress}% of the current period used</span>
+            <span>{progress}% of the current access period used</span>
           </div>
+
           <div
             className="current-plan-progress"
             role="progressbar"
@@ -134,6 +157,23 @@ export function CurrentSubscriptionCard({ subscription, access }) {
           >
             <span style={{ width: progress + "%" }} />
           </div>
+
+          <div className="current-plan-card__dates">
+            <div>
+              <span><CalendarIcon size={15} /> Activated</span>
+              <strong>{startDisplay.date}</strong>
+              <small>{startDisplay.time}</small>
+            </div>
+            <div>
+              <span><ClockIcon size={15} /> Exact expiry</span>
+              <strong>{expiryDisplay.date}</strong>
+              <small>{expiryDisplay.time}</small>
+            </div>
+          </div>
+
+          <p className="current-plan-card__renewal-note">
+            Manual renewal: Premium access remains available until the exact expiry shown above.
+          </p>
         </div>
       )}
 
@@ -142,6 +182,16 @@ export function CurrentSubscriptionCard({ subscription, access }) {
           Core access keeps existing care information available without an expiry date.
         </p>
       )}
+
+      <footer className="current-plan-card__assurance">
+        <span>
+          <ShieldCheckIcon size={16} />
+          {isExpired
+            ? "This access period has ended. Choose a plan to restore Premium access."
+            : "Your current care access continues uninterrupted until the displayed expiry."}
+        </span>
+        <a href="#payment-history">View payment history</a>
+      </footer>
     </Card>
   );
 }

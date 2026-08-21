@@ -15,10 +15,27 @@ import { allowRoles, requireAuth } from "../middleware/auth.js";
 import { checkCaregiverApplicationStatus } from "../middleware/caregiverApplication.js";
 import { uploadVerificationDocument } from "../middleware/documentUpload.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import {
+  listCaregiverPublicReviews,
+  listMyCaregiverReviews,
+} from "../controllers/caregiverFeedbackController.js";
 
 const router = Router();
 
 router.get("/", asyncHandler(requireAuth), allowRoles("family", "admin"), asyncHandler(listCaregivers));
+router.get(
+  "/reviews/mine",
+  asyncHandler(requireAuth),
+  allowRoles("caregiver"),
+  asyncHandler(checkCaregiverApplicationStatus("approved")),
+  asyncHandler(listMyCaregiverReviews),
+);
+router.get(
+  "/:id/reviews",
+  asyncHandler(requireAuth),
+  allowRoles("family", "admin"),
+  asyncHandler(listCaregiverPublicReviews),
+);
 router.get("/:id/availability", asyncHandler(requireAuth), allowRoles("family", "admin"), asyncHandler(getCaregiverAvailability));
 
 router.use(asyncHandler(requireAuth), allowRoles("caregiver"));

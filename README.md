@@ -23,6 +23,8 @@ troubleshooting instructions, see [LOCAL_SETUP.md](./LOCAL_SETUP.md).
 - Caregiver marketplace with protected contact information and weekly availability
 - One-time, scheduled recurring, and long-term caregiver bookings
 - Family booking history/cancellation and caregiver accept/decline/complete workflow
+- Doctor appointment planning with caregiver escorts and optional Google Calendar sync
+  ([setup and troubleshooting](./GOOGLE_CALENDAR_INTEGRATION.md))
 - Caregiver daily wellness reports with mood, meals, medicine, observations, and vitals
 - Thirty-day vital trends, rule-based early alerts, and optional Gemini summaries
 - Deduplicated in-app notifications for booking and wellness events

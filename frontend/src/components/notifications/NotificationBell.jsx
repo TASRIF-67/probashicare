@@ -1,133 +1,247 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BellIcon } from "../Icons.jsx";
-import { notificationService } from "../../services/notificationService.js";
+import { BellIcon, CheckIcon } from "../Icons.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useNotifications } from "../../context/NotificationContext.jsx";
+import { useToast } from "../../context/ToastContext.jsx";
+import { getNotificationPath } from "../../utils/notificationHelpers.js";
 
 /**
- * Displays unread subscription notifications and a recent-notification menu.
+ * Displays the shared unread count and recent-notification menu.
+ * @param {void} _unused - This component accepts no props.
  * @returns {import("react").ReactElement} Header notification control.
- * @sideEffects Polls notification API, marks items read, and manages document clicks.
+ * @sideEffects Loads recent notifications and updates read state.
  */
 export function NotificationBell() {
-  const [state, setState] = useState({
-    open: false,
-    notifications: [],
-    unreadCount: 0,
-    loading: false,
-  });
+  const { user } = useAuth();
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    loadNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
+  const { showToast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
   const rootReference = useRef(null);
-
-  /**
-   * Loads recent notifications and unread count.
-   * @param {boolean} [showLoading=false] - Whether to display menu loading.
-   * @returns {Promise<void>}
-   * @sideEffects Calls notification API and updates state.
-   */
-  async function loadNotifications(showLoading = false) {
-    if (showLoading) {
-      setState((current) => ({ ...current, loading: true }));
-    }
-
-    try {
-      const data = await notificationService.list({ limit: 6 });
-      setState((current) => ({
-        ...current,
-        notifications: data.notifications,
-        unreadCount: data.unreadCount,
-        loading: false,
-      }));
-    } catch {
-      setState((current) => ({ ...current, loading: false }));
-    }
-  }
+  const notificationPagePath =
+    user?.role === "caregiver"
+      ? "/caregiver/notifications"
+      : "/notifications";
 
   useEffect(() => {
-    loadNotifications();
-    const intervalId = window.setInterval(() => {
-      loadNotifications();
-    }, 15000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
-  useEffect(() => {
-    /** Closes the menu after an outside pointer action. @param {MouseEvent} event - Document event. @returns {void} @sideEffects Updates state. */
+    /**
+     * Closes the dropdown after an outside pointer action.
+     * @param {MouseEvent} event - Browser mouse event.
+     * @returns {void}
+     * @sideEffects Updates dropdown state.
+     */
     function handleOutsideClick(event) {
-      if (!rootReference.current?.contains(event.target)) {
-        setState((current) => ({ ...current, open: false }));
+      if (
+        rootReference.current
+        && !rootReference.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    /**
+     * Closes the dropdown when Escape is pressed.
+     * @param {KeyboardEvent} event - Browser keyboard event.
+     * @returns {void}
+     * @sideEffects Updates dropdown state.
+     */
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
       }
     }
 
     document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick,
+      );
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
-  /** Toggles the dropdown and refreshes content. @returns {void} @sideEffects Updates state and may call API. */
-  function toggleMenu() {
-    const nextOpen = !state.open;
-    setState((current) => ({ ...current, open: nextOpen }));
+  /**
+   * Opens or closes the dropdown and refreshes its recent records.
+   * @returns {Promise<void>}
+   * @sideEffects Updates dropdown state and may request notification data.
+   */
+  async function toggleMenu() {
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
 
     if (nextOpen) {
-      loadNotifications(true);
+      try {
+        await loadNotifications({
+          page: 1,
+          limit: 6,
+        });
+      } catch {
+        showToast(
+          "Notifications could not be loaded.",
+          "error",
+        );
+      }
     }
   }
 
   /**
-   * Marks one item read before normal link navigation.
+   * Marks one notification read before its normal link navigation.
    * @param {object} notification - Selected notification.
    * @returns {Promise<void>}
-   * @sideEffects Calls API and updates unread state.
+   * @sideEffects May update notification state and closes the dropdown.
    */
   async function readNotification(notification) {
-    if (!notification.isRead) {
-      await notificationService.markRead(notification._id);
-      await loadNotifications();
+    try {
+      if (!notification.isRead) {
+        await markAsRead(notification._id);
+      }
+    } catch {
+      showToast(
+        "The notification could not be marked read.",
+        "error",
+      );
+    } finally {
+      setIsOpen(false);
     }
-    setState((current) => ({ ...current, open: false }));
+  }
+
+  /**
+   * Marks all caller-owned notifications read from the dropdown.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the bulk API and updates shared notification state.
+   */
+  async function handleMarkAllRead() {
+    try {
+      setIsMarkingAll(true);
+      await markAllAsRead();
+      showToast(
+        "All notifications marked as read.",
+        "success",
+      );
+    } catch {
+      showToast(
+        "Notifications could not be updated.",
+        "error",
+      );
+    } finally {
+      setIsMarkingAll(false);
+    }
+  }
+
+  /**
+   * Closes the dropdown after opening the full notification center.
+   * @returns {void}
+   * @sideEffects Updates dropdown state.
+   */
+  function closeMenu() {
+    setIsOpen(false);
   }
 
   return (
-    <div className="notification-bell" ref={rootReference}>
+    <div
+      className="notification-bell"
+      ref={rootReference}
+    >
       <button
         className="notification-bell__button"
         type="button"
-        aria-label={"Notifications, " + state.unreadCount + " unread"}
-        aria-expanded={state.open}
+        aria-label={
+          `Notifications, ${unreadCount} unread`
+        }
+        aria-expanded={isOpen}
+        aria-haspopup="true"
         onClick={toggleMenu}
       >
         <BellIcon size={19} />
-        {state.unreadCount > 0 && (
+        {unreadCount > 0 && (
           <span className="notification-bell__count">
-            {state.unreadCount > 99 ? "99+" : state.unreadCount}
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
-      {state.open && (
-        <div className="notification-dropdown">
+
+      {isOpen && (
+        <section
+          className="notification-dropdown"
+          aria-label="Recent notifications"
+        >
           <div className="notification-dropdown__heading">
-            <strong>Notifications</strong>
-            <span>{state.unreadCount} unread</span>
+            <div>
+              <strong>Notifications</strong>
+              <span>{unreadCount} unread</span>
+            </div>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                disabled={isMarkingAll}
+                onClick={handleMarkAllRead}
+              >
+                <CheckIcon size={15} />
+                {isMarkingAll
+                  ? "Updating..."
+                  : "Mark all read"}
+              </button>
+            )}
           </div>
-          {state.loading && <div className="notification-dropdown__empty">Loading notifications</div>}
-          {!state.loading && !state.notifications.length && <div className="notification-dropdown__empty">No notifications yet.</div>}
-          {!state.loading && state.notifications.map((notification) => (
-            <Link
-              className={"notification-dropdown__item " + (!notification.isRead ? "notification-dropdown__item--unread" : "")}
-              to={notification.actionUrl || "/notifications"}
-              key={notification._id}
-              onClick={() => readNotification(notification)}
-            >
-              <strong>{notification.title}</strong>
-              <span>{notification.message}</span>
-              <time>{new Date(notification.createdAt).toLocaleString()}</time>
-            </Link>
-          ))}
-          <Link className="notification-dropdown__footer" to="/notifications" onClick={() => setState((current) => ({ ...current, open: false }))}>View all notifications</Link>
-        </div>
+
+          <div className="notification-dropdown__list">
+            {isLoading && (
+              <div className="notification-dropdown__empty">
+                Loading notifications...
+              </div>
+            )}
+
+            {!isLoading && notifications.length === 0 && (
+              <div className="notification-dropdown__empty">
+                <BellIcon size={22} />
+                <span>No notifications yet.</span>
+              </div>
+            )}
+
+            {!isLoading && notifications.map((notification) => (
+              <Link
+                className={
+                  notification.isRead
+                    ? "notification-dropdown__item"
+                    : "notification-dropdown__item notification-dropdown__item--unread"
+                }
+                to={getNotificationPath(
+                  notification,
+                  notificationPagePath,
+                )}
+                key={notification._id}
+                onClick={() => readNotification(notification)}
+              >
+                <strong>{notification.title}</strong>
+                <span>{notification.message}</span>
+                <time>
+                  {new Date(
+                    notification.createdAt,
+                  ).toLocaleString()}
+                </time>
+              </Link>
+            ))}
+          </div>
+
+          <Link
+            className="notification-dropdown__footer"
+            to={notificationPagePath}
+            onClick={closeMenu}
+          >
+            View all notifications
+          </Link>
+        </section>
       )}
     </div>
   );

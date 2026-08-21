@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../Button.jsx";
+import { BridgeLoader } from "../BridgeLoader.jsx";
 import { Modal } from "../Modal.jsx";
 import { CalendarIcon, CheckIcon, ClockIcon } from "../Icons.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
@@ -12,14 +13,17 @@ const BOOKING_TYPES = [
   {
     value: "one-time",
     label: "One-time visit",
+    description: "Care on one selected day",
   },
   {
     value: "scheduled",
     label: "Scheduled weekly care",
+    description: "Repeat selected weekdays",
   },
   {
     value: "long-term",
     label: "Long-term weekly care",
+    description: "At least four weeks",
   },
 ];
 
@@ -590,7 +594,10 @@ export function CaregiverBookingModal({ caregiver, onClose }) {
               <Link to="/bookings" onClick={close}>View all</Link>
             </div>
             {loadingData ? (
-              <p className="family-booked-dates__empty">Loading your care calendar...</p>
+              <BridgeLoader
+                compact
+                label="Connecting your care calendar"
+              />
             ) : upcomingVisits.length ? (
               <div className="family-booked-dates__list">
                 {upcomingVisits.slice(0, 3).map(function renderVisit(visit) {
@@ -620,7 +627,15 @@ export function CaregiverBookingModal({ caregiver, onClose }) {
             )}
           </section>
 
-          <div className="form-grid booking-form__grid">
+          {profiles.length === 1 ? (
+            <div className="booking-recipient-summary">
+              <span>Care recipient</span>
+              <strong>
+                {profiles[0].personalInformation.preferredName
+                  || profiles[0].personalInformation.fullName}
+              </strong>
+            </div>
+          ) : (
             <label className="field">
               <span>Care recipient</span>
               <select
@@ -643,42 +658,56 @@ export function CaregiverBookingModal({ caregiver, onClose }) {
                 })}
               </select>
             </label>
-            <label className="field">
-              <span>Booking type</span>
-              <select
-                className="input"
-                value={form.bookingType}
-                disabled={submitting}
-                onChange={function changeBookingType(event) {
-                  updateField("bookingType", event.target.value);
-                }}
-              >
-                {BOOKING_TYPES.map(function renderType(type) {
-                  return (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-            <label className="field">
-              <span>Service</span>
-              <select
-                className="input"
-                value={form.serviceType}
-                disabled={submitting}
-                onChange={function changeService(event) {
-                  updateField("serviceType", event.target.value);
-                }}
-              >
-                {caregiver.supportedServiceTypes?.map(function renderService(type) {
-                  return (
-                    <option key={type} value={type}>{type}</option>
-                  );
-                })}
-              </select>
-            </label>
+          )}
+
+          <fieldset className="booking-choice-group">
+            <legend>How often is care needed?</legend>
+            <div className="booking-choice-list booking-choice-list--types">
+              {BOOKING_TYPES.map(function renderType(type) {
+                const selected = form.bookingType === type.value;
+                return (
+                  <button
+                    type="button"
+                    className={selected ? "is-selected" : ""}
+                    aria-pressed={selected}
+                    disabled={submitting}
+                    key={type.value}
+                    onClick={function chooseBookingType() {
+                      updateField("bookingType", type.value);
+                    }}
+                  >
+                    <strong>{type.label}</strong>
+                    <span>{type.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <fieldset className="booking-choice-group">
+            <legend>Choose a service</legend>
+            <div className="booking-choice-list">
+              {caregiver.supportedServiceTypes?.map(function renderService(type) {
+                const selected = form.serviceType === type;
+                return (
+                  <button
+                    type="button"
+                    className={selected ? "is-selected" : ""}
+                    aria-pressed={selected}
+                    disabled={submitting}
+                    key={type}
+                    onClick={function chooseService() {
+                      updateField("serviceType", type);
+                    }}
+                  >
+                    {type.replaceAll("-", " ")}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <div className="form-grid booking-form__grid booking-date-grid">
             <BookingDateField
               label="Start date"
               min={today()}

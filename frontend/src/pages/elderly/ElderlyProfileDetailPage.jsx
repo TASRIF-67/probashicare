@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AppHeader } from "../../components/AppHeader.jsx";
+import { BridgeLoader } from "../../components/BridgeLoader.jsx";
 import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
 import {
@@ -19,7 +20,6 @@ import {
   PillIcon,
   StethoscopeIcon,
   UsersIcon,
-  ClipboardListIcon,
 } from "../../components/Icons.jsx";
 import { Modal } from "../../components/Modal.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -326,9 +326,8 @@ export function ElderlyProfileDetailPage() {
     return (
       <main>
         <AppHeader />
-        <div className="page-loader">
-          <span className="spinner" />
-          Loading profile
+        <div className="page-loader page-loader--bridge">
+          <BridgeLoader label="Opening care profile" />
         </div>
       </main>
     );
@@ -373,7 +372,6 @@ export function ElderlyProfileDetailPage() {
             </div>
           </div>
           <div className="modern-profile-actions">
-            <Link className="button button--secondary" to={`/elderly-profiles/${profileId}/wellness`}><ClipboardListIcon size={17} /> Wellness &amp; vitals</Link>
             <Link className="button button--primary" to={`/elderly-profiles/${profileId}/edit`}><PencilIcon size={17} /> Edit profile</Link>
             {profile.familyAccess.permission === "owner" && (
               <Button variant="ghost" onClick={openArchiveModal}>
