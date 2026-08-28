@@ -1,4 +1,4 @@
-﻿import { FamilySubscription } from "../models/FamilySubscription.js";
+import { FamilySubscription } from "../models/FamilySubscription.js";
 import { SubscriptionPayment } from "../models/SubscriptionPayment.js";
 import { SubscriptionPlan } from "../models/SubscriptionPlan.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -21,6 +21,30 @@ import {
   getStripeCheckoutStatus,
 } from "../services/stripePaymentService.js";
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+const MAXIMUM_LIMIT = 100;
+
+/**
+ * Converts a query value into a bounded positive integer.
+ * @param {unknown} value - Query-string value.
+ * @param {number} fallback - Value used for absent/invalid input.
+ * @param {number|null} maximum - Optional upper limit.
+ * @returns {number} Safe page or limit number.
+ * @sideEffects None.
+ */
+function readPositiveInteger(value, fallback, maximum = null) {
+  // `Number.parseInt` reads a base-ten integer from query text.
+  const parsedValue = Number.parseInt(value, 10);
+  let safeValue = Math.max(1, parsedValue || fallback);
+
+  if (maximum !== null) {
+    safeValue = Math.min(maximum, safeValue);
+  }
+
+  return safeValue;
+}
+
 /**
  * GET /api/subscriptions/plans
  * Auth: any authenticated account; plans contain no family-private data.
@@ -33,15 +57,33 @@ import {
  * @sideEffects Reads active SubscriptionPlan documents.
  */
 export async function listSubscriptionPlans(_request, response) {
-  let plans = await SubscriptionPlan.find({ isActive: true })
-    .sort({ price: 1 })
+  const activePlanFilter = {
+    isActive: true,
+  };
+  const priceOrder = {
+    price: 1,
+  };
+
+  let plans = await SubscriptionPlan.find(activePlanFilter)
+    .sort(priceOrder)
     .lean();
 
-  if (!plans.length) {
+  if (plans.length === 0) {
+    // A new database can self-seed its backend-controlled catalog.
     await synchronizeSubscriptionPlans();
-    plans = await SubscriptionPlan.find({ isActive: true })
-      .sort({ price: 1 })
+
+    plans = await SubscriptionPlan.find(activePlanFilter)
+      .sort(priceOrder)
       .lean();
+  }
+
+  const prototypeEnabled =
+    env.prototypePaymentsEnabled && env.nodeEnv !== "production";
+
+  let stripeMode = "disabled";
+
+  if (env.stripePaymentsEnabled) {
+    stripeMode = "test";
   }
 
   response.json({
@@ -50,9 +92,8 @@ export async function listSubscriptionPlans(_request, response) {
       plans,
       paymentOptions: {
         stripeEnabled: env.stripePaymentsEnabled,
-        prototypeEnabled:
-          env.prototypePaymentsEnabled && env.nodeEnv !== "production",
-        stripeMode: env.stripePaymentsEnabled ? "test" : "disabled",
+        prototypeEnabled,
+        stripeMode,
       },
     },
   });
@@ -189,30 +230,41 @@ export async function purchaseSubscription(request, response) {
  * @sideEffects Reads only caller-owned SubscriptionPayment documents.
  */
 export async function listMySubscriptionPayments(request, response) {
-  await expireStalePrototypePayments({ familyUserId: request.user._id });
-  const page = Math.max(1, Number.parseInt(request.query.page, 10) || 1);
-  const limit = Math.min(
-    100,
-    Math.max(1, Number.parseInt(request.query.limit, 10) || 20),
+  await expireStalePrototypePayments({
+    familyUserId: request.user._id,
+  });
+
+  const page = readPositiveInteger(request.query.page, DEFAULT_PAGE);
+  const limit = readPositiveInteger(
+    request.query.limit,
+    DEFAULT_LIMIT,
+    MAXIMUM_LIMIT,
   );
-  const filter = { family: request.user._id };
-  const results = await Promise.all([
-    SubscriptionPayment.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    SubscriptionPayment.countDocuments(filter),
-  ]);
+  const filter = {
+    family: request.user._id,
+  };
+
+  const paymentsPromise = SubscriptionPayment.find(filter)
+    .sort({
+      createdAt: -1,
+    })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+  const totalPromise = SubscriptionPayment.countDocuments(filter);
+
+  // The page and count queries are independent and can run concurrently.
+  const [payments, total] = await Promise.all([paymentsPromise, totalPromise]);
+
   response.json({
     success: true,
     data: {
-      payments: results[0],
+      payments,
       pagination: {
         page,
         limit,
-        total: results[1],
-        pages: Math.ceil(results[1] / limit),
+        total,
+        pages: Math.ceil(total / limit),
       },
     },
   });
@@ -249,11 +301,17 @@ export async function simulatePaymentSuccess(request, response) {
  * @sideEffects Marks one pending payment failed and creates a notification.
  */
 export async function simulatePaymentFailure(request, response) {
+  let reason = "Development simulation failure";
+
+  if (request.body?.reason) {
+    reason = request.body.reason;
+  }
+
   const payment = await finishPrototypePayment(
     request.user._id,
     request.params.paymentId,
     "failed",
-    request.body?.reason || "Development simulation failure",
+    reason,
   );
   response.json({ success: true, data: { payment } });
 }
@@ -270,11 +328,17 @@ export async function simulatePaymentFailure(request, response) {
  * @sideEffects Marks one caller-owned pending payment cancelled.
  */
 export async function cancelPrototypePayment(request, response) {
+  let reason = "Cancelled during development checkout";
+
+  if (request.body?.reason) {
+    reason = request.body.reason;
+  }
+
   const payment = await finishPrototypePayment(
     request.user._id,
     request.params.paymentId,
     "cancelled",
-    request.body?.reason || "Cancelled during development checkout",
+    reason,
   );
   response.json({ success: true, data: { payment } });
 }

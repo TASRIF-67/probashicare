@@ -41,13 +41,21 @@ export function SubscriptionProvider({ children }) {
       return null;
     }
 
-    setState(function beginSubscriptionLoad(currentState) {
-      return {
-        ...currentState,
-        loading: true,
-        error: "",
-      };
-    });
+    setState(
+      /**
+       * Preserves existing access while marking a refresh in progress.
+       * @param {object} currentState - Existing context state.
+       * @returns {object} Loading context state.
+       * @sideEffects None.
+       */
+      function beginSubscriptionLoad(currentState) {
+        return {
+          ...currentState,
+          loading: true,
+          error: "",
+        };
+      },
+    );
 
     try {
       const data = await subscriptionService.getMySubscription();
@@ -67,11 +75,29 @@ export function SubscriptionProvider({ children }) {
     }
   }, [user?.role]);
 
-  useEffect(() => {
-    refreshSubscription();
-  }, [refreshSubscription]);
+  useEffect(
+    /**
+     * Refreshes subscription access when the authenticated role changes.
+     * @returns {void}
+     * @sideEffects Starts an asynchronous subscription request.
+     */
+    function refreshWhenFamilySessionChanges() {
+      // An effect must not itself be async because React expects only a cleanup
+      // function (or undefined) to be returned. The async callback is invoked
+      // without returning its Promise to React.
+      void refreshSubscription();
+    },
+    [refreshSubscription],
+  );
 
+  // `useMemo` keeps the shared object identity stable until its dependencies
+  // change, which avoids unnecessary context consumer renders.
   const value = useMemo(
+    /**
+     * Builds the exact shared context value for consumers.
+     * @returns {object} Subscription state plus refresh action.
+     * @sideEffects None.
+     */
     function createSubscriptionContextValue() {
       return {
         ...state,
@@ -97,7 +123,9 @@ export function useSubscription() {
   const context = useContext(SubscriptionContext);
 
   if (!context) {
-    throw new Error("useSubscription must be used inside SubscriptionProvider.");
+    throw new Error(
+      "useSubscription must be used inside SubscriptionProvider.",
+    );
   }
 
   return context;

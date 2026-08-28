@@ -24,16 +24,24 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
 
+// Every catalog/access/payment endpoint requires a verified session.
 router.use(asyncHandler(requireAuth));
+
+// Any authenticated role may read the public plan catalog.
 router.get("/plans", asyncHandler(listSubscriptionPlans));
+
+// Every route declared below this line is Family-only.
 router.use(allowRoles("family"));
+
 router.get("/me", asyncHandler(getMySubscription));
 router.post("/trial/activate", asyncHandler(activateMyTrial));
+
 router.post(
   "/purchase",
   validateSubscriptionPurchase,
   asyncHandler(purchaseSubscription),
 );
+
 router.post(
   "/stripe/checkout",
   validateStripeCheckout,
@@ -48,11 +56,13 @@ router.post(
   validateSubscriptionObjectId("paymentId"),
   asyncHandler(cancelStripeCheckout),
 );
+
 router.patch(
   "/me/cancel",
   validateSubscriptionCancellation,
   asyncHandler(cancelMySubscription),
 );
+
 router.get("/payments", asyncHandler(listMySubscriptionPayments));
 router.post(
   "/payments/:paymentId/simulate-success",

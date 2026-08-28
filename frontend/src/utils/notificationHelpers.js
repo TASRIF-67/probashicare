@@ -1,5 +1,5 @@
 /**
- * Returns the safest destination for a notification action.
+ * Returns the safest internal destination for a notification action.
  * New workflow notifications use actionPath, while older subscription
  * notifications may still use actionUrl.
  * @param {object} notification - Notification API record.
@@ -7,38 +7,39 @@
  * @returns {string} Internal React Router destination.
  * @sideEffects None.
  */
-export function getNotificationPath(
-  notification,
-  fallbackPath,
-) {
-  if (
-    typeof notification?.actionPath === "string"
-    && notification.actionPath.trim()
-  ) {
-    return notification.actionPath;
+export function getNotificationPath(notification, fallbackPath) {
+  // Optional chaining (`?.`) returns undefined instead of throwing when a
+  // notification or property is missing. `trim` removes surrounding spaces.
+  const actionPath = notification?.actionPath;
+
+  if (typeof actionPath === "string" && actionPath.trim() !== "") {
+    return actionPath;
   }
 
-  if (
-    typeof notification?.actionUrl === "string"
-    && notification.actionUrl.trim()
-  ) {
-    return notification.actionUrl;
+  const actionUrl = notification?.actionUrl;
+
+  if (typeof actionUrl === "string" && actionUrl.trim() !== "") {
+    return actionUrl;
   }
 
   return fallbackPath;
 }
 
 /**
- * Checks whether a notification supports the reminder dismissal action.
+ * Checks whether a notification supports reminder dismissal.
  * @param {object} notification - Notification API record.
  * @returns {boolean} True for trial or subscription expiry reminders.
  * @sideEffects None.
  */
 export function isReminderNotification(notification) {
+  // `String` safely converts undefined/null into text. The `||` fallback keeps
+  // an absent type as an empty string.
   const type = String(notification?.type || "");
 
-  return (
-    type.includes("expir")
-    || type === "trial_expiring"
-  );
+  // `includes` checks whether "expir" occurs anywhere in the type.
+  if (type.includes("expir")) {
+    return true;
+  }
+
+  return type === "trial_expiring";
 }

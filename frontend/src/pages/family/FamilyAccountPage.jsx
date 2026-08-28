@@ -2,26 +2,51 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppHeader } from "../../components/AppHeader.jsx";
 import { Button } from "../../components/Button.jsx";
-import { Input } from "../../components/Input.jsx";
 import {
   BadgeCheckIcon,
   SaveIcon,
   ShieldCheckIcon,
   UserIcon,
 } from "../../components/Icons.jsx";
+import { Input } from "../../components/Input.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { normalizeApiError } from "../../services/api.js";
 import { authService } from "../../services/authService.js";
 
 /**
- * Lets a signed-in family owner update their name and verified email identity.
- * @param {void} _unused - This page accepts no props.
- * @returns {import("react").ReactElement} Family account settings form and security guidance.
- * @sideEffects Updates account data, may send a verification email, and may end the session.
+ * Creates field/form errors from the standard API error shape.
+ * @param {{message: string, details?: object|null}} normalizedError - API error.
+ * @returns {object} Field messages plus a form-level message.
+ * @sideEffects None.
+ */
+function createFormErrors(normalizedError) {
+  const formErrors = {};
+
+  if (normalizedError.details) {
+    // `Object.entries` returns [fieldName, message] pairs for explicit copying.
+    for (const entry of Object.entries(normalizedError.details)) {
+      const fieldName = entry[0];
+      const fieldMessage = entry[1];
+      formErrors[fieldName] = fieldMessage;
+    }
+  }
+
+  formErrors.form = normalizedError.message;
+  return formErrors;
+}
+
+/**
+ * Lets a signed-in Family owner update their name and verified email identity.
+ * @returns {import("react").ReactElement} Account settings page.
+ * @sideEffects May update identity, send verification email, and end session.
  */
 export function FamilyAccountPage() {
-  const { user, clearSession, refreshUser } = useAuth();
+  const {
+    user,
+    clearSession,
+    refreshUser,
+  } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -30,41 +55,62 @@ export function FamilyAccountPage() {
     currentPassword: "",
   });
   const [errors, setErrors] = useState({});
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] =
+    useState(false);
 
-  const emailChanged = form.email.trim().toLowerCase() !== user.email;
+  const normalizedEnteredEmail =
+    form.email.trim().toLowerCase();
+  const emailChanged =
+    normalizedEnteredEmail !== user.email;
 
   /**
-   * Updates one controlled account form field.
-   * @param {import("react").ChangeEvent<HTMLInputElement>} event - Changed input event.
+   * Updates one controlled field and clears its previous error.
+   * @param {import("react").ChangeEvent<HTMLInputElement>} event - Input event.
    * @returns {void}
-   * @sideEffects Updates local form state and clears that field's previous error.
+   * @sideEffects Updates form and error state.
    */
   function handleChange(event) {
     const fieldName = event.target.name;
     const fieldValue = event.target.value;
 
-    setForm(function updateAccountForm(current) {
-      return {
-        ...current,
-        [fieldName]: fieldValue,
-      };
-    });
+    setForm(
+      /**
+       * Copies the form and replaces the field selected by its name.
+       * @param {object} currentForm - Existing form values.
+       * @returns {object} Updated form values.
+       * @sideEffects None.
+       */
+      function updateAccountForm(currentForm) {
+        return {
+          ...currentForm,
+          // Bracket notation uses the variable value as the property name.
+          [fieldName]: fieldValue,
+        };
+      },
+    );
 
-    setErrors(function clearChangedField(current) {
-      return {
-        ...current,
-        [fieldName]: "",
-        form: "",
-      };
-    });
+    setErrors(
+      /**
+       * Clears only errors related to the field currently being edited.
+       * @param {object} currentErrors - Existing error messages.
+       * @returns {object} Updated error messages.
+       * @sideEffects None.
+       */
+      function clearChangedField(currentErrors) {
+        return {
+          ...currentErrors,
+          [fieldName]: "",
+          form: "",
+        };
+      },
+    );
   }
 
   /**
-   * Saves account changes and redirects to sign-in when email verification is required.
-   * @param {import("react").FormEvent<HTMLFormElement>} event - Account form submission.
+   * Saves account changes and redirects when re-verification is required.
+   * @param {import("react").FormEvent<HTMLFormElement>} event - Submit event.
    * @returns {Promise<void>}
-   * @sideEffects Calls the account API, refreshes auth state, shows feedback, and may navigate.
+   * @sideEffects Calls API, refreshes/clears auth, toasts, and may navigate.
    */
   async function handleSubmit(event) {
     event.preventDefault();
@@ -72,13 +118,19 @@ export function FamilyAccountPage() {
     setErrors({});
 
     try {
-      const result = await authService.updateFamilyAccount({
+      const requestBody = {
         name: form.name,
         email: form.email,
         currentPassword: form.currentPassword,
-      });
+      };
+      const result =
+        await authService.updateFamilyAccount(
+          requestBody,
+        );
 
       if (result.requiresEmailVerification) {
+        // The server already cleared its cookie. Remove the cached user before
+        // replacing this protected route with the public login page.
         clearSession();
         navigate("/login", {
           replace: true,
@@ -91,19 +143,32 @@ export function FamilyAccountPage() {
       }
 
       await refreshUser();
-      setForm(function clearPassword(current) {
-        return {
-          ...current,
-          currentPassword: "",
-        };
-      });
-      showToast(result.message, "success");
+
+      setForm(
+        /**
+         * Clears sensitive password text after a successful name-only update.
+         * @param {object} currentForm - Existing form values.
+         * @returns {object} Form without password text.
+         * @sideEffects None.
+         */
+        function clearPassword(currentForm) {
+          return {
+            ...currentForm,
+            currentPassword: "",
+          };
+        },
+      );
+
+      showToast(
+        result.message,
+        "success",
+      );
     } catch (error) {
-      const normalized = normalizeApiError(error);
-      setErrors({
-        ...(normalized.details || {}),
-        form: normalized.message,
-      });
+      const normalizedError =
+        normalizeApiError(error);
+      setErrors(
+        createFormErrors(normalizedError),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -114,11 +179,16 @@ export function FamilyAccountPage() {
       <AppHeader />
       <div className="feature-page family-account-page">
         <div className="family-account-heading">
-          <span className="family-account-heading__icon" aria-hidden="true">
+          <span
+            className="family-account-heading__icon"
+            aria-hidden="true"
+          >
             <UserIcon size={25} />
           </span>
           <div>
-            <span className="eyebrow">Family owner account</span>
+            <span className="eyebrow">
+              Family owner account
+            </span>
             <h1>Account information</h1>
             <p>
               Keep your family-space identity current and protect changes to
@@ -128,19 +198,26 @@ export function FamilyAccountPage() {
         </div>
 
         <div className="family-account-layout">
-          <form className="form-section family-account-form" onSubmit={handleSubmit}>
+          <form
+            className="form-section family-account-form"
+            onSubmit={handleSubmit}
+          >
             <div className="section-heading">
               <div>
                 <h2>Personal details</h2>
                 <p>Your name is shown as the family account owner.</p>
               </div>
               <span className="status-badge status-badge--approved">
-                <BadgeCheckIcon size={15} /> Verified
+                <BadgeCheckIcon size={15} />
+                Verified
               </span>
             </div>
 
             {errors.form && (
-              <div className="alert alert--error" role="alert">
+              <div
+                className="alert alert--error"
+                role="alert"
+              >
                 {errors.form}
               </div>
             )}
@@ -168,6 +245,7 @@ export function FamilyAccountPage() {
                 onChange={handleChange}
                 required
               />
+
               {emailChanged && (
                 <Input
                   id="account-current-password"
@@ -199,13 +277,21 @@ export function FamilyAccountPage() {
             )}
 
             <div className="form-actions">
-              <Button type="submit" isLoading={isSaving}>
-                <SaveIcon size={18} /> Save account
+              <Button
+                type="submit"
+                isLoading={isSaving}
+                disabled={isSaving}
+              >
+                <SaveIcon size={18} />
+                Save account
               </Button>
             </div>
           </form>
 
-          <aside className="family-account-security" aria-label="Account security information">
+          <aside
+            className="family-account-security"
+            aria-label="Account security information"
+          >
             <span aria-hidden="true">
               <ShieldCheckIcon size={24} />
             </span>

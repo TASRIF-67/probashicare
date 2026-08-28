@@ -1,17 +1,18 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 
-let transporter;
+let transporter = null;
 
 /**
- * Converts plain text into safe HTML before it is inserted into an email.
- * @param {string} value - Plain text such as a user's display name.
+ * Converts plain text into safe HTML before inserting it into an email.
+ * @param {string} value - Plain text such as a display name or URL.
  * @returns {string} Text with HTML control characters escaped.
  * @sideEffects None.
  */
 function escapeHtml(value) {
   let safeValue = "";
 
+  // `String` normalizes values before `for...of` reads one character at a time.
   for (const character of String(value)) {
     if (character === "&") {
       safeValue += "&amp;";
@@ -32,13 +33,33 @@ function escapeHtml(value) {
 }
 
 /**
+ * Checks whether at least one required SMTP setting is missing.
+ * @returns {boolean} True when SMTP delivery is not fully configured.
+ * @sideEffects None.
+ */
+function mailConfigurationIsMissing() {
+  if (!env.smtpHost) {
+    return true;
+  }
+
+  if (!env.smtpUser) {
+    return true;
+  }
+
+  if (!env.smtpPass) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Confirms that every value required for SMTP delivery is configured.
- * @param {void} _unused - This function accepts no arguments.
  * @returns {void}
- * @sideEffects Throws an Error when the mail configuration is incomplete.
+ * @sideEffects Throws when mail configuration is incomplete.
  */
 function requireMailConfiguration() {
-  if (!env.smtpHost || !env.smtpUser || !env.smtpPass) {
+  if (mailConfigurationIsMissing()) {
     throw new Error(
       "SMTP_HOST, SMTP_USER, and SMTP_PASS are required to send email.",
     );
@@ -46,10 +67,18 @@ function requireMailConfiguration() {
 }
 
 /**
- * Lazily creates the SMTP transport so startup does not open unnecessary connections.
- * @param {void} _unused - This function accepts no arguments.
- * @returns {import("nodemailer").Transporter} Configured reusable mail transporter.
- * @sideEffects Creates an SMTP transport object on first use.
+ * Determines whether local development may print a one-time link.
+ * @returns {boolean} True only in development with incomplete SMTP settings.
+ * @sideEffects None.
+ */
+function useDevelopmentConsoleDelivery() {
+  return env.nodeEnv === "development" && mailConfigurationIsMissing();
+}
+
+/**
+ * Lazily creates and reuses the configured SMTP transport.
+ * @returns {import("nodemailer").Transporter} Reusable mail transporter.
+ * @sideEffects Creates a Nodemailer transport object on first use.
  */
 function getTransporter() {
   if (!transporter) {
@@ -58,6 +87,7 @@ function getTransporter() {
     transporter = nodemailer.createTransport({
       host: env.smtpHost,
       port: env.smtpPort,
+      // Port 465 starts with TLS. Port 587 upgrades through STARTTLS.
       secure: env.smtpPort === 465,
       auth: {
         user: env.smtpUser,
@@ -65,14 +95,37 @@ function getTransporter() {
       },
     });
   }
+
   return transporter;
 }
 
 /**
- * Checks the SMTP connection and credentials without sending a message.
- * @param {void} _unused - This function accepts no arguments.
- * @returns {Promise<boolean>} True when the SMTP provider accepts the connection and login.
- * @sideEffects Opens a temporary connection to the configured SMTP server.
+ * Prints one development-only account link when SMTP is unavailable.
+ * @param {string} label - Link purpose.
+ * @param {string} recipient - Target email.
+ * @param {string} url - One-time frontend URL.
+ * @returns {{messageId: string}} Development delivery marker.
+ * @sideEffects Writes the sensitive one-time link to the local backend console.
+ */
+function printDevelopmentLink(label, recipient, url) {
+  console.log(
+    "Development " +
+      label +
+      " link for " +
+      recipient +
+      ": " +
+      url,
+  );
+
+  return {
+    messageId: "development-console-delivery",
+  };
+}
+
+/**
+ * Checks SMTP connection and credentials without sending a message.
+ * @returns {Promise<boolean>} Provider connection result.
+ * @sideEffects Opens a temporary SMTP connection.
  */
 export async function verifyEmailTransport() {
   requireMailConfiguration();
@@ -80,33 +133,50 @@ export async function verifyEmailTransport() {
 }
 
 /**
- * Sends the shared family or caregiver account verification link.
- * @param {{to: string, name: string, verificationUrl: string}} message - Recipient details and one-time link.
- * @returns {Promise<{messageId: string}>} Mail provider message identifier.
- * @sideEffects Sends an email through the configured SMTP provider.
+ * Sends a Family or Caregiver account-verification link.
+ * @param {{to: string, name: string, verificationUrl: string}} message - Mail values.
+ * @returns {Promise<{messageId: string}>} Provider or development message ID.
+ * @sideEffects Sends SMTP email or prints a local development link.
  */
-export async function sendVerificationEmail({ to, name, verificationUrl }) {
-  if (env.nodeEnv === "development" && (!env.smtpHost || !env.smtpUser || !env.smtpPass)) {
-    console.log(`Development verification link for ${to}: ${verificationUrl}`);
-    return { messageId: "development-console-delivery" };
+export async function sendVerificationEmail({
+  to,
+  name,
+  verificationUrl,
+}) {
+  if (useDevelopmentConsoleDelivery()) {
+    return printDevelopmentLink(
+      "verification",
+      to,
+      verificationUrl,
+    );
   }
 
   requireMailConfiguration();
 
   const safeName = escapeHtml(name);
   const safeVerificationUrl = escapeHtml(verificationUrl);
+  const text =
+    "Hello " +
+    name +
+    ", verify your ProbashiCare account: " +
+    verificationUrl;
+  const html =
+    "<p>Hello " +
+    safeName +
+    ",</p>" +
+    "<p>Verify your ProbashiCare account by opening this link:</p>" +
+    '<p><a href="' +
+    safeVerificationUrl +
+    '">Verify email address</a></p>' +
+    "<p>This link expires in 24 hours.</p>" +
+    "<p>If you did not create this account, you can ignore this email.</p>";
 
   const result = await getTransporter().sendMail({
     from: env.mailFrom,
     to,
     subject: "Verify your ProbashiCare account",
-    text: `Hello ${name}, verify your ProbashiCare account: ${verificationUrl}`,
-    html:
-      `<p>Hello ${safeName},</p>` +
-      "<p>Verify your ProbashiCare account by opening this link:</p>" +
-      `<p><a href="${safeVerificationUrl}">Verify email address</a></p>` +
-      "<p>This link expires in 24 hours.</p>" +
-      "<p>If you did not create this account, you can ignore this email.</p>",
+    text,
+    html,
   });
 
   return {
@@ -116,42 +186,50 @@ export async function sendVerificationEmail({ to, name, verificationUrl }) {
 
 /**
  * Sends a one-time ProbashiCare password-reset link.
- * @param {{to: string, name: string, resetUrl: string}} message - Recipient and one-time reset link.
- * @returns {Promise<{messageId: string}>} Mail provider message identifier.
- * @sideEffects Sends email through SMTP or prints the link in development without SMTP.
+ * @param {{to: string, name: string, resetUrl: string}} message - Mail values.
+ * @returns {Promise<{messageId: string}>} Provider or development message ID.
+ * @sideEffects Sends SMTP email or prints a local development link.
  */
 export async function sendPasswordResetEmail({
   to,
   name,
   resetUrl,
 }) {
-  if (
-    env.nodeEnv === "development" &&
-    (!env.smtpHost || !env.smtpUser || !env.smtpPass)
-  ) {
-    console.log(`Development password-reset link for ${to}: ${resetUrl}`);
-    return {
-      messageId: "development-console-delivery",
-    };
+  if (useDevelopmentConsoleDelivery()) {
+    return printDevelopmentLink(
+      "password-reset",
+      to,
+      resetUrl,
+    );
   }
 
   requireMailConfiguration();
 
   const safeName = escapeHtml(name);
   const safeResetUrl = escapeHtml(resetUrl);
+  const text =
+    "Hello " +
+    name +
+    ", reset your ProbashiCare password: " +
+    resetUrl +
+    ". This link expires in one hour.";
+  const html =
+    "<p>Hello " +
+    safeName +
+    ",</p>" +
+    "<p>We received a request to reset your ProbashiCare password.</p>" +
+    '<p><a href="' +
+    safeResetUrl +
+    '">Reset password</a></p>' +
+    "<p>This one-time link expires in one hour.</p>" +
+    "<p>If you did not request this change, you can safely ignore this email.</p>";
+
   const result = await getTransporter().sendMail({
     from: env.mailFrom,
     to,
     subject: "Reset your ProbashiCare password",
-    text:
-      `Hello ${name}, reset your ProbashiCare password: ${resetUrl}. ` +
-      "This link expires in one hour.",
-    html:
-      `<p>Hello ${safeName},</p>` +
-      "<p>We received a request to reset your ProbashiCare password.</p>" +
-      `<p><a href="${safeResetUrl}">Reset password</a></p>` +
-      "<p>This one-time link expires in one hour.</p>" +
-      "<p>If you did not request this change, you can safely ignore this email.</p>",
+    text,
+    html,
   });
 
   return {

@@ -1,4 +1,4 @@
-﻿import mongoose from "mongoose";
+import mongoose from "mongoose";
 import {
   ACCESS_LEVELS,
   DURATION_TYPES,
@@ -9,6 +9,8 @@ import {
   SUBSCRIPTION_PLAN_CODES,
 } from "../utils/subscriptionConstants.js";
 
+// Every payment keeps its own immutable plan snapshot. A later catalog update
+// must not alter the amount, duration, or benefits shown in payment history.
 const paymentPlanSnapshotSchema = new mongoose.Schema(
   {
     code: {
@@ -59,6 +61,8 @@ const paymentPlanSnapshotSchema = new mongoose.Schema(
 
 const subscriptionPaymentSchema = new mongoose.Schema(
   {
+    // `family` is used for ownership. Family endpoints always combine this
+    // field with the authenticated request.user._id.
     family: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -108,16 +112,21 @@ const subscriptionPaymentSchema = new mongoose.Schema(
       default: "pending",
       index: true,
     },
+
+    // The application creates this before any provider checkout begins.
     transactionReference: {
       type: String,
       required: true,
       unique: true,
       trim: true,
     },
+
+    // This exists only after successful simulated/provider confirmation.
     confirmationReference: {
       type: String,
       trim: true,
     },
+
     completedAt: {
       type: Date,
       default: null,
@@ -136,10 +145,16 @@ const subscriptionPaymentSchema = new mongoose.Schema(
       maxlength: 500,
       default: "",
     },
+
+    // Non-null means this payment already activated access. It is the local
+    // idempotency guard against a repeated success request/webhook.
     activationAppliedAt: {
       type: Date,
       default: null,
     },
+
+    // Stripe identifiers correlate the local payment with signed provider
+    // events. Partial unique indexes permit null/legacy values.
     stripeCheckoutSessionId: {
       type: String,
       trim: true,
@@ -158,43 +173,76 @@ const subscriptionPaymentSchema = new mongoose.Schema(
   },
 );
 
+// A confirmation reference is unique when it exists.
 subscriptionPaymentSchema.index(
-  { confirmationReference: 1 },
+  {
+    confirmationReference: 1,
+  },
   {
     unique: true,
     partialFilterExpression: {
-      confirmationReference: { $type: "string" },
+      confirmationReference: {
+        $type: "string",
+      },
     },
   },
 );
-subscriptionPaymentSchema.index({ family: 1, createdAt: -1 });
-subscriptionPaymentSchema.index({ family: 1, status: 1 });
-subscriptionPaymentSchema.index({ status: 1, createdAt: -1 });
-subscriptionPaymentSchema.index({ status: 1, completedAt: -1 });
+
+// These compound indexes match Family history and Admin reporting queries.
+subscriptionPaymentSchema.index({
+  family: 1,
+  createdAt: -1,
+});
+subscriptionPaymentSchema.index({
+  family: 1,
+  status: 1,
+});
+subscriptionPaymentSchema.index({
+  status: 1,
+  createdAt: -1,
+});
+subscriptionPaymentSchema.index({
+  status: 1,
+  completedAt: -1,
+});
+
+// Provider IDs must never activate two local payment documents.
 subscriptionPaymentSchema.index(
-  { stripeCheckoutSessionId: 1 },
+  {
+    stripeCheckoutSessionId: 1,
+  },
   {
     unique: true,
     partialFilterExpression: {
-      stripeCheckoutSessionId: { $type: "string" },
+      stripeCheckoutSessionId: {
+        $type: "string",
+      },
     },
   },
 );
 subscriptionPaymentSchema.index(
-  { stripePaymentIntentId: 1 },
+  {
+    stripePaymentIntentId: 1,
+  },
   {
     unique: true,
     partialFilterExpression: {
-      stripePaymentIntentId: { $type: "string" },
+      stripePaymentIntentId: {
+        $type: "string",
+      },
     },
   },
 );
 subscriptionPaymentSchema.index(
-  { stripeEventId: 1 },
+  {
+    stripeEventId: 1,
+  },
   {
     unique: true,
     partialFilterExpression: {
-      stripeEventId: { $type: "string" },
+      stripeEventId: {
+        $type: "string",
+      },
     },
   },
 );

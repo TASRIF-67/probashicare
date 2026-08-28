@@ -1,21 +1,57 @@
 import { api } from "./api.js";
 
-/** Lists family-authorized wellness alerts. @param {string} profileId - Profile ID. @param {object} [filters] - Status/severity filters. @returns {Promise<object>} Alert data. @sideEffects Calls the API. */
+/**
+ * Lists family-authorized wellness alerts using optional filters.
+ * @param {string} profileId - Authorized elderly-profile identifier.
+ * @param {object} [filters={}] - Page, limit, status, severity, or category query values.
+ * @returns {Promise<object>} Alert list, pagination, active count, and severity totals.
+ * @sideEffects Sends an authenticated GET request to the backend.
+ */
 async function listAlerts(profileId, filters = {}) {
-  const response = await api.get("/elderly-profiles/" + profileId + "/wellness-alerts", { params: filters });
-  return response.data.data;
+  const endpoint = "/elderly-profiles/" + profileId + "/wellness-alerts";
+  const requestOptions = {
+    // Axios turns the params object into URL query parameters.
+    params: filters,
+  };
+
+  const response = await api.get(endpoint, requestOptions);
+  const responseData = response.data.data;
+
+  return responseData;
 }
 
-/** Acknowledges an active alert. @param {string} alertId - Alert ID. @returns {Promise<object>} Updated alert data. @sideEffects Calls the API. */
+/**
+ * Changes one active alert to acknowledged.
+ * @param {string} alertId - Wellness-alert identifier.
+ * @returns {Promise<object>} Updated alert and backend message.
+ * @sideEffects Sends an authenticated PATCH request and updates MongoDB.
+ */
 async function acknowledgeAlert(alertId) {
-  const response = await api.patch("/wellness-alerts/" + alertId + "/acknowledge");
+  const endpoint = "/wellness-alerts/" + alertId + "/acknowledge";
+  const response = await api.patch(endpoint);
+
   return response.data.data;
 }
 
-/** Resolves an alert. @param {string} alertId - Alert ID. @param {string} resolutionNote - Required note. @returns {Promise<object>} Updated alert data. @sideEffects Calls the API. */
+/**
+ * Resolves an active or acknowledged alert with a required note.
+ * @param {string} alertId - Wellness-alert identifier.
+ * @param {string} resolutionNote - Family explanation for resolving the alert.
+ * @returns {Promise<object>} Updated alert and backend message.
+ * @sideEffects Sends an authenticated PATCH request and updates MongoDB.
+ */
 async function resolveAlert(alertId, resolutionNote) {
-  const response = await api.patch("/wellness-alerts/" + alertId + "/resolve", { resolutionNote });
+  const endpoint = "/wellness-alerts/" + alertId + "/resolve";
+  const requestBody = {
+    resolutionNote,
+  };
+  const response = await api.patch(endpoint, requestBody);
+
   return response.data.data;
 }
 
-export const wellnessAlertService = { listAlerts, acknowledgeAlert, resolveAlert };
+export const wellnessAlertService = {
+  listAlerts,
+  acknowledgeAlert,
+  resolveAlert,
+};

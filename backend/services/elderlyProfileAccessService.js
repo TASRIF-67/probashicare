@@ -23,11 +23,17 @@ export async function familyHasActiveElderlyProfiles(familyUserId) {
     return false;
   }
 
-  const linkedProfileIds = links.map((link) => {
-    return link.elderlyProfileId;
-  });
+  const linkedProfileIds = [];
+
+  // A 'for...of' loop reads one link at a time. 'push()' appends its profile ID
+  // to the array used by the next MongoDB query.
+  for (const link of links) {
+    linkedProfileIds.push(link.elderlyProfileId);
+  }
 
   // Archived profiles do not satisfy onboarding or active-dashboard requirements.
+  // 'exists()' asks MongoDB whether at least one matching profile exists. It is
+  // lighter than loading the complete profile when only true or false is needed.
   const activeProfile = await ElderlyProfile.exists({
     _id: {
       $in: linkedProfileIds,
@@ -35,6 +41,7 @@ export async function familyHasActiveElderlyProfiles(familyUserId) {
     status: "active",
   });
 
+  // 'Boolean()' converts the matching document information to true, or null to false.
   return Boolean(activeProfile);
 }
 
@@ -51,6 +58,7 @@ export async function getAuthorizedElderlyProfile({
   includeArchived = false,
 }) {
   // Invalid identifiers use the same response as missing records to avoid leaking details.
+  // 'isValidObjectId()' checks the ID format before MongoDB receives the query.
   if (!mongoose.isValidObjectId(profileId)) {
     throw new ApiError(
       404,
@@ -68,6 +76,7 @@ export async function getAuthorizedElderlyProfile({
   };
 
   // Check the relationship before loading health data so unauthorized callers learn nothing.
+  // 'findOne()' returns the first matching access link or null when none exists.
   const link = await ElderlyFamilyLink.findOne(linkFilter);
 
   if (!link) {
@@ -86,6 +95,7 @@ export async function getAuthorizedElderlyProfile({
     profileFilter.status = "active";
   }
 
+  // 'findOne()' returns the authorized profile document or null.
   const profile = await ElderlyProfile.findOne(profileFilter);
 
   if (!profile) {

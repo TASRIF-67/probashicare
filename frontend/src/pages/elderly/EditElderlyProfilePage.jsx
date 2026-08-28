@@ -13,6 +13,7 @@ import { elderlyProfileService } from "../../services/elderlyProfileService.js";
  * @sideEffects Loads and updates profile data and navigates after success.
  */
 export function EditElderlyProfilePage() {
+  // 'useParams()' reads the dynamic profileId part of the current URL.
   const { profileId } = useParams();
   const [profile, setProfile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -20,6 +21,8 @@ export function EditElderlyProfilePage() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  // 'useEffect()' runs this loading work after React renders and whenever
+  // profileId changes. The callback itself is not async; it calls an inner async function.
   useEffect(() => {
     /**
      * Loads the profile that will be edited.
@@ -28,6 +31,7 @@ export function EditElderlyProfilePage() {
      */
     async function loadProfile() {
       try {
+        // 'await' pauses until the authorized profile request finishes.
         const data = await elderlyProfileService.getProfile(profileId);
         setProfile(data.profile);
       } catch (error) {
@@ -39,6 +43,8 @@ export function EditElderlyProfilePage() {
       }
     }
 
+    // Calling the async function starts it. It returns a Promise, but the effect
+    // itself returns nothing because React only accepts a cleanup function.
     loadProfile();
   }, [profileId]);
 
@@ -52,6 +58,7 @@ export function EditElderlyProfilePage() {
     setIsSubmitting(true);
     setErrors({});
     try {
+      // The service returns a Promise; 'await' keeps the page here until save finishes.
       await elderlyProfileService.updateProfile(profileId, value);
       showToast("Profile updated.", "success");
       navigate(`/elderly-profiles/${profileId}`);
@@ -64,6 +71,7 @@ export function EditElderlyProfilePage() {
         form: normalized.message,
       });
     } finally {
+      // 'finally' runs for both success and error, restoring the submit button.
       setIsSubmitting(false);
     }
   }

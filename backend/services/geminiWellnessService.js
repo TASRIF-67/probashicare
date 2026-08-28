@@ -4,6 +4,21 @@ const GEMINI_TIMEOUT_MS = 12000;
 const MAX_HIGHLIGHTS = 5;
 
 /**
+ * Returns a number only when it is finite.
+ * @param {unknown} value - Value read from a wellness report.
+ * @returns {number|null} Original finite number or null.
+ * @sideEffects None.
+ */
+function getFiniteNumberOrNull(value) {
+  // Number.isFinite checks the value without converting strings into numbers.
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  return null;
+}
+
+/**
  * Builds a strict anonymous whitelist for Gemini.
  * @param {object[]} reports - Recent submitted wellness reports.
  * @returns {object[]} Anonymous wellness values without IDs or identifying text.
@@ -12,43 +27,44 @@ const MAX_HIGHLIGHTS = 5;
 export function sanitizeReportsForGemini(reports) {
   const sanitizedReports = [];
 
+  // This indexed loop provides a harmless sequence without sending database
+  // IDs. reports.length is the number of array items.
   for (let index = 0; index < reports.length; index += 1) {
     const report = reports[index];
     const vitals = report.vitals || {};
 
-    sanitizedReports.push({
+    // new Date converts the stored value to a Date. toISOString creates UTC
+    // text. slice(0, 10) keeps only YYYY-MM-DD.
+    const visitDate = new Date(report.visitDate);
+    const visitDateText = visitDate.toISOString().slice(0, 10);
+
+    const anonymousReport = {
       sequence: index + 1,
-      date: new Date(report.visitDate).toISOString().slice(0, 10),
+      date: visitDateText,
       mood: report.mood || null,
       mealStatus: report.mealStatus || null,
       medicineIntakeStatus: report.medicineIntakeStatus || null,
       bloodPressure: {
-        systolic: Number.isFinite(vitals.systolic)
-          ? vitals.systolic
-          : null,
-        diastolic: Number.isFinite(vitals.diastolic)
-          ? vitals.diastolic
-          : null,
+        systolic: getFiniteNumberOrNull(vitals.systolic),
+        diastolic: getFiniteNumberOrNull(vitals.diastolic),
         unit: "mmHg",
       },
       bloodSugar: {
-        value: Number.isFinite(vitals.bloodSugar)
-          ? vitals.bloodSugar
-          : null,
+        value: getFiniteNumberOrNull(vitals.bloodSugar),
         unit: "mg/dL",
         context: vitals.bloodSugarContext || "unknown",
       },
       weight: {
-        value: Number.isFinite(vitals.weightKg)
-          ? vitals.weightKg
-          : null,
+        value: getFiniteNumberOrNull(vitals.weightKg),
         unit: "kg",
       },
-      exerciseDurationMinutes:
-        Number.isFinite(report.exerciseDurationMinutes)
-          ? report.exerciseDurationMinutes
-          : null,
-    });
+      exerciseDurationMinutes: getFiniteNumberOrNull(
+        report.exerciseDurationMinutes,
+      ),
+    };
+
+    // push adds one object to the end of the result array.
+    sanitizedReports.push(anonymousReport);
   }
 
   return sanitizedReports;
@@ -65,23 +81,31 @@ function validateGeminiOutput(value) {
     return null;
   }
 
-  if (
-    typeof value.summary !== "string" ||
-    typeof value.recommendedFollowUp !== "string" ||
-    !Array.isArray(value.highlights)
-  ) {
+  const hasSummary = typeof value.summary === "string";
+  const hasFollowUp = typeof value.recommendedFollowUp === "string";
+  // Array.isArray verifies that highlights is a real array.
+  const hasHighlights = Array.isArray(value.highlights);
+
+  if (!hasSummary || !hasFollowUp || !hasHighlights) {
     return null;
   }
 
+  // trim removes outside whitespace. slice restricts text to the same maximum
+  // lengths enforced by the Mongoose schema.
   const summary = value.summary.trim().slice(0, 1200);
-  const recommendedFollowUp = value.recommendedFollowUp
-    .trim()
-    .slice(0, 600);
+  const recommendedFollowUp = value.recommendedFollowUp.trim().slice(0, 600);
   const highlights = [];
 
-  for (const item of value.highlights.slice(0, MAX_HIGHLIGHTS)) {
+  // Math.min returns the smaller number, so only the provider's first five
+  // array positions are considered, exactly as before this refactor.
+  const highlightLimit = Math.min(value.highlights.length, MAX_HIGHLIGHTS);
+
+  for (let index = 0; index < highlightLimit; index += 1) {
+    const item = value.highlights[index];
+
     if (typeof item === "string" && item.trim()) {
-      highlights.push(item.trim().slice(0, 300));
+      const cleanItem = item.trim().slice(0, 300);
+      highlights.push(cleanItem);
     }
   }
 
@@ -104,17 +128,28 @@ function validateGeminiOutput(value) {
  * @sideEffects Sends only whitelisted anonymous values to the Gemini API.
  */
 export async function generateGeminiWellnessSummary(reports, options = {}) {
-  const apiKey =
-    options.apiKey === undefined
-      ? env.geminiApiKey
-      : options.apiKey;
-  const fetchFunction = options.fetchFunction || fetch;
+  let apiKey = env.geminiApiKey;
+
+  // Tests can intentionally supply an API key, including an empty string.
+  if (options.apiKey !== undefined) {
+    apiKey = options.apiKey;
+  }
+
+  let fetchFunction = fetch;
+
+  // Tests can replace the global fetch function with a controlled fake.
+  if (options.fetchFunction) {
+    fetchFunction = options.fetchFunction;
+  }
 
   if (!apiKey) {
     return null;
   }
 
   const anonymousReports = sanitizeReportsForGemini(reports);
+
+  // JSON.stringify converts the anonymous array into JSON text for the prompt.
+  // join combines the instruction lines using one newline between each item.
   const prompt = [
     "Summarize only the anonymous wellness data provided below.",
     "Do not diagnose, name diseases, claim certainty, or assign alert severity.",
@@ -141,19 +176,17 @@ export async function generateGeminiWellnessSummary(reports, options = {}) {
         type: "STRING",
       },
     },
-    required: [
-      "summary",
-      "highlights",
-      "recommendedFollowUp",
-    ],
+    required: ["summary", "highlights", "recommendedFollowUp"],
   };
 
+  // AbortController creates a signal that can cancel fetch after the timeout.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, GEMINI_TIMEOUT_MS);
 
   try {
+    // encodeURIComponent safely places the configured model name in one URL segment.
     const model = encodeURIComponent(env.geminiModel);
     const url =
       "https://generativelanguage.googleapis.com/v1beta/models/" +
@@ -165,13 +198,18 @@ export async function generateGeminiWellnessSummary(reports, options = {}) {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
+      // JSON.stringify converts the request object into the JSON text sent over HTTP.
       body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [{
-            text: prompt,
-          }],
-        }],
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 450,
@@ -186,18 +224,39 @@ export async function generateGeminiWellnessSummary(reports, options = {}) {
       return null;
     }
 
+    // response.json returns a Promise that resolves after the response body is
+    // parsed from JSON text into JavaScript objects and arrays.
     const payload = await response.json();
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    let generatedText = null;
 
-    if (typeof text !== "string") {
+    // Gemini returns candidates as an array. These explicit checks prevent a
+    // missing provider field from causing a property-access error.
+    if (payload && Array.isArray(payload.candidates)) {
+      const firstCandidate = payload.candidates[0];
+      const content = firstCandidate && firstCandidate.content;
+      const parts = content && content.parts;
+
+      if (Array.isArray(parts) && parts[0]) {
+        generatedText = parts[0].text;
+      }
+    }
+
+    if (typeof generatedText !== "string") {
       return null;
     }
 
-    const parsed = JSON.parse(text);
-    return validateGeminiOutput(parsed);
-  } catch {
+    // JSON.parse converts provider JSON text to an object. It can throw, so it
+    // remains inside try and causes the normal null/fallback path on failure.
+    const parsedOutput = JSON.parse(generatedText);
+    const validatedOutput = validateGeminiOutput(parsedOutput);
+
+    return validatedOutput;
+  } catch (error) {
+    // Network, timeout, and JSON errors all return null so the caller can use
+    // the local fallback. The provider error is not exposed to family users.
     return null;
   } finally {
+    // clearTimeout prevents the timer callback from running after completion.
     clearTimeout(timeoutId);
   }
 }

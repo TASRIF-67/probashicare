@@ -14,6 +14,8 @@ import {
 import { createPlanSnapshot } from "./prototypePaymentService.js";
 import { getOrCreateFamilySubscription } from "./subscriptionService.js";
 
+// The module keeps one lazily created SDK client. It is not created during
+// import, which allows tests and deployments with Stripe disabled to start.
 let stripeClient = null;
 
 /**
@@ -23,9 +25,9 @@ let stripeClient = null;
  */
 export function requireStripePaymentsEnabled() {
   if (
-    !env.stripePaymentsEnabled
-    || !env.stripeSecretKey
-    || !env.stripeWebhookSecret
+    !env.stripePaymentsEnabled ||
+    !env.stripeSecretKey ||
+    !env.stripeWebhookSecret
   ) {
     throw new ApiError(
       503,
@@ -56,7 +58,11 @@ function getStripeClient() {
  * @sideEffects None.
  */
 export function convertBdtToStripeMinorUnits(amount) {
+  // `Number` converts a numeric string/value into a JavaScript number.
   const numericAmount = Number(amount);
+
+  // Stripe expects the smallest currency unit as an integer. `Math.round`
+  // prevents floating-point fractions from reaching the provider.
   const minorUnits = Math.round(numericAmount * 100);
 
   if (!Number.isFinite(numericAmount) || minorUnits < 1) {
@@ -116,13 +122,16 @@ export async function createStripeCheckoutSession(
   });
 
   try {
+    // Stripe replaces the CHECKOUT_SESSION_ID placeholder after payment.
     const successUrl =
-      env.clientUrl
-      + "/subscription?stripe=success&session_id={CHECKOUT_SESSION_ID}";
+      env.clientUrl +
+      "/subscription?stripe=success&session_id={CHECKOUT_SESSION_ID}";
     const cancelUrl =
-      env.clientUrl
-      + "/subscription?stripe=cancelled&payment_id="
-      + payment._id;
+      env.clientUrl +
+      "/subscription?stripe=cancelled&payment_id=" +
+      payment._id;
+
+    // Only trusted backend plan values are sent to Stripe.
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -154,6 +163,7 @@ export async function createStripeCheckoutSession(
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
+      // Stripe expects Unix seconds, while Date.now returns milliseconds.
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     });
 
@@ -172,8 +182,12 @@ export async function createStripeCheckoutSession(
   } catch (error) {
     payment.status = "failed";
     payment.failedAt = new Date();
-    payment.failureReason = String(error.message || "Stripe API error")
-      .slice(0, 500);
+    // `String` normalizes unknown error values and `slice` obeys the schema
+    // maximum without returning provider secrets to the client.
+    payment.failureReason = String(error.message || "Stripe API error").slice(
+      0,
+      500,
+    );
     await payment.save();
     throw new ApiError(
       502,
@@ -219,10 +233,14 @@ export async function completeStripeCheckoutPayment(
   stripeEventId,
   completedAtValue = new Date(),
 ) {
+  // Optional chaining safely reads signed provider metadata that may be absent.
   const paymentId = checkoutSession.metadata?.paymentId;
   const familyUserId = checkoutSession.metadata?.familyUserId;
 
-  if (!mongoose.isValidObjectId(paymentId) || !mongoose.isValidObjectId(familyUserId)) {
+  const paymentIdIsValid = mongoose.isValidObjectId(paymentId);
+  const familyIdIsValid = mongoose.isValidObjectId(familyUserId);
+
+  if (!paymentIdIsValid || !familyIdIsValid) {
     throw new ApiError(409, "Stripe Checkout metadata is invalid.");
   }
 
@@ -231,6 +249,9 @@ export async function completeStripeCheckoutPayment(
   let output;
 
   try {
+    // Payment, access activation, and notification are one business action.
+    // Passing mongoSession to every operation makes them commit or roll back
+    // together.
     await mongoSession.withTransaction(async () => {
       const payment = await SubscriptionPayment.findOne({
         _id: paymentId,
@@ -245,6 +266,8 @@ export async function completeStripeCheckoutPayment(
 
       validateStripeCheckoutPayment(checkoutSession, payment);
 
+      // Stripe can deliver the same signed event more than once. This local
+      // idempotency guard prevents extending access twice.
       if (payment.status === "completed" && payment.activationAppliedAt) {
         const subscription = await FamilySubscription.findById(
           payment.subscription,
@@ -269,8 +292,8 @@ export async function completeStripeCheckoutPayment(
       let renewableExpiry = null;
 
       if (
-        subscription.status === "active"
-        || subscription.status === "trialing"
+        subscription.status === "active" ||
+        subscription.status === "trialing"
       ) {
         renewableExpiry = subscription.currentPeriodEndsAt;
       }
@@ -282,6 +305,8 @@ export async function completeStripeCheckoutPayment(
         snapshot.durationType,
         snapshot.durationValue,
       );
+      // Some Checkout modes expose a PaymentIntent. Falling back to Session ID
+      // still gives the sandbox payment one stable confirmation reference.
       const paymentIntentId = String(
         checkoutSession.payment_intent || checkoutSession.id,
       );
@@ -305,9 +330,11 @@ export async function completeStripeCheckoutPayment(
       payment.activationAppliedAt = completedAt;
       await payment.save({ session: mongoSession });
 
+      const deduplicationKey = "payment:" + payment._id + ":completed";
+
       await Notification.updateOne(
         {
-          deduplicationKey: "payment:" + payment._id + ":completed",
+          deduplicationKey,
         },
         {
           $setOnInsert: {
@@ -315,9 +342,10 @@ export async function completeStripeCheckoutPayment(
             type: "payment_completed",
             title: "Stripe test payment completed",
             message:
-              snapshot.name
-              + " Premium access is active after a verified Stripe sandbox payment.",
+              snapshot.name +
+              " Premium access is active after a verified Stripe sandbox payment.",
             actionUrl: "/subscription",
+            deduplicationKey,
             metadata: {
               paymentId: payment._id,
               stripeCheckoutSessionId: checkoutSession.id,
@@ -374,10 +402,22 @@ async function finishStripeCheckout(
     updates.cancelledAt = now;
   }
 
+  // Object spread copies the provider/session filter and adds the pending
+  // state condition. The update is therefore atomic.
+  const pendingFilter = {
+    ...filter,
+    status: "pending",
+  };
+
   let payment = await SubscriptionPayment.findOneAndUpdate(
-    { ...filter, status: "pending" },
-    { $set: updates },
-    { new: true, runValidators: true },
+    pendingFilter,
+    {
+      $set: updates,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
   );
 
   if (!payment) {
@@ -385,8 +425,12 @@ async function finishStripeCheckout(
   }
 
   if (payment && status === "failed") {
+    const deduplicationKey = "payment:" + payment._id + ":failed";
+
     await Notification.updateOne(
-      { deduplicationKey: "payment:" + payment._id + ":failed" },
+      {
+        deduplicationKey,
+      },
       {
         $setOnInsert: {
           recipient: payment.family,
@@ -395,7 +439,10 @@ async function finishStripeCheckout(
           message:
             "Stripe could not complete the test payment. Premium access was not changed.",
           actionUrl: "/subscription",
-          metadata: { paymentId: payment._id },
+          deduplicationKey,
+          metadata: {
+            paymentId: payment._id,
+          },
         },
       },
       { upsert: true },
@@ -420,6 +467,8 @@ export function constructStripeWebhookEvent(rawBody, signature) {
   }
 
   try {
+    // Stripe verifies the signature against the exact raw request bytes. JSON
+    // parsing before this call would change the bytes and fail verification.
     return stripe.webhooks.constructEvent(
       rawBody,
       signature,
@@ -469,10 +518,7 @@ export async function processStripeWebhookEvent(event) {
  * @returns {Promise<object>} Owned payment document.
  * @sideEffects Reads MongoDB.
  */
-export async function getStripeCheckoutStatus(
-  familyUserId,
-  checkoutSessionId,
-) {
+export async function getStripeCheckoutStatus(familyUserId, checkoutSessionId) {
   const payment = await SubscriptionPayment.findOne({
     family: familyUserId,
     provider: "stripe",
@@ -506,16 +552,14 @@ export async function cancelOwnedStripeCheckout(familyUserId, paymentId) {
   }
 
   if (payment.status !== "pending") {
+    // Cancellation is idempotent for a payment already completed/cancelled.
     return payment;
   }
 
   try {
     await stripe.checkout.sessions.expire(payment.stripeCheckoutSessionId);
   } catch (_error) {
-    throw new ApiError(
-      409,
-      "This Stripe Checkout can no longer be cancelled.",
-    );
+    throw new ApiError(409, "This Stripe Checkout can no longer be cancelled.");
   }
 
   payment.status = "cancelled";

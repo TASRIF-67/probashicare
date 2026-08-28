@@ -11,20 +11,23 @@ import {
 import { allowRoles, requireAuth } from "../middleware/auth.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
+// 'Router()' creates a small Express router dedicated to elderly-profile URLs.
 const router = Router();
 
-// Every route below requires a valid session before role authorization is checked.
+// 'router.use()' applies middleware to every route declared after this line.
+// 'asyncHandler()' forwards a rejected Promise to the shared Express error handler.
 router.use(asyncHandler(requireAuth));
 
 // Elderly profiles are currently created and managed through family accounts.
 router.use(allowRoles("family"));
 
-// Collection routes create a new profile or list profiles linked to the current family.
+// 'router.post()' handles creation because POST adds a new resource.
 router.post(
   "/",
   asyncHandler(createElderlyProfile),
 );
 
+// 'router.get()' reads data without modifying the database.
 router.get(
   "/",
   asyncHandler(listElderlyProfiles),
@@ -36,12 +39,14 @@ router.get(
   asyncHandler(getElderlyProfile),
 );
 
+// 'router.put()' replaces the complete editable profile representation.
 router.put(
   "/:profileId",
   asyncHandler(updateElderlyProfile),
 );
 
 // Focused updates let the frontend save one part without replacing the whole profile.
+// 'router.patch()' changes only the personal-information part of the profile.
 router.patch(
   "/:profileId/personal-information",
   asyncHandler(updatePersonalInformation),

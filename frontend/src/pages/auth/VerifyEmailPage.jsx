@@ -1,113 +1,192 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useSearchParams,
+} from "react-router-dom";
 import { AuthLayout } from "../../components/AuthLayout.jsx";
 import { Card } from "../../components/Card.jsx";
+import {
+  CaregiverTheme,
+} from "../../components/caregiver/CaregiverTheme.jsx";
 import { normalizeApiError } from "../../services/api.js";
 import { authService } from "../../services/authService.js";
-import { CaregiverTheme } from "../../components/caregiver/CaregiverTheme.jsx";
 
 let currentVerificationToken = null;
 let currentVerificationRequest = null;
 
 /**
- * Reuses the same verification request when React Strict Mode runs an effect twice.
- * @param {string} token - One-time token read from the emailed verification link.
- * @returns {Promise<{message: string}>} Shared verification API result.
- * @sideEffects May call the verification endpoint once for a new token.
+ * Performs verification and clears the shared request after it settles.
+ * @param {string} token - Raw token from the URL.
+ * @returns {Promise<{message: string}>} Verification API result.
+ * @sideEffects Calls verification API and resets module-level request cache.
+ */
+async function performEmailVerification(token) {
+  try {
+    return await authService.verifyEmail(token);
+  } finally {
+    if (currentVerificationToken === token) {
+      currentVerificationRequest = null;
+    }
+  }
+}
+
+/**
+ * Reuses one pending request when React Strict Mode runs an effect twice.
+ * @param {string} token - Raw token from the emailed link.
+ * @returns {Promise<{message: string}>} Shared verification result.
+ * @sideEffects Starts one request for a new/non-pending token.
  */
 function requestEmailVerification(token) {
-  if (currentVerificationToken !== token || !currentVerificationRequest) {
+  const requestIsForAnotherToken =
+    currentVerificationToken !== token;
+
+  if (
+    requestIsForAnotherToken ||
+    !currentVerificationRequest
+  ) {
     currentVerificationToken = token;
-    currentVerificationRequest = authService.verifyEmail(token);
+    currentVerificationRequest =
+      performEmailVerification(token);
   }
 
   return currentVerificationRequest;
 }
 
 /**
+ * Chooses the visible heading for a verification state.
+ * @param {"loading"|"success"|"error"} status - Current request status.
+ * @returns {string} User-facing status heading.
+ * @sideEffects None.
+ */
+function getVerificationHeading(status) {
+  if (status === "success") {
+    return "You are verified";
+  }
+
+  if (status === "error") {
+    return "Link not verified";
+  }
+
+  return "One moment";
+}
+
+/**
  * Consumes the one-time verification token from an emailed link.
- * @param {void} _unused - This page accepts no props.
- * @returns {import("react").ReactElement} Verification progress and result.
- * @sideEffects Calls the verification API once when a token is present.
+ * @returns {import("react").ReactElement} Verification progress/result page.
+ * @sideEffects Calls the verification API when a token is present.
  */
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
+  // `URLSearchParams.get` returns the first value or null when absent.
   const token = searchParams.get("token");
-  const isCaregiverMode = searchParams.get("mode") === "caregiver";
+  const mode = searchParams.get("mode");
+  const isCaregiverMode = mode === "caregiver";
   const [state, setState] = useState({
     status: "loading",
     message: "Verifying your email address.",
   });
 
-  useEffect(() => {
-    let shouldUpdatePage = true;
-
+  useEffect(
     /**
-     * Waits for the shared verification request and displays its final result.
-     * @param {void} _unused - This function accepts no arguments.
-     * @returns {Promise<void>}
-     * @sideEffects Updates this page while it remains mounted.
+     * Verifies the current query token and blocks late updates after unmount.
+     * @returns {() => void} Cleanup for the activity flag.
+     * @sideEffects May call the verification API and update local state.
      */
-    async function verifyToken() {
-      try {
-        const data = await requestEmailVerification(token);
+    function verifyTokenWhenUrlChanges() {
+      let shouldUpdatePage = true;
 
-        if (shouldUpdatePage) {
-          setState({
-            status: "success",
-            message: data.message,
-          });
-        }
-      } catch (error) {
-        if (shouldUpdatePage) {
-          setState({
-            status: "error",
-            message: normalizeApiError(error).message,
-          });
+      /**
+       * Waits for the shared request and applies its final page state.
+       * @returns {Promise<void>}
+       * @sideEffects Calls verification and may update state.
+       */
+      async function verifyToken() {
+        try {
+          const data =
+            await requestEmailVerification(token);
+
+          if (shouldUpdatePage) {
+            setState({
+              status: "success",
+              message: data.message,
+            });
+          }
+        } catch (error) {
+          if (shouldUpdatePage) {
+            const normalizedError =
+              normalizeApiError(error);
+
+            setState({
+              status: "error",
+              message: normalizedError.message,
+            });
+          }
         }
       }
-    }
 
-    if (!token) {
-      setState({
-        status: "error",
-        message: "This verification link is incomplete.",
-      });
-    } else {
-      void verifyToken();
-    }
+      if (!token) {
+        setState({
+          status: "error",
+          message:
+            "This verification link is incomplete.",
+        });
+      } else {
+        void verifyToken();
+      }
 
-    return () => {
-      shouldUpdatePage = false;
-    };
-  }, [token]);
+      /**
+       * Prevents a finished request from updating an unmounted page.
+       * @returns {void}
+       * @sideEffects Changes the effect-local activity flag.
+       */
+      return function stopVerificationStateUpdates() {
+        shouldUpdatePage = false;
+      };
+    },
+    [token],
+  );
+
+  let trustItems;
+  let variant = "family";
+  let loginPath = "/login";
+
+  if (isCaregiverMode) {
+    trustItems = [
+      "Private by design",
+      "Verified care network",
+    ];
+    variant = "caregiver";
+    loginPath = "/login?mode=caregiver";
+  }
+
+  const statusHeading =
+    getVerificationHeading(state.status);
 
   const content = (
     <AuthLayout
       eyebrow="Account security"
       title="Email verification"
       description="We verify email ownership before allowing password-based sign-in."
-      trustItems={isCaregiverMode ? ["Private by design", "Verified care network"] : undefined}
-      variant={isCaregiverMode ? "caregiver" : "family"}
-      processItems={["Account created", "Verify email", "Sign in"]}
+      trustItems={trustItems}
+      variant={variant}
+      processItems={[
+        "Account created",
+        "Verify email",
+        "Sign in",
+      ]}
       activeProcessIndex={1}
     >
       <Card className="auth-card status-card">
         {state.status === "loading" && (
           <span className="spinner spinner--large" />
         )}
-        <h2>
-          {state.status === "success"
-            ? "You are verified"
-            : state.status === "error"
-              ? "Link not verified"
-              : "One moment"}
-        </h2>
+        <h2>{statusHeading}</h2>
         <p>{state.message}</p>
+
         {state.status !== "loading" && (
           <Link
             className="button button--primary"
-            to={isCaregiverMode ? "/login?mode=caregiver" : "/login"}
+            to={loginPath}
           >
             Go to sign in
           </Link>
@@ -117,7 +196,11 @@ export function VerifyEmailPage() {
   );
 
   if (isCaregiverMode) {
-    return <CaregiverTheme>{content}</CaregiverTheme>;
+    return (
+      <CaregiverTheme>
+        {content}
+      </CaregiverTheme>
+    );
   }
 
   return content;

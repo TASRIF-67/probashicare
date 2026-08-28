@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../Button.jsx";
 import { Input } from "../Input.jsx";
 import {
@@ -218,48 +218,184 @@ const EMPTY_PROFILE = {
 
 const SECTION_FIELDS = {
   medicalHistory: [
-    ["condition", "Condition or event", "text", true],
-    ["diagnosisDate", "Diagnosis date", "date"],
-    ["treatmentSummary", "Treatment summary"],
-    ["hospitalOrDoctor", "Hospital or doctor"],
-    ["status", "Status", "select", false, ["active", "recovered", "managed", "unknown"]],
-    ["notes", "Notes"],
+    {
+      key: "condition",
+      label: "Condition or event",
+      type: "text",
+      required: true,
+    },
+    {
+      key: "diagnosisDate",
+      label: "Diagnosis date",
+      type: "date",
+    },
+    {
+      key: "treatmentSummary",
+      label: "Treatment summary",
+      type: "text",
+    },
+    {
+      key: "hospitalOrDoctor",
+      label: "Hospital or doctor",
+      type: "text",
+    },
+    {
+      key: "status",
+      label: "Status",
+      type: "select",
+      options: ["active", "recovered", "managed", "unknown"],
+    },
+    {
+      key: "notes",
+      label: "Notes",
+      type: "text",
+    },
   ],
   allergies: [
-    ["allergen", "Allergen", "text", true],
-    ["type", "Type", "select", false, ["medicine", "food", "environmental", "other"]],
-    ["reaction", "Reaction"],
-    ["severity", "Severity", "select", false, ["mild", "moderate", "severe", "unknown"]],
-    ["notes", "Notes"],
+    {
+      key: "allergen",
+      label: "Allergen",
+      type: "text",
+      required: true,
+    },
+    {
+      key: "type",
+      label: "Type",
+      type: "select",
+      options: ["medicine", "food", "environmental", "other"],
+    },
+    {
+      key: "reaction",
+      label: "Reaction",
+      type: "text",
+    },
+    {
+      key: "severity",
+      label: "Severity",
+      type: "select",
+      options: ["mild", "moderate", "severe", "unknown"],
+    },
+    {
+      key: "notes",
+      label: "Notes",
+      type: "text",
+    },
   ],
   chronicDiseases: [
-    ["name", "Disease name", "text", true],
-    ["diagnosisDate", "Diagnosis date", "date"],
-    ["managingDoctor", "Managing doctor"],
-    ["status", "Status", "select", false, ["active", "recovered", "managed", "unknown"]],
-    ["notes", "Notes"],
+    {
+      key: "name",
+      label: "Disease name",
+      type: "text",
+      required: true,
+    },
+    {
+      key: "diagnosisDate",
+      label: "Diagnosis date",
+      type: "date",
+    },
+    {
+      key: "managingDoctor",
+      label: "Managing doctor",
+      type: "text",
+    },
+    {
+      key: "status",
+      label: "Status",
+      type: "select",
+      options: ["active", "recovered", "managed", "unknown"],
+    },
+    {
+      key: "notes",
+      label: "Notes",
+      type: "text",
+    },
   ],
   medications: [
-    ["name", "Medicine name", "text", true],
-    ["strength", "Strength"],
-    ["dosage", "Dosage"],
-    ["form", "Form", "select", false, MEDICINE_FORMS],
-    ["reason", "Reason"],
-    ["prescribingDoctor", "Prescribing doctor"],
-    ["startDate", "Start date", "date"],
-    ["endDate", "End date", "date"],
-    ["notes", "Notes"],
+    {
+      key: "name",
+      label: "Medicine name",
+      type: "text",
+      required: true,
+    },
+    {
+      key: "strength",
+      label: "Strength",
+      type: "text",
+    },
+    {
+      key: "dosage",
+      label: "Dosage",
+      type: "text",
+    },
+    {
+      key: "form",
+      label: "Form",
+      type: "select",
+      options: MEDICINE_FORMS,
+    },
+    {
+      key: "reason",
+      label: "Reason",
+      type: "text",
+    },
+    {
+      key: "prescribingDoctor",
+      label: "Prescribing doctor",
+      type: "text",
+    },
+    {
+      key: "startDate",
+      label: "Start date",
+      type: "date",
+    },
+    {
+      key: "endDate",
+      label: "End date",
+      type: "date",
+    },
+    {
+      key: "notes",
+      label: "Notes",
+      type: "text",
+    },
   ],
   emergencyContacts: [
-    ["name", "Contact name", "text", true],
-    ["relationship", "Relationship", "select", true, FAMILY_RELATIONSHIPS],
-    ["phone", "Phone", "tel", true],
-    ["alternativePhone", "Alternative phone", "tel"],
-    ["address", "Address"],
-    ["priority", "Priority", "number"],
+    {
+      key: "name",
+      label: "Contact name",
+      type: "text",
+      required: true,
+    },
+    {
+      key: "relationship",
+      label: "Relationship",
+      type: "select",
+      required: true,
+      options: FAMILY_RELATIONSHIPS,
+    },
+    {
+      key: "phone",
+      label: "Phone",
+      type: "tel",
+      required: true,
+    },
+    {
+      key: "alternativePhone",
+      label: "Alternative phone",
+      type: "tel",
+    },
+    {
+      key: "address",
+      label: "Address",
+      type: "text",
+    },
+    {
+      key: "priority",
+      label: "Priority",
+      type: "number",
+    },
   ],
 };
-
 /**
  * Creates a clean form value from an API profile or the empty template.
  * @param {Record<string, unknown>|null} profile - Existing profile for edit mode.
@@ -268,8 +404,18 @@ const SECTION_FIELDS = {
  */
 function createInitialValue(profile) {
   if (!profile) {
-    // structuredClone makes an independent copy so form edits cannot alter the template.
-    return structuredClone(EMPTY_PROFILE);
+    // The object spread creates a new personal-information object. New empty
+    // arrays ensure form edits never change the shared EMPTY_PROFILE constant.
+    return {
+      personalInformation: {
+        ...EMPTY_PROFILE.personalInformation,
+      },
+      medicalHistory: [],
+      allergies: [],
+      medications: [],
+      chronicDiseases: [],
+      emergencyContacts: [],
+    };
   }
 
   const sectionNames = [
@@ -292,6 +438,7 @@ function createInitialValue(profile) {
     const cleanItems = [];
 
     for (const item of sourceItems) {
+      // 'push()' appends one cleaned copy to the new section array.
       cleanItems.push({
         ...item,
         diagnosisDate: cleanDate(item.diagnosisDate),
@@ -317,10 +464,35 @@ function cleanDate(value) {
     return "";
   }
 
-  // slice keeps the date part and removes the stored time information.
+  // 'String()' converts the value to text. 'slice(0, 10)' keeps the first
+  // ten characters, which are the YYYY-MM-DD part used by a date input.
   return String(value).slice(0, 10);
 }
 
+/**
+ * Calculates an approximate age for the form review.
+ * @param {string} dateOfBirth - Native date-input value.
+ * @returns {number|null} Whole approximate years, or null when no date exists.
+ * @sideEffects Reads the current timestamp.
+ */
+function calculateApproximateAge(dateOfBirth) {
+  if (!dateOfBirth) {
+    return null;
+  }
+
+  // 'new Date()' converts the input text to a Date object.
+  const birthDate = new Date(dateOfBirth);
+
+  // 'Date.now()' gives the current timestamp and 'getTime()' gives the birth timestamp.
+  const elapsedMilliseconds = Date.now() - birthDate.getTime();
+  const approximateYears = elapsedMilliseconds / 31557600000;
+
+  // 'Math.floor()' keeps whole years. 'Math.max()' prevents a negative result.
+  return Math.max(
+    0,
+    Math.floor(approximateYears),
+  );
+}
 /**
  * Returns a blank repeated-section item with sensible enum defaults.
  * @param {string} section - Medical/contact section name.
@@ -389,11 +561,13 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
       const item = items[itemIndex];
 
       if (itemIndex === index) {
+        // 'push()' appends a copied and updated item to the new array.
         updatedItems.push({
           ...item,
           [key]: value,
         });
       } else {
+        // Unchanged items are appended without modification.
         updatedItems.push(item);
       }
     }
@@ -407,10 +581,14 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
    * @sideEffects Calls the parent change callback with a new array.
    */
   function addItem() {
-    onChange([
+    // The spread copies existing items into a new array. The newly created
+    // blank item is then placed at the end of that array.
+    const updatedItems = [
       ...items,
       createSectionItem(section),
-    ]);
+    ];
+
+    onChange(updatedItems);
   }
 
   /**
@@ -424,6 +602,7 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
 
     for (let index = 0; index < items.length; index += 1) {
       if (index !== removedIndex) {
+        // 'push()' copies every item except the removed position.
         remainingItems.push(items[index]);
       }
     }
@@ -443,9 +622,16 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
 
     for (let index = 0; index < items.length; index += 1) {
       const contact = items[index];
+      let isPrimary = false;
+
+      if (index === selectedIndex) {
+        isPrimary = isChecked;
+      }
+
+      // 'push()' appends a copied contact with its new primary state.
       updatedContacts.push({
         ...contact,
-        isPrimary: index === selectedIndex ? isChecked : false,
+        isPrimary,
       });
     }
 
@@ -470,63 +656,180 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
         </div>
       )}
       <div className="repeat-list">
-        {items.map((item, index) => (
-          <article className="repeat-card" key={item._id || `${section}-${index}`}>
-            <div className="repeat-card__header">
-              <strong>{title} {index + 1}</strong>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => removeItem(index)}
-              >
-                <CloseIcon size={17} />
-                Remove
-              </Button>
-            </div>
-            <div className="form-grid">
-              {SECTION_FIELDS[section].map(([key, label, type = "text", required = false, options]) => (
-                <label className="field" key={key}>
-                  <span>{label}</span>
-                  {type === "select" ? (
-                    <select
-                      className="input"
-                      value={item[key] || options[0]}
-                      onChange={(event) => {
-                        updateItem(index, key, event.target.value);
-                      }}
+        {/* 'map()' converts every repeated item into one editable React card. */}
+        {items.map((item, index) => {
+          const itemKey = item._id || section + "-" + index;
+
+          return (
+            <article
+              className="repeat-card"
+              key={itemKey}
+            >
+              <div className="repeat-card__header">
+                <strong>
+                  {title}
+                  {" "}
+                  {index + 1}
+                </strong>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    removeItem(index);
+                  }}
+                >
+                  <CloseIcon size={17} />
+                  Remove
+                </Button>
+              </div>
+
+              <div className="form-grid">
+                {/* This 'map()' creates one field from each readable field definition. */}
+                {SECTION_FIELDS[section].map((field) => {
+                  const key = field.key;
+                  const label = field.label;
+                  const type = field.type || "text";
+                  const required = field.required || false;
+                  const options = field.options || [];
+                  const errorKey =
+                    section
+                    + "."
+                    + index
+                    + "."
+                    + key;
+                  const fieldError = errors[errorKey];
+
+                  let inputClassName = "input";
+
+                  if (fieldError) {
+                    inputClassName = "input input--error";
+                  }
+
+                  if (type === "select") {
+                    const currentValue =
+                      item[key]
+                      || options[0];
+
+                    // 'includes()' checks whether the saved value is already one
+                    // of the current choices.
+                    const hasCustomOption =
+                      item[key]
+                      && !options.includes(item[key]);
+
+                    return (
+                      <label
+                        className="field"
+                        key={key}
+                      >
+                        <span>{label}</span>
+
+                        <select
+                          className="input"
+                          value={currentValue}
+                          onChange={(event) => {
+                            updateItem(
+                              index,
+                              key,
+                              event.target.value,
+                            );
+                          }}
+                        >
+                          {hasCustomOption && (
+                            <option value={item[key]}>
+                              {item[key]}
+                            </option>
+                          )}
+
+                          {/* 'map()' converts each allowed value to an option. */}
+                          {options.map((option) => {
+                            // 'replaceAll()' changes every stored hyphen to a display space.
+                            const readableOption = option.replaceAll("-", " ");
+
+                            return (
+                              <option
+                                value={option}
+                                key={option}
+                              >
+                                {readableOption}
+                              </option>
+                            );
+                          })}
+                        </select>
+
+                        {fieldError && (
+                          <small className="field__error">
+                            {fieldError}
+                          </small>
+                        )}
+                      </label>
+                    );
+                  }
+
+                  let inputValue = item[key];
+
+                  if (inputValue === null || inputValue === undefined) {
+                    inputValue = "";
+                  }
+
+                  return (
+                    <label
+                      className="field"
+                      key={key}
                     >
-                      {item[key] && !options.includes(item[key]) && (
-                        <option value={item[key]}>{item[key]}</option>
+                      <span>{label}</span>
+
+                      <input
+                        className={inputClassName}
+                        type={type}
+                        required={required}
+                        value={inputValue}
+                        onChange={(event) => {
+                          let nextValue = event.target.value;
+
+                          if (type === "number") {
+                            // 'Number()' converts the input text to a number.
+                            nextValue = Number(nextValue);
+                          }
+
+                          updateItem(
+                            index,
+                            key,
+                            nextValue,
+                          );
+                        }}
+                      />
+
+                      {fieldError && (
+                        <small className="field__error">
+                          {fieldError}
+                        </small>
                       )}
-                      {options.map((option) => (
-                        <option value={option} key={option}>
-                          {option.replaceAll("-", " ")}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input className={errors[`${section}.${index}.${key}`] ? "input input--error" : "input"} type={type} required={required} value={item[key] ?? ""} onChange={(event) => updateItem(index, key, type === "number" ? Number(event.target.value) : event.target.value)} />
-                  )}
-                  {errors[`${section}.${index}.${key}`] && <small className="field__error">{errors[`${section}.${index}.${key}`]}</small>}
-                </label>
-              ))}
-              {section === "emergencyContacts" && (
-                <label className="check-field">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(item.isPrimary)}
-                    onChange={(event) => {
-                      updatePrimaryContact(index, event.target.checked);
-                    }}
-                  />
-                  Primary emergency contact
-                </label>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
-      {errors[section] && (
+                    </label>
+                  );
+                })}
+
+                {section === "emergencyContacts" && (
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.isPrimary)}
+                      onChange={(event) => {
+                        // 'Boolean()' above converts undefined to false for React.
+                        updatePrimaryContact(
+                          index,
+                          event.target.checked,
+                        );
+                      }}
+                    />
+                    Primary emergency contact
+                  </label>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>      {errors[section] && (
         <div className="alert alert--error">
           {errors[section]}
         </div>
@@ -548,25 +851,31 @@ export function ProfileForm({
   errors = {},
   submitLabel = "Create profile",
 }) {
-  const [value, setValue] = useState(() => createInitialValue(initialProfile));
+  // 'useState()' stores values between renders. A function is passed for the
+  // initial profile so React creates that larger object only on the first render.
+  const [value, setValue] = useState(
+    /**
+     * Creates the form value used by the first render.
+     * @param {void} _unused - React calls this initializer without arguments.
+     * @returns {Record<string, unknown>} Independent form state.
+     * @sideEffects None.
+     */
+    function buildFirstFormValue() {
+      return createInitialValue(initialProfile);
+    },
+  );
   const [stepIndex, setStepIndex] = useState(0);
   const step = STEPS[stepIndex];
 
+  // 'useEffect()' resets the local form whenever a different initial profile arrives.
   useEffect(() => {
     const initialValue = createInitialValue(initialProfile);
     setValue(initialValue);
   }, [initialProfile]);
 
-  const age = useMemo(() => {
-    if (!value.personalInformation.dateOfBirth) {
-      return null;
-    }
-
-    return Math.max(
-      0,
-      Math.floor((Date.now() - new Date(value.personalInformation.dateOfBirth)) / 31557600000),
-    );
-  }, [value.personalInformation.dateOfBirth]);
+  const age = calculateApproximateAge(
+    value.personalInformation.dateOfBirth,
+  );
 
   /**
    * Updates one personal-information field.
@@ -575,8 +884,12 @@ export function ProfileForm({
    * @sideEffects Updates local form state.
    */
   function updatePersonal(event) {
+    // Destructuring reads name and value from the changed HTML field.
+    // The rename to fieldValue avoids confusing it with the complete form value.
     const { name, value: fieldValue } = event.target;
 
+    // Passing a function to setValue provides the latest state. The spreads
+    // copy existing fields before replacing only the changed field.
     setValue((current) => {
       return {
         ...current,
@@ -625,6 +938,7 @@ export function ProfileForm({
     }
 
     setStepIndex((current) => {
+      // 'Math.min()' prevents the next index from going beyond the last step.
       return Math.min(current + 1, STEPS.length - 1);
     });
   }
@@ -684,9 +998,31 @@ export function ProfileForm({
     return "";
   }
 
+  const selectedDistrict = value.personalInformation.district;
+  const automaticDivision = DISTRICT_TO_DIVISION[selectedDistrict];
+
+  // 'Boolean()' converts the division text to a true/false display decision.
+  const showAutomaticDivision = Boolean(automaticDivision);
+  const showDivisionSelect =
+    Boolean(selectedDistrict)
+    && !showAutomaticDivision;
+
+  let divisionInputClassName = "input";
+
+  if (errors["personalInformation.division"]) {
+    divisionInputClassName = "input input--error";
+  }
+
+  // 'new Date()' creates today, 'toISOString()' converts it to standard text,
+  // and 'slice(0, 10)' keeps YYYY-MM-DD for the input maximum.
+  const maximumDateOfBirth = new Date()
+    .toISOString()
+    .slice(0, 10);
+
   return (
     <form className="profile-form" onSubmit={handleStepSubmit}>
       <ol className="stepper" aria-label="Profile steps">
+        {/* 'map()' converts every step definition into one navigation item. */}
         {STEPS.map((item, index) => (
           <li className={getStepClassName(index)} key={item.key}>
             <button
@@ -725,7 +1061,7 @@ export function ProfileForm({
               name="dateOfBirth"
               type="date"
               label="Date of birth"
-              max={new Date().toISOString().slice(0, 10)}
+              max={maximumDateOfBirth}
               value={value.personalInformation.dateOfBirth}
               onChange={updatePersonal}
               error={errors["personalInformation.dateOfBirth"]}
@@ -768,14 +1104,21 @@ export function ProfileForm({
                 required
               >
                 <option value="">Choose relationship</option>
+                {/* 'includes()' checks whether an older saved value is in today's choices. */}
                 {value.personalInformation.familyRelationship
                   && !FAMILY_RELATIONSHIPS.includes(value.personalInformation.familyRelationship) && (
                     <option value={value.personalInformation.familyRelationship}>
                       {value.personalInformation.familyRelationship}
                     </option>
                   )}
+                {/* 'map()' converts every relationship string into an option. */}
                 {FAMILY_RELATIONSHIPS.map((relationship) => (
-                  <option value={relationship} key={relationship}>{relationship}</option>
+                  <option
+                    value={relationship}
+                    key={relationship}
+                  >
+                    {relationship}
+                  </option>
                 ))}
               </select>
               {errors["personalInformation.familyRelationship"] && (
@@ -804,14 +1147,21 @@ export function ProfileForm({
                 required
               >
                 <option value="">Choose district</option>
+                {/* 'includes()' preserves an older district not present in the list. */}
                 {value.personalInformation.district
                   && !BANGLADESH_DISTRICTS.includes(value.personalInformation.district) && (
                     <option value={value.personalInformation.district}>
                       {value.personalInformation.district}
                     </option>
                   )}
+                {/* 'map()' converts every district string into an option. */}
                 {BANGLADESH_DISTRICTS.map((district) => (
-                  <option value={district} key={district}>{district}</option>
+                  <option
+                    value={district}
+                    key={district}
+                  >
+                    {district}
+                  </option>
                 ))}
               </select>
               {errors["personalInformation.district"] && (
@@ -820,37 +1170,52 @@ export function ProfileForm({
                 </small>
               )}
             </label>
-            {DISTRICT_TO_DIVISION[value.personalInformation.district] ? (
+            {showAutomaticDivision && (
               <div className="profile-derived-field">
                 <span>Division</span>
                 <strong>{value.personalInformation.division}</strong>
                 <small>Filled automatically from the district.</small>
               </div>
-            ) : value.personalInformation.district ? (
+            )}
+
+            {showDivisionSelect && (
               <label className="field" htmlFor="division">
                 <span>Division</span>
+
                 <select
                   id="division"
-                  className={errors["personalInformation.division"] ? "input input--error" : "input"}
+                  className={divisionInputClassName}
                   name="division"
                   value={value.personalInformation.division}
                   onChange={updatePersonal}
                   required
                 >
                   <option value="">Choose division</option>
+
                   {value.personalInformation.division
-                    && !BANGLADESH_DIVISIONS.includes(value.personalInformation.division) && (
+                    && !BANGLADESH_DIVISIONS.includes(
+                      value.personalInformation.division,
+                    ) && (
                       <option value={value.personalInformation.division}>
                         {value.personalInformation.division}
                       </option>
                     )}
+
+                  {/* 'map()' converts every division string into an option. */}
                   {BANGLADESH_DIVISIONS.map((division) => (
-                    <option value={division} key={division}>{division}</option>
+                    <option
+                      value={division}
+                      key={division}
+                    >
+                      {division}
+                    </option>
                   ))}
                 </select>
               </label>
-            ) : null}
+            )}
           </div>
+
+          {/* 'Boolean()' converts the combined optional values to true or false. */}
           <details
             className="progressive-details"
             defaultOpen={Boolean(
@@ -877,9 +1242,17 @@ export function ProfileForm({
                   value={value.personalInformation.bloodGroup}
                   onChange={updatePersonal}
                 >
-                  {["unknown", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((group) => (
-                    <option value={group} key={group}>{group}</option>
-                  ))}
+                  {/* 'map()' converts every blood-group string into an option. */}
+                  {["unknown", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
+                    (group) => (
+                      <option
+                        value={group}
+                        key={group}
+                      >
+                        {group}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
               <label className="field" htmlFor="preferredLanguage">
@@ -891,14 +1264,21 @@ export function ProfileForm({
                   value={value.personalInformation.preferredLanguage}
                   onChange={updatePersonal}
                 >
+                  {/* 'includes()' preserves an older saved language choice. */}
                   {value.personalInformation.preferredLanguage
                     && !PREFERRED_LANGUAGES.includes(value.personalInformation.preferredLanguage) && (
                       <option value={value.personalInformation.preferredLanguage}>
                         {value.personalInformation.preferredLanguage}
                       </option>
                     )}
+                  {/* 'map()' converts every language string into an option. */}
                   {PREFERRED_LANGUAGES.map((language) => (
-                    <option value={language} key={language}>{language}</option>
+                    <option
+                      value={language}
+                      key={language}
+                    >
+                      {language}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -990,7 +1370,52 @@ export function ProfileForm({
         />
       )}
       {step.key === "review" && (
-        <section className="form-section review-panel"><span className="profile-avatar">{value.personalInformation.preferredName?.[0] || value.personalInformation.fullName?.[0] || "P"}</span><div><span className="eyebrow">Ready to save</span><h2>{value.personalInformation.fullName || "Unnamed profile"}</h2><p>{age !== null ? `${age} years old` : "Age not available"} · {value.personalInformation.district || "District not provided"}</p></div><div className="review-stats"><span><strong>{value.medicalHistory.length}</strong> history entries</span><span><strong>{value.allergies.length}</strong> allergies</span><span><strong>{value.medications.length}</strong> medications</span><span><strong>{value.emergencyContacts.length}</strong> emergency contacts</span></div>{errors.form && <div className="alert alert--error">{errors.form}</div>}</section>
+        <section className="form-section review-panel">
+          <span className="profile-avatar">
+            {value.personalInformation.preferredName?.[0]
+              || value.personalInformation.fullName?.[0]
+              || "P"}
+          </span>
+
+          <div>
+            <span className="eyebrow">Ready to save</span>
+            <h2>
+              {value.personalInformation.fullName || "Unnamed profile"}
+            </h2>
+            <p>
+              {age !== null
+                ? age + " years old"
+                : "Age not available"}
+              {" / "}
+              {value.personalInformation.district || "District not provided"}
+            </p>
+          </div>
+
+          <div className="review-stats">
+            <span>
+              <strong>{value.medicalHistory.length}</strong>
+              history entries
+            </span>
+            <span>
+              <strong>{value.allergies.length}</strong>
+              allergies
+            </span>
+            <span>
+              <strong>{value.medications.length}</strong>
+              medications
+            </span>
+            <span>
+              <strong>{value.emergencyContacts.length}</strong>
+              emergency contacts
+            </span>
+          </div>
+
+          {errors.form && (
+            <div className="alert alert--error">
+              {errors.form}
+            </div>
+          )}
+        </section>
       )}
       <div className="form-actions">
         {stepIndex > 0 && (

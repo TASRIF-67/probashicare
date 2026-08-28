@@ -4,10 +4,39 @@ import {
 } from "../utils/subscriptionConstants.js";
 
 /**
+ * Builds the normal Core access response.
+ * @param {string} status - Effective stored/access status.
+ * @param {Date|null} expiresAt - Parsed expiry when one exists.
+ * @returns {{
+ *   accessLevel: "core",
+ *   status: string,
+ *   isPremium: false,
+ *   entitlements: [],
+ *   expiresAt: Date|null
+ * }} Effective Core access.
+ * @sideEffects None.
+ */
+function createCoreAccess(status, expiresAt) {
+  return {
+    accessLevel: "core",
+    status,
+    isPremium: false,
+    entitlements: [],
+    expiresAt,
+  };
+}
+
+/**
  * Determines effective subscription access without writing to MongoDB.
  * @param {object|null} subscription - Stored FamilySubscription-like value.
  * @param {Date|string|number} [nowValue=new Date()] - Time used for the decision.
- * @returns {{accessLevel: "core"|"premium", status: string, isPremium: boolean, entitlements: string[], expiresAt: Date|null}} Effective access result.
+ * @returns {{
+ *   accessLevel: "core"|"premium",
+ *   status: string,
+ *   isPremium: boolean,
+ *   entitlements: string[],
+ *   expiresAt: Date|null
+ * }} Effective access result.
  * @sideEffects None.
  */
 export function determineSubscriptionAccess(
@@ -21,55 +50,50 @@ export function determineSubscriptionAccess(
   }
 
   if (!subscription) {
-    return {
-      accessLevel: "core",
-      status: "none",
-      isPremium: false,
-      entitlements: [],
-      expiresAt: null,
-    };
+    return createCoreAccess("none", null);
   }
 
-  const allowedStatuses = ["trialing", "active"];
-  const hasEligibleStatus = allowedStatuses.includes(subscription.status);
+  const premiumStatuses = ["trialing", "active"];
+
+  // `includes` returns true only when the exact stored status is allowed.
+  const hasEligibleStatus = premiumStatuses.includes(subscription.status);
+
   let expiresAt = null;
 
   if (subscription.currentPeriodEndsAt) {
     expiresAt = new Date(subscription.currentPeriodEndsAt);
   }
 
-  const hasValidExpiry =
-    expiresAt !== null &&
-    !Number.isNaN(expiresAt.getTime()) &&
-    expiresAt.getTime() > now.getTime();
+  const expiryIsValid =
+    expiresAt !== null && !Number.isNaN(expiresAt.getTime());
+  const expiryIsInFuture = expiryIsValid && expiresAt.getTime() > now.getTime();
+
   const isPremium =
     subscription.accessLevel === "premium" &&
     hasEligibleStatus &&
-    hasValidExpiry;
+    expiryIsInFuture;
 
   if (!isPremium) {
     let effectiveStatus = subscription.status || "none";
 
-    if (hasEligibleStatus && !hasValidExpiry) {
+    if (hasEligibleStatus && !expiryIsInFuture) {
+      // A stored active/trialing status cannot grant access after its expiry.
       effectiveStatus = "expired";
     }
 
-    return {
-      accessLevel: "core",
-      status: effectiveStatus,
-      isPremium: false,
-      entitlements: [],
-      expiresAt,
-    };
+    return createCoreAccess(effectiveStatus, expiresAt);
   }
 
+  // Trials receive the current complete Premium entitlement list.
   let entitlements = [...PREMIUM_ENTITLEMENTS];
 
-  if (
+  const paidPlanHasFeatureSnapshot =
     subscription.status === "active" &&
     subscription.planSnapshot &&
-    Array.isArray(subscription.planSnapshot.features)
-  ) {
+    Array.isArray(subscription.planSnapshot.features);
+
+  if (paidPlanHasFeatureSnapshot) {
+    // Paid access uses its historical snapshot, not today's catalog.
     entitlements = [...subscription.planSnapshot.features];
   }
 
@@ -83,13 +107,14 @@ export function determineSubscriptionAccess(
 }
 
 /**
- * Checks whether an effective access result contains one entitlement.
+ * Checks whether an effective access result contains one known entitlement.
  * @param {{entitlements?: string[]}|null} access - Result from determineSubscriptionAccess.
  * @param {string} entitlement - Required reusable entitlement code.
  * @returns {boolean} True only when the entitlement is known and granted.
  * @sideEffects None.
  */
 export function hasEntitlement(access, entitlement) {
+  // `Object.values` creates an array of the configured entitlement codes.
   const knownEntitlements = Object.values(ENTITLEMENTS);
 
   if (!knownEntitlements.includes(entitlement)) {
@@ -102,8 +127,3 @@ export function hasEntitlement(access, entitlement) {
 
   return access.entitlements.includes(entitlement);
 }
-
-/*
- * Add future Premium features to ENTITLEMENTS and plan features. Backend routes
- * can then use requireFamilyEntitlement(code) without knowing a plan name.
- */

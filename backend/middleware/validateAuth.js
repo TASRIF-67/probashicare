@@ -3,63 +3,108 @@ import { ApiError } from "../utils/ApiError.js";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Validates family email/password signup input before database work.
- * @param {import("express").Request} request - Request with `name`, `email`, and `password`.
- * @param {import("express").Response} _response - Express response, unused.
- * @param {import("express").NextFunction} next - Middleware continuation.
+ * Normalizes a possible email value for comparison and storage.
+ * @param {unknown} value - Untrusted request value.
+ * @returns {string} Trimmed lowercase email text or an empty string.
+ * @sideEffects None.
+ */
+function normalizeEmail(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Checks whether a validation-details object contains any field errors.
+ * @param {Record<string, string>} details - Collected field messages.
+ * @returns {boolean} True when at least one error exists.
+ * @sideEffects None.
+ */
+function hasValidationErrors(details) {
+  // `Object.keys` returns an array containing the object's own field names.
+  return Object.keys(details).length > 0;
+}
+
+/**
+ * Validates Family email/password signup input before database work.
+ * @param {import("express").Request} request - Signup request.
+ * @param {import("express").Response} _response - Unused response.
+ * @param {import("express").NextFunction} next - Express continuation.
  * @returns {void}
- * @sideEffects Normalizes name and email on `request.body`, or forwards a 422 error.
+ * @sideEffects Normalizes request.body or forwards a 422 error.
  */
 export function validateSignup(request, _response, next) {
-  const name = request.body?.name?.trim();
-  const email = request.body?.email?.trim().toLowerCase();
+  const name = String(request.body?.name || "").trim();
+  const email = normalizeEmail(request.body?.email);
   const password = request.body?.password;
   const details = {};
 
-  if (!name || name.length > 100) details.name = "Name must be between 1 and 100 characters.";
-  if (!email || !EMAIL_PATTERN.test(email)) details.email = "Enter a valid email address.";
-  if (typeof password !== "string" || password.length < 8) {
-    details.password = "Password must contain at least 8 characters.";
+  if (!name || name.length > 100) {
+    details.name = "Name must be between 1 and 100 characters.";
   }
 
-  if (Object.keys(details).length) {
-    return next(new ApiError(422, "Please correct the highlighted fields.", details));
+  if (!email || !EMAIL_PATTERN.test(email)) {
+    details.email = "Enter a valid email address.";
   }
-  request.body = { ...request.body, name, email };
-  return next();
+
+  if (
+    typeof password !== "string" ||
+    password.length < 8
+  ) {
+    details.password =
+      "Password must contain at least 8 characters.";
+  }
+
+  if (hasValidationErrors(details)) {
+    next(
+      new ApiError(
+        422,
+        "Please correct the highlighted fields.",
+        details,
+      ),
+    );
+    return;
+  }
+
+  // The spread operator copies existing signup fields before normalized values
+  // replace name and email.
+  request.body = {
+    ...request.body,
+    name,
+    email,
+  };
+  next();
 }
 
 /**
  * Validates email/password login input.
- * @param {import("express").Request} request - Request with `email` and `password`.
- * @param {import("express").Response} _response - Express response, unused.
- * @param {import("express").NextFunction} next - Middleware continuation.
+ * @param {import("express").Request} request - Login request.
+ * @param {import("express").Response} _response - Unused response.
+ * @param {import("express").NextFunction} next - Express continuation.
  * @returns {void}
- * @sideEffects Normalizes email on `request.body`, or forwards a 422 error.
+ * @sideEffects Normalizes request.body email or forwards a 422 error.
  */
 export function validateLogin(request, _response, next) {
-  const email = request.body?.email?.trim().toLowerCase();
+  const email = normalizeEmail(request.body?.email);
   const password = request.body?.password;
-  if (!email || !EMAIL_PATTERN.test(email) || typeof password !== "string" || !password) {
-    return next(new ApiError(422, "A valid email and password are required."));
-  }
-  request.body = { ...request.body, email };
-  return next();
-}
+  const passwordIsMissing =
+    typeof password !== "string" || !password;
 
-/**
- * Validates and normalizes the email used to request a password-reset link.
- * @param {import("express").Request} request - Request containing an email address.
- * @param {import("express").Response} _response - Express response, unused.
- * @param {import("express").NextFunction} next - Middleware continuation.
- * @returns {void}
- * @sideEffects Normalizes request body email or forwards a 422 validation error.
- */
-export function validateForgotPassword(request, _response, next) {
-  const email = request.body?.email?.trim().toLowerCase();
-
-  if (!email || !EMAIL_PATTERN.test(email)) {
-    next(new ApiError(422, "Enter a valid email address."));
+  if (
+    !email ||
+    !EMAIL_PATTERN.test(email) ||
+    passwordIsMissing
+  ) {
+    next(
+      new ApiError(
+        422,
+        "A valid email and password are required.",
+      ),
+    );
     return;
   }
 
@@ -71,12 +116,40 @@ export function validateForgotPassword(request, _response, next) {
 }
 
 /**
- * Validates the one-time token and matching new passwords before reset work.
- * @param {import("express").Request} request - Request containing token and password fields.
- * @param {import("express").Response} _response - Express response, unused.
- * @param {import("express").NextFunction} next - Middleware continuation.
+ * Validates and normalizes a password-reset request email.
+ * @param {import("express").Request} request - Forgot-password request.
+ * @param {import("express").Response} _response - Unused response.
+ * @param {import("express").NextFunction} next - Express continuation.
  * @returns {void}
- * @sideEffects Forwards a 422 validation error when reset input is unsafe.
+ * @sideEffects Normalizes email or forwards a 422 error.
+ */
+export function validateForgotPassword(request, _response, next) {
+  const email = normalizeEmail(request.body?.email);
+
+  if (!email || !EMAIL_PATTERN.test(email)) {
+    next(
+      new ApiError(
+        422,
+        "Enter a valid email address.",
+      ),
+    );
+    return;
+  }
+
+  request.body = {
+    ...request.body,
+    email,
+  };
+  next();
+}
+
+/**
+ * Validates the one-time reset token and matching new passwords.
+ * @param {import("express").Request} request - Reset request.
+ * @param {import("express").Response} _response - Unused response.
+ * @param {import("express").NextFunction} next - Express continuation.
+ * @returns {void}
+ * @sideEffects Normalizes request.body or forwards a 422 error.
  */
 export function validatePasswordReset(request, _response, next) {
   const token = request.body?.token;
@@ -84,19 +157,26 @@ export function validatePasswordReset(request, _response, next) {
   const confirmPassword = request.body?.confirmPassword;
   const details = {};
 
-  if (typeof token !== "string" || !token.trim()) {
+  if (
+    typeof token !== "string" ||
+    !token.trim()
+  ) {
     details.token = "Password-reset token is required.";
   }
 
-  if (typeof password !== "string" || password.length < 8) {
-    details.password = "Password must contain at least 8 characters.";
+  if (
+    typeof password !== "string" ||
+    password.length < 8
+  ) {
+    details.password =
+      "Password must contain at least 8 characters.";
   }
 
   if (confirmPassword !== password) {
     details.confirmPassword = "Passwords must match.";
   }
 
-  if (Object.keys(details).length > 0) {
+  if (hasValidationErrors(details)) {
     next(
       new ApiError(
         422,
@@ -116,21 +196,26 @@ export function validatePasswordReset(request, _response, next) {
 }
 
 /**
- * Validates editable family account fields before the account controller runs.
- * @param {import("express").Request} request - Request with `name`, `email`, and optional `currentPassword`.
- * @param {import("express").Response} _response - Express response, unused.
- * @param {import("express").NextFunction} next - Middleware continuation.
+ * Validates editable Family owner identity fields.
+ * @param {import("express").Request} request - Account update request.
+ * @param {import("express").Response} _response - Unused response.
+ * @param {import("express").NextFunction} next - Express continuation.
  * @returns {void}
- * @sideEffects Normalizes the submitted name and email or forwards a 422 error.
+ * @sideEffects Normalizes request.body or forwards a 422 error.
  */
-export function validateFamilyAccountUpdate(request, _response, next) {
-  const name = request.body?.name?.trim();
-  const email = request.body?.email?.trim().toLowerCase();
+export function validateFamilyAccountUpdate(
+  request,
+  _response,
+  next,
+) {
+  const name = String(request.body?.name || "").trim();
+  const email = normalizeEmail(request.body?.email);
   const currentPassword = request.body?.currentPassword;
   const details = {};
 
   if (!name || name.length > 100) {
-    details.name = "Name must be between 1 and 100 characters.";
+    details.name =
+      "Name must be between 1 and 100 characters.";
   }
 
   if (!email || !EMAIL_PATTERN.test(email)) {
@@ -141,10 +226,11 @@ export function validateFamilyAccountUpdate(request, _response, next) {
     currentPassword !== undefined &&
     typeof currentPassword !== "string"
   ) {
-    details.currentPassword = "Current password must be text.";
+    details.currentPassword =
+      "Current password must be text.";
   }
 
-  if (Object.keys(details).length > 0) {
+  if (hasValidationErrors(details)) {
     next(
       new ApiError(
         422,

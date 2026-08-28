@@ -13,9 +13,16 @@ export function SubscriptionExpiryModal({
   onDismiss,
   isDismissing = false,
 }) {
-  const dismissalIsActive =
-    reminder?.dismissedUntil &&
-    new Date(reminder.dismissedUntil).getTime() > Date.now();
+  let dismissalIsActive = false;
+
+  if (reminder?.dismissedUntil) {
+    // `getTime` converts the stored date to milliseconds. `Date.now` returns
+    // the current time in the same unit, so the values can be compared.
+    const dismissalEnd = new Date(reminder.dismissedUntil).getTime();
+    dismissalIsActive = dismissalEnd > Date.now();
+  }
+
+  // `Boolean` converts an object/null value into an explicit true/false flag.
   const isOpen = Boolean(reminder) && !dismissalIsActive;
 
   return (

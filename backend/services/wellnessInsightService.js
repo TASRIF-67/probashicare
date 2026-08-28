@@ -17,8 +17,12 @@ function buildReportSignature(reports) {
     reportIds.push(report._id.toString());
   }
 
+  // sort changes the ID array into a stable order. join combines the IDs into
+  // one string, so a different report order cannot change the signature.
   reportIds.sort();
-  return reportIds.join(",");
+  const signature = reportIds.join(",");
+
+  return signature;
 }
 
 /**
@@ -35,26 +39,35 @@ export function buildFallbackWellnessSummary(analysis) {
     highlights.push(rule.title);
   }
 
-  if (!highlights.length) {
-    highlights.push("No demonstration alert rule was triggered in this period.");
+  if (highlights.length === 0) {
+    highlights.push(
+      "No demonstration alert rule was triggered in this period.",
+    );
+  }
+
+  let reportWord = "reports";
+
+  if (reportCount === 1) {
+    reportWord = "report";
   }
 
   const summary =
     "This summary covers " +
     reportCount +
-    " recent submitted wellness report" +
-    (reportCount === 1 ? "" : "s") +
+    " recent submitted wellness " +
+    reportWord +
     ". It describes recorded patterns only and is not a diagnosis.";
   let recommendedFollowUp =
     "Continue reviewing regular wellness reports and recorded changes.";
 
-  if (analysis.ruleResults.length) {
+  if (analysis.ruleResults.length > 0) {
     recommendedFollowUp =
       "Consider discussing repeated or concerning recorded changes with a qualified healthcare professional.";
   }
 
   return {
     summary,
+    // slice returns a new array containing at most the first five items.
     highlights: highlights.slice(0, 5),
     recommendedFollowUp,
   };
@@ -67,11 +80,18 @@ export function buildFallbackWellnessSummary(analysis) {
  * @sideEffects Reads WellnessInsight documents.
  */
 export async function getLatestWellnessInsight(elderlyProfileId) {
-  return WellnessInsight.findOne({
+  // findOne returns one matching document or null. sort with -1 asks for the
+  // newest generatedAt first. lean returns a plain object instead of a full
+  // Mongoose document because this function does not need save().
+  const insight = await WellnessInsight.findOne({
     elderlyProfileId,
   })
-    .sort({ generatedAt: -1 })
+    .sort({
+      generatedAt: -1,
+    })
     .lean();
+
+  return insight;
 }
 
 /**
@@ -83,7 +103,7 @@ export async function getLatestWellnessInsight(elderlyProfileId) {
 export async function generateWellnessInsight(elderlyProfileId) {
   const analysis = await analyzeRecentWellnessReports(elderlyProfileId);
 
-  if (!analysis.reports.length) {
+  if (analysis.reports.length === 0) {
     return {
       insight: null,
       reused: false,
@@ -91,16 +111,28 @@ export async function generateWellnessInsight(elderlyProfileId) {
   }
 
   const reportSignature = buildReportSignature(analysis.reports);
-  const cooldownStart = new Date(Date.now() - REGENERATION_COOLDOWN_MS);
-  const recentInsight = await WellnessInsight.findOne({
+
+  // Date.now returns the current time as milliseconds. Subtracting the
+  // cooldown creates the oldest generatedAt time that may still be reused.
+  const currentTime = Date.now();
+  const cooldownTime = currentTime - REGENERATION_COOLDOWN_MS;
+  const cooldownStart = new Date(cooldownTime);
+  const cacheFilter = {
     elderlyProfileId,
     reportSignature,
     generatedBy: "gemini",
     generatedAt: {
+      // $gte means generatedAt must be greater than or equal to this Date.
       $gte: cooldownStart,
     },
-  })
-    .sort({ generatedAt: -1 })
+  };
+
+  // This cache deliberately reuses only a recent Gemini result. A fallback can
+  // be retried on refresh in case the external service becomes available.
+  const recentInsight = await WellnessInsight.findOne(cacheFilter)
+    .sort({
+      generatedAt: -1,
+    })
     .lean();
 
   if (recentInsight) {
@@ -118,15 +150,19 @@ export async function generateWellnessInsight(elderlyProfileId) {
     generatedBy = "fallback";
   }
 
+  // analyzeRecentWellnessReports sorts newest first. Array position 0 is the
+  // newest report and length - 1 is the final, oldest report.
   const newestReport = analysis.reports[0];
-  const oldestReport = analysis.reports[analysis.reports.length - 1];
+  const oldestReportIndex = analysis.reports.length - 1;
+  const oldestReport = analysis.reports[oldestReportIndex];
   const reportIds = [];
 
   for (const report of analysis.reports) {
+    // push adds the source ID to the end of the array stored for traceability.
     reportIds.push(report._id);
   }
 
-  const insight = await WellnessInsight.create({
+  const insightInput = {
     elderlyProfileId,
     reportIds,
     reportSignature,
@@ -137,10 +173,16 @@ export async function generateWellnessInsight(elderlyProfileId) {
     recommendedFollowUp: summaryData.recommendedFollowUp,
     generatedBy,
     generatedAt: new Date(),
-  });
+  };
+
+  // create validates insightInput against the schema and inserts one document.
+  const insightDocument = await WellnessInsight.create(insightInput);
+
+  // toObject converts the Mongoose document to a plain response-safe object.
+  const plainInsight = insightDocument.toObject();
 
   return {
-    insight: insight.toObject(),
+    insight: plainInsight,
     reused: false,
   };
 }

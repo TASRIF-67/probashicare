@@ -6,6 +6,7 @@ import {
   SUBSCRIPTION_PLAN_CODES,
 } from "../utils/subscriptionConstants.js";
 
+// One document represents one backend-controlled plan currently offered.
 const subscriptionPlanSchema = new mongoose.Schema(
   {
     code: {
@@ -66,11 +67,16 @@ const subscriptionPlanSchema = new mongoose.Schema(
     },
   },
   {
+    // Mongoose maintains createdAt and updatedAt automatically.
     timestamps: true,
   },
 );
 
-subscriptionPlanSchema.index({ isActive: 1, price: 1 });
+// The catalog query filters active plans and sorts by price.
+subscriptionPlanSchema.index({
+  isActive: 1,
+  price: 1,
+});
 
 export const SubscriptionPlan = mongoose.model(
   "SubscriptionPlan",

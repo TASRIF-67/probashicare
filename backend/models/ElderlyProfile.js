@@ -1,5 +1,13 @@
 import mongoose from "mongoose";
 
+/*
+ * 'new mongoose.Schema()' describes the shape and validation rules for MongoDB
+ * documents. Mongoose applies these rules before it saves a document.
+ *
+ * The small schemas below are embedded inside ElderlyProfile. Embedded records
+ * are stored in the same MongoDB document instead of separate collections.
+ */
+
 // Shared enums keep stored values consistent between validation, forms, and reports.
 export const BLOOD_GROUPS = [
   "A+",
@@ -401,6 +409,8 @@ const elderlyProfileSchema = new mongoose.Schema(
  * then add a frontend service and consume it through a focused hook or page.
  * Avoid expanding this profile document with time-series or transactional data.
  */
+// 'mongoose.model()' creates the model class used by controllers for queries,
+// creation, updates, and deletion in the elderlyprofiles MongoDB collection.
 export const ElderlyProfile = mongoose.model(
   "ElderlyProfile",
   elderlyProfileSchema,

@@ -14,7 +14,10 @@ import { elderlyProfileService } from "../../services/elderlyProfileService.js";
  * @sideEffects Creates profile/link records, refreshes auth state, and navigates to details.
  */
 export function CreateElderlyProfilePage() {
+  // 'useState(false)' asks React to remember whether the form is submitting.
+  // The first returned value is current state; the second function changes it.
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // This state object stores server validation messages by field name.
   const [errors, setErrors] = useState({});
   const { refreshUser } = useAuth();
   const { showToast } = useToast();
@@ -30,13 +33,16 @@ export function CreateElderlyProfilePage() {
     setIsSubmitting(true);
     setErrors({});
     try {
+      // 'await' pauses until the backend creates both profile and owner link.
       const data = await elderlyProfileService.createProfile(value);
       const profile = data.profile;
 
+      // Refreshing auth updates hasLinkedElderlyProfiles after first-profile creation.
       await refreshUser();
       showToast("Elderly profile created.", "success");
       navigate(`/elderly-profiles/${profile._id}`, { replace: true });
     } catch (error) {
+      // normalizeApiError converts Axios/network errors into the app's standard shape.
       const normalized = normalizeApiError(error);
       const fieldErrors = normalized.details || {};
 
@@ -45,6 +51,7 @@ export function CreateElderlyProfilePage() {
         form: normalized.message,
       });
     } finally {
+      // 'finally' runs after either success or failure, so the button always unlocks.
       setIsSubmitting(false);
     }
   }

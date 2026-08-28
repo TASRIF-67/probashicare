@@ -7,6 +7,8 @@ import { ElderlyProfile } from "../models/ElderlyProfile.js";
 import { User } from "../models/User.js";
 
 const baseUrl = `http://localhost:${env.port}/api`;
+// 'Date.now()' returns the current millisecond timestamp. Including it makes
+// every temporary test email unique.
 const marker = `smoke-${Date.now()}`;
 const password = "SmokeTestPassword2026";
 let firstUser;
@@ -34,14 +36,18 @@ async function callApi(path, { method = "GET", body, cookie, expectedStatus = 20
   let requestBody;
 
   if (body) {
+    // 'JSON.stringify()' converts the JavaScript object into JSON request text.
     requestBody = JSON.stringify(body);
   }
 
+  // 'fetch()' returns a Promise for an HTTP response. 'await' pauses until the
+  // local API responds or the request fails.
   const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers,
     body: requestBody,
   });
+  // 'response.json()' reads the response body and parses its JSON into an object.
   const payload = await response.json();
 
   if (response.status !== expectedStatus) {
@@ -52,7 +58,8 @@ async function callApi(path, { method = "GET", body, cookie, expectedStatus = 20
   const setCookieHeader = response.headers.get("set-cookie");
 
   if (setCookieHeader) {
-    // split separates the session cookie from attributes such as Path and HttpOnly.
+    // 'split(";")' makes an array at semicolons. Index zero keeps only the
+    // session cookie and removes attributes such as Path and HttpOnly.
     responseCookie = setCookieHeader.split(";")[0];
   }
 
@@ -69,10 +76,14 @@ async function callApi(path, { method = "GET", body, cookie, expectedStatus = 20
  * @sideEffects Hashes a password and writes a temporary User to MongoDB.
  */
 async function createTemporaryFamily(email) {
+  // 'bcrypt.hash()' returns a Promise containing a one-way password hash.
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  // Returning the Mongoose create Promise lets the caller await the new user.
   return User.create({
     name: "Profile Smoke Family",
     email,
-    password: await bcrypt.hash(password, 12),
+    password: passwordHash,
     role: "family",
     isVerified: true,
   });
@@ -184,9 +195,29 @@ async function cleanup() {
   await mongoose.disconnect();
 }
 
-runSmokeTest()
-  .catch((error) => {
-    console.error("Elderly profile API smoke test failed:", error.message);
+/**
+ * Starts the smoke test and guarantees cleanup without a chained Promise expression.
+ * @param {void} _unused - This function accepts no arguments.
+ * @returns {Promise<void>} Resolves after testing and cleanup finish.
+ * @sideEffects Runs API/database checks, logs the outcome, and sets the process exit code.
+ */
+async function startSmokeTest() {
+  try {
+    // 'await' pauses until all smoke-test assertions finish.
+    await runSmokeTest();
+  } catch (error) {
+    console.error(
+      "Elderly profile API smoke test failed:",
+      error.message,
+    );
+
+    // A non-zero exit code tells npm or CI that the smoke test failed.
     process.exitCode = 1;
-  })
-  .finally(cleanup);
+  } finally {
+    // 'finally' always runs, whether the test succeeded or threw an error.
+    await cleanup();
+  }
+}
+
+// Calling the async starter begins the test. The function itself returns a Promise.
+startSmokeTest();

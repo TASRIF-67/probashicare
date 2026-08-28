@@ -15,13 +15,15 @@ export function SubscriptionStatusCard({ state, loading = false }) {
   let detail = "Explore the free trial and Premium plans.";
 
   if (access?.isPremium) {
-    title =
-      subscription?.status === "trialing"
-        ? "Free trial active"
-        : (subscription?.planSnapshot?.name || "Premium") + " active";
-    detail =
-      "Available until " +
-      new Date(access.expiresAt).toLocaleString();
+    if (subscription?.status === "trialing") {
+      title = "Free trial active";
+    } else {
+      const planName = subscription?.planSnapshot?.name || "Premium";
+      title = planName + " active";
+    }
+
+    const expiryLabel = new Date(access.expiresAt).toLocaleString();
+    detail = "Available until " + expiryLabel;
   } else if (subscription?.status === "expired") {
     title = "Subscription expired";
     detail = "Stored care information remains available.";

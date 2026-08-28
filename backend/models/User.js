@@ -1,31 +1,72 @@
 import mongoose from "mongoose";
 
-export const USER_ROLES = ["family", "admin", "caregiver", "elderly"];
+export const USER_ROLES = [
+  "family",
+  "admin",
+  "caregiver",
+  "elderly",
+];
 
+// User stores authentication identity only. Feature-specific information stays
+// in separate profile/subscription models instead of growing this document.
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true, maxlength: 100 },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, default: null, select: false },
-    googleId: { type: String, default: null },
-    role: { type: String, enum: USER_ROLES, default: "family", index: true },
-    isVerified: { type: Boolean, default: false },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    // Password hashes and Google IDs are server-only authentication fields.
+    password: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    googleId: {
+      type: String,
+      default: null,
+    },
+    role: {
+      type: String,
+      enum: USER_ROLES,
+      default: "family",
+      index: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
 
+// Only Google-linked users have a string googleId. The partial unique index
+// ignores null values but prevents two users sharing one Google identity.
 userSchema.index(
-  { googleId: 1 },
+  {
+    googleId: 1,
+  },
   {
     unique: true,
-    partialFilterExpression: { googleId: { $type: "string" } },
+    partialFilterExpression: {
+      googleId: {
+        $type: "string",
+      },
+    },
   },
 );
 
-/*
- * To add a new model, create its schema in backend/models, export the model, then add
- * a controller and route file. Register the route in app.js, expose matching methods
- * in a frontend service, and consume those methods through a focused hook or page.
- * Keep references between models explicit rather than gradually expanding User.
- */
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.model(
+  "User",
+  userSchema,
+);

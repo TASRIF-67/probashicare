@@ -1,4 +1,4 @@
-﻿import { WellnessAlert } from "../models/WellnessAlert.js";
+import { WellnessAlert } from "../models/WellnessAlert.js";
 import { getAuthorizedElderlyProfile } from "../services/elderlyProfileAccessService.js";
 import {
   generateWellnessInsight,
@@ -14,14 +14,19 @@ import { ApiError } from "../utils/ApiError.js";
  * @sideEffects Reads WellnessAlert, ElderlyFamilyLink, and ElderlyProfile.
  */
 async function getAuthorizedAlert(alertId, familyUserId) {
-  const alert = await WellnessAlert.findById(alertId)
-    .populate("sourceReportIds", "visitDate submittedAt");
+  // findById returns one alert or null. populate replaces report IDs only in
+  // this query result so the API can display the source dates.
+  const alert = await WellnessAlert.findById(alertId).populate(
+    "sourceReportIds",
+    "visitDate submittedAt",
+  );
 
   if (!alert) {
     throw new ApiError(404, "Wellness alert not found.");
   }
 
   await getAuthorizedElderlyProfile({
+    // toString converts the ObjectId into the string expected by the access service.
     profileId: alert.elderlyProfileId.toString(),
     familyUserId,
   });
@@ -41,9 +46,11 @@ async function getAuthorizedAlert(alertId, familyUserId) {
  * @sideEffects Reads access records and WellnessAlert documents.
  */
 export async function listWellnessAlerts(request, response) {
+  // Number converts query text into a numeric page. Invalid text becomes NaN.
   const page = Number(request.query.page || 1);
   const limit = Number(request.query.limit || 3);
 
+  // Number.isInteger rejects decimals, NaN, and non-number values.
   if (!Number.isInteger(page) || page < 1) {
     throw new ApiError(422, "Page must be a positive integer.");
   }
@@ -60,22 +67,31 @@ export async function listWellnessAlerts(request, response) {
     elderlyProfileId: request.params.profileId,
   };
 
+  // Copy only these approved query fields. Bracket notation is necessary
+  // because the property name is stored in the name variable.
   for (const name of ["status", "severity", "category"]) {
     if (request.query[name]) {
       filter[name] = request.query[name];
     }
   }
 
-  const results = await Promise.all([
-    WellnessAlert.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .populate("sourceReportIds", "visitDate submittedAt"),
-    WellnessAlert.countDocuments(filter),
-  ]);
-  const alerts = results[0];
-  const total = results[1];  const allActiveAlerts = await WellnessAlert.find({
+  const skipCount = (page - 1) * limit;
+
+  // find returns matching alerts. sort uses -1 for newest first. skip and limit
+  // select one page. populate replaces source report IDs in this result with
+  // report objects containing only visitDate and submittedAt.
+  const alerts = await WellnessAlert.find(filter)
+    .sort({
+      createdAt: -1,
+    })
+    .skip(skipCount)
+    .limit(limit)
+    .populate("sourceReportIds", "visitDate submittedAt");
+
+  // countDocuments returns the total without loading every matching alert.
+  const total = await WellnessAlert.countDocuments(filter);
+
+  const allActiveAlerts = await WellnessAlert.find({
     elderlyProfileId: request.params.profileId,
     status: {
       $ne: "resolved",
@@ -88,6 +104,7 @@ export async function listWellnessAlerts(request, response) {
   };
 
   for (const alert of allActiveAlerts) {
+    // Bracket notation chooses low, medium, or high using the stored value.
     severitySummary[alert.severity] += 1;
   }
 
@@ -100,6 +117,7 @@ export async function listWellnessAlerts(request, response) {
         page,
         limit,
         total,
+        // Math.ceil rounds a partial final page upward to one whole page.
         pages: Math.ceil(total / limit),
       },
       activeCount: allActiveAlerts.length,
@@ -146,6 +164,8 @@ export async function getWellnessAlert(request, response) {
 export async function acknowledgeWellnessAlert(request, response) {
   await getAuthorizedAlert(request.params.alertId, request.user._id);
 
+  // Filtering by both _id and the old active status makes this transition
+  // atomic. Two concurrent requests cannot both acknowledge the same alert.
   const alert = await WellnessAlert.findOneAndUpdate(
     {
       _id: request.params.alertId,
@@ -155,6 +175,7 @@ export async function acknowledgeWellnessAlert(request, response) {
       $set: {
         status: "acknowledged",
         acknowledgedBy: request.user._id,
+        // new Date records the transition time at request processing.
         acknowledgedAt: new Date(),
       },
     },
@@ -190,6 +211,8 @@ export async function acknowledgeWellnessAlert(request, response) {
 export async function resolveWellnessAlert(request, response) {
   await getAuthorizedAlert(request.params.alertId, request.user._id);
 
+  // $in permits either unresolved status. Including status in this atomic
+  // update prevents an already resolved alert from being resolved again.
   const alert = await WellnessAlert.findOneAndUpdate(
     {
       _id: request.params.alertId,
@@ -201,6 +224,7 @@ export async function resolveWellnessAlert(request, response) {
       $set: {
         status: "resolved",
         resolvedBy: request.user._id,
+        // new Date records the transition time at request processing.
         resolvedAt: new Date(),
         resolutionNote: request.body.resolutionNote,
       },

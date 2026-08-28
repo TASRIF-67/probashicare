@@ -17,9 +17,14 @@ import {
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ENTITLEMENTS } from "../utils/subscriptionConstants.js";
 
+// Router creates an Express route table that backend/app.js mounts at /api.
 const router = Router();
 
+// router.use applies these middleware functions to every route below. requireAuth
+// loads request.user; allowRoles then limits the feature to family accounts.
 router.use(asyncHandler(requireAuth), allowRoles("family"));
+// Each route runs left to right: entitlement, validation, then the async
+// controller. asyncHandler forwards a rejected Promise to error middleware.
 router.get(
   "/elderly-profiles/:profileId/wellness-alerts",
   asyncHandler(

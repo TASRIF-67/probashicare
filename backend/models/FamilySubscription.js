@@ -7,6 +7,8 @@ import {
   SUBSCRIPTION_STATUSES,
 } from "../utils/subscriptionConstants.js";
 
+// A snapshot copies the plan terms that were active when access began. Later
+// catalog price/feature changes must not rewrite an existing family's history.
 const planSnapshotSchema = new mongoose.Schema(
   {
     code: {
@@ -51,10 +53,12 @@ const planSnapshotSchema = new mongoose.Schema(
     },
   },
   {
+    // The embedded snapshot belongs to its parent and needs no separate ID.
     _id: false,
   },
 );
 
+// Exactly one FamilySubscription document may belong to each family account.
 const familySubscriptionSchema = new mongoose.Schema(
   {
     family: {
@@ -116,6 +120,7 @@ const familySubscriptionSchema = new mongoose.Schema(
       type: planSnapshotSchema,
       default: null,
     },
+    // Access checks update this timestamp when they persist an expiry.
     lastExpiryCheckAt: {
       type: Date,
       default: null,
@@ -126,7 +131,11 @@ const familySubscriptionSchema = new mongoose.Schema(
   },
 );
 
-familySubscriptionSchema.index({ status: 1, currentPeriodEndsAt: 1 });
+// Supports expiry scans such as active records whose ending time has passed.
+familySubscriptionSchema.index({
+  status: 1,
+  currentPeriodEndsAt: 1,
+});
 
 export const FamilySubscription = mongoose.model(
   "FamilySubscription",

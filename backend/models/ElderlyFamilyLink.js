@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 
+/*
+ * This model uses a separate collection because access is a relationship between
+ * a family user and an elderly profile. Keeping it separate supports multiple
+ * family members without copying private health data.
+ */
+
 // This link collection allows one elderly profile to be shared with multiple family users.
 const elderlyFamilyLinkSchema = new mongoose.Schema(
   {
@@ -49,7 +55,8 @@ const elderlyFamilyLinkSchema = new mongoose.Schema(
   },
 );
 
-// A family user can have only one link record for a particular elderly profile.
+// 'index()' creates a compound MongoDB index from the two fields. 'unique: true'
+// prevents duplicate links for the same family user and elderly profile pair.
 elderlyFamilyLinkSchema.index(
   {
     elderlyProfileId: 1,
@@ -66,6 +73,7 @@ elderlyFamilyLinkSchema.index(
  * a revocable status. Add access-service queries before exposing controller or
  * frontend operations; do not infer authorization from who created a profile.
  */
+// 'mongoose.model()' creates the class used to query and save link documents.
 export const ElderlyFamilyLink = mongoose.model(
   "ElderlyFamilyLink",
   elderlyFamilyLinkSchema,

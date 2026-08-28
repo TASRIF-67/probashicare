@@ -40,8 +40,10 @@ test("Gemini sanitizer returns only whitelisted anonymous values", () => {
       },
     }),
   ]);
+  // JSON.stringify converts the sanitized result to searchable text.
   const serialized = JSON.stringify(sanitized);
 
+  // includes checks whether private text appears anywhere in the payload.
   assert.equal(serialized.includes("secret-database-id"), false);
   assert.equal(serialized.includes("Private Elder"), false);
   assert.equal(serialized.includes("Private unrestricted note"), false);
@@ -60,11 +62,22 @@ test("draft reports do not contribute to deterministic alerts", () => {
 
 test("repeated submitted elevated readings trigger deterministic alerts", () => {
   const reports = [
-    report({ _id: "one", vitals: { systolic: 150, diastolic: 95, bloodSugar: 190 } }),
-    report({ _id: "two", vitals: { systolic: 148, diastolic: 93, bloodSugar: 185 } }),
+    report({
+      _id: "one",
+      vitals: { systolic: 150, diastolic: 95, bloodSugar: 190 },
+    }),
+    report({
+      _id: "two",
+      vitals: { systolic: 148, diastolic: 93, bloodSugar: 185 },
+    }),
   ];
   const results = analyzeWellnessReportValues(reports);
-  const ruleIds = results.map((result) => result.ruleId);
+  const ruleIds = [];
+
+  for (const result of results) {
+    // push adds each deterministic rule ID to the assertion list.
+    ruleIds.push(result.ruleId);
+  }
 
   assert.equal(ruleIds.includes("repeated-high-blood-pressure"), true);
   assert.equal(ruleIds.includes("repeated-elevated-blood-sugar"), true);
@@ -83,43 +96,41 @@ test("fallback summary remains useful without Gemini", () => {
 
 test("missing Gemini key returns null without making a request", async () => {
   let requestMade = false;
-  const result = await generateGeminiWellnessSummary(
-    [report()],
-    {
-      apiKey: "",
-      fetchFunction: async () => {
-        requestMade = true;
-      },
+  const result = await generateGeminiWellnessSummary([report()], {
+    apiKey: "",
+    fetchFunction: async () => {
+      requestMade = true;
     },
-  );
+  });
 
   assert.equal(result, null);
   assert.equal(requestMade, false);
 });
 
 test("malformed Gemini output returns null for fallback handling", async () => {
-  const result = await generateGeminiWellnessSummary(
-    [report()],
-    {
-      apiKey: "synthetic-test-key",
-      fetchFunction: async () => {
-        return {
-          ok: true,
-          json: async () => {
-            return {
-              candidates: [{
+  const result = await generateGeminiWellnessSummary([report()], {
+    apiKey: "synthetic-test-key",
+    fetchFunction: async () => {
+      return {
+        ok: true,
+        json: async () => {
+          return {
+            candidates: [
+              {
                 content: {
-                  parts: [{
-                    text: "not-json",
-                  }],
+                  parts: [
+                    {
+                      text: "not-json",
+                    },
+                  ],
                 },
-              }],
-            };
-          },
-        };
-      },
+              },
+            ],
+          };
+        },
+      };
     },
-  );
+  });
 
   assert.equal(result, null);
 });

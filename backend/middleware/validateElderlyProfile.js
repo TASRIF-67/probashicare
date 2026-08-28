@@ -20,6 +20,8 @@ const PROFILE_SECTION_NAMES = [
 function validatePersonalInformation(personal, errors) {
   const information = personal || {};
 
+  // 'trim()' removes spaces from both ends. A value containing only spaces
+  // therefore becomes an empty string and fails this required-field check.
   if (!information.fullName || !information.fullName.trim()) {
     errors["personalInformation.fullName"] = "Full name is required.";
   }
@@ -28,6 +30,8 @@ function validatePersonalInformation(personal, errors) {
     errors["personalInformation.dateOfBirth"] = "Date of birth is required.";
   }
 
+  // Each 'new Date()' call creates a JavaScript Date object. Comparing the two
+  // Date objects compares their millisecond timestamps.
   if (
     information.dateOfBirth &&
     new Date(information.dateOfBirth) > new Date()
@@ -79,6 +83,7 @@ function validateSectionShapes(body, errors) {
       continue;
     }
 
+    // 'Array.isArray()' returns true only for a real JavaScript array.
     if (!Array.isArray(sectionValue)) {
       errors[section] = "This section must be a list.";
       continue;
@@ -115,6 +120,8 @@ function validateEmergencyContacts(contacts, errors) {
 
   for (const contact of contacts) {
     if (contact.phone) {
+      // 'replace()' uses the regular expression to remove every non-digit.
+      // The 'g' flag means replace all matches instead of only the first one.
       const phone = contact.phone.replace(/\D/g, "");
 
       if (phone) {
@@ -123,7 +130,8 @@ function validateEmergencyContacts(contacts, errors) {
     }
   }
 
-  // Set keeps only one copy of each normalized phone number.
+  // 'Set' is a built-in collection that keeps only one copy of each value.
+  // Comparing its size with the original array length reveals duplicates.
   const uniquePhones = new Set(normalizedPhones);
 
   if (uniquePhones.size !== normalizedPhones.length) {
@@ -168,6 +176,7 @@ function validateMedications(medications, errors) {
     const hasDateRange = medication.startDate && medication.endDate;
     const startsAfterEnd =
       hasDateRange &&
+      // 'new Date()' converts each date input string into a comparable Date.
       new Date(medication.startDate) > new Date(medication.endDate);
 
     if (startsAfterEnd) {
@@ -210,6 +219,8 @@ export function validateElderlyProfilePayload(
     errors,
   );
 
+  // 'Object.keys()' returns an array containing the names of all own properties.
+  // Its 'length' is greater than zero when at least one error was recorded.
   if (Object.keys(errors).length > 0) {
     throw new ApiError(
       422,

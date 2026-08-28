@@ -22,9 +22,17 @@ function runValidation(middleware, body) {
   };
   let nextValue;
 
-  middleware(request, {}, function captureNext(value) {
+  /**
+   * Records the value passed to Express next.
+   * @param {unknown} value - Error or undefined forwarded by middleware.
+   * @returns {void}
+   * @sideEffects Assigns the outer nextValue variable.
+   */
+  function captureNext(value) {
     nextValue = value;
-  });
+  }
+
+  middleware(request, {}, captureNext);
 
   return {
     request,
@@ -32,33 +40,76 @@ function runValidation(middleware, body) {
   };
 }
 
-test("password reset tokens store only a reproducible hash", function verifyTokenHashing() {
+/**
+ * Proves reset tokens store only a deterministic hash.
+ * @param {void} _unused - This test accepts no arguments.
+ * @returns {void}
+ * @sideEffects Reads cryptographic randomness and performs assertions.
+ */
+function verifyTokenHashing() {
   const token = createPasswordResetToken();
 
   assert.notEqual(token.rawToken, token.tokenHash);
-  assert.equal(hashPasswordResetToken(token.rawToken), token.tokenHash);
+  assert.equal(
+    hashPasswordResetToken(token.rawToken),
+    token.tokenHash,
+  );
   assert.equal(token.tokenHash.length, 64);
-});
+}
 
-test("forgot password validation normalizes email", function verifyEmailNormalization() {
-  const result = runValidation(validateForgotPassword, {
-    email: "  Family@Example.com  ",
-  });
+/**
+ * Proves forgot-password validation normalizes an email.
+ * @param {void} _unused - This test accepts no arguments.
+ * @returns {void}
+ * @sideEffects Runs middleware and performs assertions.
+ */
+function verifyEmailNormalization() {
+  const result = runValidation(
+    validateForgotPassword,
+    {
+      email: "  Family@Example.com  ",
+    },
+  );
 
   assert.equal(result.nextValue, undefined);
-  assert.equal(result.request.body.email, "family@example.com");
-});
+  assert.equal(
+    result.request.body.email,
+    "family@example.com",
+  );
+}
 
-test("password reset validation rejects mismatched passwords", function rejectMismatch() {
-  const result = runValidation(validatePasswordReset, {
-    token: "valid-looking-token",
-    password: "new-password",
-    confirmPassword: "different-password",
-  });
+/**
+ * Proves reset validation rejects non-matching passwords.
+ * @param {void} _unused - This test accepts no arguments.
+ * @returns {void}
+ * @sideEffects Runs middleware and performs assertions.
+ */
+function rejectMismatch() {
+  const result = runValidation(
+    validatePasswordReset,
+    {
+      token: "valid-looking-token",
+      password: "new-password",
+      confirmPassword: "different-password",
+    },
+  );
 
   assert.equal(result.nextValue.statusCode, 422);
   assert.equal(
     result.nextValue.details.confirmPassword,
     "Passwords must match.",
   );
-});
+}
+
+test(
+  "password reset tokens store only a reproducible hash",
+  verifyTokenHashing,
+);
+test(
+  "forgot password validation normalizes email",
+  verifyEmailNormalization,
+);
+test(
+  "password reset validation rejects mismatched passwords",
+  rejectMismatch,
+);

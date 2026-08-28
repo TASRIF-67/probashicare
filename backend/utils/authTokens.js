@@ -3,65 +3,115 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 
 /**
+ * Creates a random raw token and a database-safe SHA-256 hash.
+ * @param {number} bytes - Number of cryptographically random bytes.
+ * @returns {{rawToken: string, tokenHash: string}} Email token and stored hash.
+ * @sideEffects Reads the operating system cryptographic random source.
+ */
+function createRandomHashedToken(bytes) {
+  // `randomBytes` returns unpredictable binary bytes. `toString("hex")`
+  // converts them into URL-safe hexadecimal text.
+  const rawToken = crypto
+    .randomBytes(bytes)
+    .toString("hex");
+
+  // Only this deterministic hash is stored. Someone reading the database
+  // cannot directly use it as the emailed raw token.
+  const tokenHash = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+  return {
+    rawToken,
+    tokenHash,
+  };
+}
+
+/**
+ * Hashes one raw one-time token for a database equality lookup.
+ * @param {string} rawToken - Token from an emailed URL.
+ * @returns {string} SHA-256 hexadecimal digest.
+ * @sideEffects None.
+ */
+function hashOneTimeToken(rawToken) {
+  return crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+}
+
+/**
  * Signs a session JWT for an authenticated user.
- * @param {{_id: import("mongoose").Types.ObjectId, role: string}} user - User identity and role.
- * @returns {string} Signed JWT containing `{ sub, role }`.
+ * @param {{_id: import("mongoose").Types.ObjectId, role: string}} user - User.
+ * @returns {string} Signed JWT containing sub and role claims.
  * @sideEffects None.
  */
 export function createSessionToken(user) {
-  return jwt.sign({ sub: user._id.toString(), role: user.role }, env.jwtSecret, {
+  const payload = {
+    sub: user._id.toString(),
+    role: user.role,
+  };
+  const options = {
     expiresIn: env.jwtExpiresIn,
-  });
+  };
+
+  return jwt.sign(
+    payload,
+    env.jwtSecret,
+    options,
+  );
 }
 
 /**
- * Verifies a session token and returns its claims.
- * @param {string} token - Signed JWT.
- * @returns {{sub: string, role: string, iat: number, exp: number}} Verified token claims.
+ * Verifies a session token and returns its trusted claims.
+ * @param {string} token - Signed JWT from the HTTP-only cookie.
+ * @returns {{sub: string, role: string, iat: number, exp: number}} Claims.
  * @sideEffects Throws when the token is invalid or expired.
  */
 export function verifySessionToken(token) {
-  return jwt.verify(token, env.jwtSecret);
+  return jwt.verify(
+    token,
+    env.jwtSecret,
+  );
 }
 
 /**
- * Creates a high-entropy email verification token and its database-safe hash.
- * @param {number} [bytes=32] - Number of cryptographically random bytes.
- * @returns {{rawToken: string, tokenHash: string}} Raw token for email and SHA-256 hash for storage.
- * @sideEffects Reads from the operating system cryptographic random source.
+ * Creates a high-entropy email-verification token and storage hash.
+ * @param {number} [bytes=32] - Number of random bytes.
+ * @returns {{rawToken: string, tokenHash: string}} Raw and hashed token.
+ * @sideEffects Reads the operating system cryptographic random source.
  */
 export function createVerificationToken(bytes = 32) {
-  const rawToken = crypto.randomBytes(bytes).toString("hex");
-  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-  return { rawToken, tokenHash };
+  return createRandomHashedToken(bytes);
 }
 
 /**
- * Hashes a received verification token for lookup.
+ * Hashes a received verification token for MongoDB lookup.
  * @param {string} rawToken - Token received from the verification link.
  * @returns {string} SHA-256 hexadecimal digest.
  * @sideEffects None.
  */
 export function hashVerificationToken(rawToken) {
-  return crypto.createHash("sha256").update(rawToken).digest("hex");
+  return hashOneTimeToken(rawToken);
 }
 
 /**
- * Creates a high-entropy password-reset token and a safe hash for MongoDB.
- * @param {number} [bytes=32] - Number of cryptographically random bytes.
- * @returns {{rawToken: string, tokenHash: string}} Raw email token and SHA-256 storage hash.
- * @sideEffects Reads from the operating system cryptographic random source.
+ * Creates a high-entropy password-reset token and storage hash.
+ * @param {number} [bytes=32] - Number of random bytes.
+ * @returns {{rawToken: string, tokenHash: string}} Raw and hashed token.
+ * @sideEffects Reads the operating system cryptographic random source.
  */
 export function createPasswordResetToken(bytes = 32) {
-  return createVerificationToken(bytes);
+  return createRandomHashedToken(bytes);
 }
 
 /**
- * Hashes a password-reset token received from the browser for database lookup.
- * @param {string} rawToken - Raw token from the password-reset URL.
+ * Hashes a browser-provided password-reset token for lookup.
+ * @param {string} rawToken - Token from the reset URL.
  * @returns {string} SHA-256 hexadecimal digest.
  * @sideEffects None.
  */
 export function hashPasswordResetToken(rawToken) {
-  return hashVerificationToken(rawToken);
+  return hashOneTimeToken(rawToken);
 }

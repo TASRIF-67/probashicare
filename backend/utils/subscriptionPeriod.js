@@ -1,3 +1,6 @@
+const HOURS_TO_MILLISECONDS = 60 * 60 * 1000;
+const MONTHS_IN_YEAR = 12;
+
 /**
  * Returns the final valid day for a UTC calendar month.
  * @param {number} year - Four-digit UTC year.
@@ -6,7 +9,10 @@
  * @sideEffects None.
  */
 function getDaysInUtcMonth(year, monthIndex) {
-  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  // Day zero of the next month means the final day of the requested month.
+  const finalDay = new Date(Date.UTC(year, monthIndex + 1, 0));
+
+  return finalDay.getUTCDate();
 }
 
 /**
@@ -18,37 +24,49 @@ function getDaysInUtcMonth(year, monthIndex) {
  * @throws {TypeError|RangeError} When an input is invalid.
  */
 export function addCalendarMonths(startingValue, monthCount) {
+  // `new Date` creates a separate Date object, so the caller's Date is not
+  // changed by later calculations.
   const start = new Date(startingValue);
 
+  // An invalid Date returns NaN from `getTime`.
   if (Number.isNaN(start.getTime())) {
     throw new TypeError("A valid subscription period start is required.");
   }
 
+  // `Number.isInteger` rejects decimals, strings, NaN, and infinity.
   if (!Number.isInteger(monthCount) || monthCount < 1) {
-    throw new RangeError("Calendar month duration must be a positive whole number.");
+    throw new RangeError(
+      "Calendar month duration must be a positive whole number.",
+    );
   }
 
   const originalDay = start.getUTCDate();
   const targetMonthValue = start.getUTCMonth() + monthCount;
-  const targetYear =
-    start.getUTCFullYear() + Math.floor(targetMonthValue / 12);
-  const targetMonth = targetMonthValue % 12;
+
+  // `Math.floor` calculates how many complete years the month total crosses.
+  const additionalYears = Math.floor(targetMonthValue / MONTHS_IN_YEAR);
+  const targetYear = start.getUTCFullYear() + additionalYears;
+
+  // Remainder (%) converts an absolute month total back to zero through eleven.
+  const targetMonth = targetMonthValue % MONTHS_IN_YEAR;
+
+  // `Math.min` clamps January 31 to February 28/29 rather than overflowing.
   const targetDay = Math.min(
     originalDay,
     getDaysInUtcMonth(targetYear, targetMonth),
   );
 
-  return new Date(
-    Date.UTC(
-      targetYear,
-      targetMonth,
-      targetDay,
-      start.getUTCHours(),
-      start.getUTCMinutes(),
-      start.getUTCSeconds(),
-      start.getUTCMilliseconds(),
-    ),
+  const utcTimestamp = Date.UTC(
+    targetYear,
+    targetMonth,
+    targetDay,
+    start.getUTCHours(),
+    start.getUTCMinutes(),
+    start.getUTCSeconds(),
+    start.getUTCMilliseconds(),
   );
+
+  return new Date(utcTimestamp);
 }
 
 /**
@@ -72,11 +90,15 @@ export function calculateSubscriptionPeriodEnd(
   }
 
   if (!Number.isInteger(durationValue) || durationValue < 1) {
-    throw new RangeError("Subscription duration must be a positive whole number.");
+    throw new RangeError(
+      "Subscription duration must be a positive whole number.",
+    );
   }
 
   if (durationType === "hours") {
-    return new Date(start.getTime() + durationValue * 60 * 60 * 1000);
+    const durationMilliseconds = durationValue * HOURS_TO_MILLISECONDS;
+
+    return new Date(start.getTime() + durationMilliseconds);
   }
 
   if (durationType === "months") {
@@ -84,7 +106,9 @@ export function calculateSubscriptionPeriodEnd(
   }
 
   if (durationType === "years") {
-    return addCalendarMonths(start, durationValue * 12);
+    const durationMonths = durationValue * MONTHS_IN_YEAR;
+
+    return addCalendarMonths(start, durationMonths);
   }
 
   throw new RangeError("Unsupported subscription duration type.");
@@ -106,15 +130,17 @@ export function selectRenewalStart(completedAtValue, currentExpiryValue) {
   }
 
   if (currentExpiryValue) {
-    const expiry = new Date(currentExpiryValue);
+    const currentExpiry = new Date(currentExpiryValue);
+    const expiryIsValid = !Number.isNaN(currentExpiry.getTime());
+    const expiryIsInFuture =
+      expiryIsValid && currentExpiry.getTime() > completedAt.getTime();
 
-    if (
-      !Number.isNaN(expiry.getTime()) &&
-      expiry.getTime() > completedAt.getTime()
-    ) {
-      return expiry;
+    if (expiryIsInFuture) {
+      // Early renewal starts at the old expiry, so paid time is not lost.
+      return currentExpiry;
     }
   }
 
+  // Expired/new access begins when the payment completed.
   return completedAt;
 }

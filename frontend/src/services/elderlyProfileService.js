@@ -7,7 +7,12 @@ import { api } from "./api.js";
  * @sideEffects Calls POST `/elderly-profiles` and writes profile/link records.
  */
 async function createProfile(payload) {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.post("/elderly-profiles", payload);
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 
@@ -18,7 +23,12 @@ async function createProfile(payload) {
  * @sideEffects Calls GET `/elderly-profiles`.
  */
 async function listProfiles(status = "active") {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.get("/elderly-profiles", { params: { status } });
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 
@@ -29,7 +39,12 @@ async function listProfiles(status = "active") {
  * @sideEffects Calls GET `/elderly-profiles/:profileId`.
  */
 async function getProfile(profileId) {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.get(`/elderly-profiles/${profileId}`);
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 
@@ -41,7 +56,12 @@ async function getProfile(profileId) {
  * @sideEffects Calls PUT `/elderly-profiles/:profileId` and writes profile data.
  */
 async function updateProfile(profileId, payload) {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.put(`/elderly-profiles/${profileId}`, payload);
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 
@@ -53,9 +73,14 @@ async function updateProfile(profileId, payload) {
  * @sideEffects Calls PATCH and writes the profile and owner relationship.
  */
 async function updatePersonalInformation(profileId, personalInformation) {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.patch(`/elderly-profiles/${profileId}/personal-information`, {
     personalInformation,
   });
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 
@@ -68,7 +93,12 @@ async function updatePersonalInformation(profileId, personalInformation) {
  * @sideEffects Calls PUT and writes one embedded profile section.
  */
 async function updateSection(profileId, section, items) {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.put(`/elderly-profiles/${profileId}/${section}`, { items });
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 
@@ -79,7 +109,12 @@ async function updateSection(profileId, section, items) {
  * @sideEffects Calls PATCH and changes the profile status in MongoDB.
  */
 async function archiveProfile(profileId) {
+  // The Axios method returns a Promise. 'await' pauses this async function until
+  // the backend responds, or throws when the request fails.
   const response = await api.patch(`/elderly-profiles/${profileId}/archive`);
+  // Axios stores the parsed backend body in response.data. ProbashiCare stores
+  // the useful endpoint result one level deeper in response.data.data.
+  // 'return' resolves this async function's Promise with that useful result.
   return response.data.data;
 }
 

@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader.jsx";
 import { CaregiverHeader } from "../components/caregiver/CaregiverHeader.jsx";
 import { Button } from "../components/Button.jsx";
-import {
-  BellIcon,
-  CheckIcon,
-  ChevronRightIcon,
-} from "../components/Icons.jsx";
+import { BellIcon, CheckIcon, ChevronRightIcon } from "../components/Icons.jsx";
 import { Pagination } from "../components/Pagination.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNotifications } from "../context/NotificationContext.jsx";
@@ -24,20 +20,56 @@ const PAGE_SIZE = 3;
 /**
  * Formats a notification date using the current browser locale.
  * @param {string|Date} value - Stored notification date.
- * @returns {string} Readable date and time.
+ * @returns {string} Readable date and time, or a safe fallback.
  * @sideEffects None.
  */
 function formatNotificationDate(value) {
   const date = new Date(value);
 
+  // `getTime` returns milliseconds. An invalid Date returns NaN.
   if (Number.isNaN(date.getTime())) {
     return "Unknown time";
   }
 
+  // `toLocaleString` uses the browser's language and time zone.
   return date.toLocaleString(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+/**
+ * Creates the CSS class for a selected or unselected filter.
+ * @param {boolean} isActive - Whether this filter is selected.
+ * @returns {string} Filter button class name.
+ * @sideEffects None.
+ */
+function getFilterButtonClass(isActive) {
+  if (isActive) {
+    return [
+      "notification-filter__button",
+      "notification-filter__button--active",
+    ].join(" ");
+  }
+
+  return "notification-filter__button";
+}
+
+/**
+ * Creates the CSS class for a read or unread history row.
+ * @param {object} notification - Notification API record.
+ * @returns {string} History row class name.
+ * @sideEffects None.
+ */
+function getHistoryItemClass(notification) {
+  if (notification.isRead) {
+    return "notification-history__item";
+  }
+
+  return [
+    "notification-history__item",
+    "notification-history__item--unread",
+  ].join(" ");
 }
 
 /**
@@ -51,8 +83,12 @@ export function NotificationsPage() {
   const { refreshUnreadCount } = useNotifications();
   const { showToast } = useToast();
   const navigate = useNavigate();
+
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("all");
+
+  // Related page values are grouped in one object so a successful request can
+  // replace them together. Functional setters below preserve unchanged fields.
   const [state, setState] = useState({
     loading: true,
     notifications: [],
@@ -67,80 +103,101 @@ export function NotificationsPage() {
       limit: PAGE_SIZE,
     },
   });
+
   const isCaregiver = user?.role === "caregiver";
-  const fallbackPath = isCaregiver
-    ? "/caregiver/notifications"
-    : "/notifications";
-  const HeaderComponent = isCaregiver
-    ? CaregiverHeader
-    : AppHeader;
+  let fallbackPath = "/notifications";
+  let HeaderComponent = AppHeader;
+
+  if (isCaregiver) {
+    fallbackPath = "/caregiver/notifications";
+    HeaderComponent = CaregiverHeader;
+  }
 
   /**
    * Loads the active notification page and filter.
    * @param {boolean} [showLoading=true] - Whether to show the page loader.
-   * @returns {Promise<void>}
+   * @returns {Promise<void>} Resolves after state is updated.
    * @sideEffects Calls the list API and updates page state.
    */
-  async function loadNotifications(showLoading = true) {
-    if (showLoading) {
-      setState((currentState) => ({
-        ...currentState,
-        loading: true,
-      }));
-    }
-
-    try {
-      const params = {
-        page,
-        limit: PAGE_SIZE,
-      };
-
-      if (filter === "unread") {
-        params.unread = true;
+  const loadNotifications = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setState((currentState) => {
+          return {
+            ...currentState,
+            loading: true,
+          };
+        });
       }
 
-      const data = await notificationService.list(params);
-      const pagination = data.pagination || {
-        page,
-        pages: 1,
-        total: data.notifications.length,
-        limit: PAGE_SIZE,
-      };
+      try {
+        const params = {
+          page,
+          limit: PAGE_SIZE,
+        };
 
-      if (
-        pagination.pages > 0
-        && page > pagination.pages
-      ) {
-        setPage(pagination.pages);
-        return;
+        if (filter === "unread") {
+          params.unread = true;
+        }
+
+        const data = await notificationService.list(params);
+
+        let pagination = data.pagination;
+
+        if (!pagination) {
+          pagination = {
+            page,
+            pages: 1,
+            total: data.notifications.length,
+            limit: PAGE_SIZE,
+          };
+        }
+
+        // If deleting/filtering data leaves the page outside the last page,
+        // changing page triggers the effect again with a valid page number.
+        if (pagination.pages > 0 && page > pagination.pages) {
+          setPage(pagination.pages);
+          return;
+        }
+
+        setState((currentState) => {
+          return {
+            ...currentState,
+            loading: false,
+            notifications: data.notifications,
+            unreadCount: data.unreadCount,
+            pagination,
+            error: "",
+          };
+        });
+      } catch (requestError) {
+        // `normalizeApiError` converts Axios/network/backend errors into the
+        // same safe shape used throughout the frontend.
+        const normalizedError = normalizeApiError(requestError);
+
+        setState((currentState) => {
+          return {
+            ...currentState,
+            loading: false,
+            error: normalizedError.message,
+          };
+        });
       }
-
-      setState((currentState) => ({
-        ...currentState,
-        loading: false,
-        notifications: data.notifications,
-        unreadCount: data.unreadCount,
-        pagination,
-        error: "",
-      }));
-    } catch (error) {
-      setState((currentState) => ({
-        ...currentState,
-        loading: false,
-        error: normalizeApiError(error).message,
-      }));
-    }
-  }
+    },
+    [filter, page],
+  );
 
   useEffect(() => {
+    // The effect callback itself is not async, so it returns undefined instead
+    // of a Promise. The async function is called inside it.
     loadNotifications();
-  }, [page, filter]);
+  }, [loadNotifications]);
 
   /**
    * Changes between all and unread notification views.
    * @param {"all"|"unread"} nextFilter - Selected list filter.
    * @returns {void}
-   * @sideEffects Updates filter and pagination state.
+   * @sideEffects Updates filter and resets pagination.
    */
   function changeFilter(nextFilter) {
     setFilter(nextFilter);
@@ -149,153 +206,282 @@ export function NotificationsPage() {
 
   /**
    * Marks one notification read and refreshes counts.
-   * @param {string} notificationId - Notification identifier.
-   * @returns {Promise<void>}
-   * @sideEffects Calls the read API and reloads notification data.
+   * @param {string} notificationId - MongoDB Notification identifier.
+   * @returns {Promise<void>} Resolves after data is refreshed.
+   * @sideEffects Calls APIs and updates page/context state.
    */
   async function markRead(notificationId) {
     try {
-      setState((currentState) => ({
-        ...currentState,
-        busyId: notificationId,
-      }));
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyId: notificationId,
+        };
+      });
+
       await notificationService.markRead(notificationId);
       await loadNotifications(false);
       await refreshUnreadCount();
-    } catch (error) {
-      showToast(
-        normalizeApiError(error).message,
-        "error",
-      );
+    } catch (requestError) {
+      const normalizedError = normalizeApiError(requestError);
+
+      showToast(normalizedError.message, "error");
     } finally {
-      setState((currentState) => ({
-        ...currentState,
-        busyId: "",
-      }));
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyId: "",
+        };
+      });
     }
   }
 
   /**
    * Marks every caller-owned notification read.
-   * @returns {Promise<void>}
-   * @sideEffects Calls the bulk API, reloads the current page, and refreshes the bell count.
+   * @param {void} _unused - This handler accepts no arguments.
+   * @returns {Promise<void>} Resolves after data and counts are refreshed.
+   * @sideEffects Calls APIs and updates page/context state.
    */
   async function markAllRead() {
     try {
-      setState((currentState) => ({
-        ...currentState,
-        busyAll: true,
-      }));
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyAll: true,
+        };
+      });
+
       await notificationService.markAllAsRead();
 
       if (filter === "unread" && page !== 1) {
+        // Changing page causes the effect to load the first unread page.
         setPage(1);
       } else {
         await loadNotifications(false);
       }
 
       await refreshUnreadCount();
-      showToast(
-        "All notifications marked as read.",
-        "success",
-      );
-    } catch (error) {
-      showToast(
-        normalizeApiError(error).message,
-        "error",
-      );
+
+      showToast("All notifications marked as read.", "success");
+    } catch (requestError) {
+      const normalizedError = normalizeApiError(requestError);
+
+      showToast(normalizedError.message, "error");
     } finally {
-      setState((currentState) => ({
-        ...currentState,
-        busyAll: false,
-      }));
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyAll: false,
+        };
+      });
     }
   }
 
   /**
    * Marks a notification read and opens its related feature.
-   * @param {object} notification - Selected notification record.
-   * @returns {Promise<void>}
+   * @param {object} notification - Selected Notification record.
+   * @returns {Promise<void>} Resolves after navigation or error handling.
    * @sideEffects May call the read API and changes the current route.
    */
   async function openNotification(notification) {
     try {
-      setState((currentState) => ({
-        ...currentState,
-        busyId: notification._id,
-      }));
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyId: notification._id,
+        };
+      });
 
       if (!notification.isRead) {
         await notificationService.markRead(notification._id);
         await refreshUnreadCount();
       }
 
-      navigate(
-        getNotificationPath(notification, fallbackPath),
-      );
-    } catch (error) {
-      showToast(
-        normalizeApiError(error).message,
-        "error",
-      );
-      setState((currentState) => ({
-        ...currentState,
-        busyId: "",
-      }));
+      const destination = getNotificationPath(notification, fallbackPath);
+
+      // `navigate` changes the React Router route without reloading the page.
+      navigate(destination);
+    } catch (requestError) {
+      const normalizedError = normalizeApiError(requestError);
+
+      showToast(normalizedError.message, "error");
+
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyId: "",
+        };
+      });
     }
   }
 
   /**
    * Dismisses an expiry reminder for twenty-four hours.
-   * @param {string} notificationId - Notification identifier.
-   * @returns {Promise<void>}
-   * @sideEffects Calls the dismissal API and reloads data.
+   * @param {string} notificationId - MongoDB Notification identifier.
+   * @returns {Promise<void>} Resolves after data is refreshed.
+   * @sideEffects Calls the dismissal API and updates page state.
    */
   async function dismiss(notificationId) {
     try {
-      setState((currentState) => ({
-        ...currentState,
-        busyId: notificationId,
-      }));
-      await notificationService.dismiss(
-        notificationId,
-        24,
-      );
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyId: notificationId,
+        };
+      });
+
+      await notificationService.dismiss(notificationId, 24);
       await loadNotifications(false);
-      showToast(
-        "Reminder paused for 24 hours.",
-        "success",
-      );
-    } catch (error) {
-      showToast(
-        normalizeApiError(error).message,
-        "error",
-      );
+
+      showToast("Reminder paused for 24 hours.", "success");
+    } catch (requestError) {
+      const normalizedError = normalizeApiError(requestError);
+
+      showToast(normalizedError.message, "error");
     } finally {
-      setState((currentState) => ({
-        ...currentState,
-        busyId: "",
-      }));
+      setState((currentState) => {
+        return {
+          ...currentState,
+          busyId: "",
+        };
+      });
     }
   }
+
+  /**
+   * Builds the loading, empty, or notification-list section.
+   * @param {void} _unused - This renderer accepts no arguments.
+   * @returns {import("react").ReactElement} Current notification page content.
+   * @sideEffects None; button callbacks may perform actions after user input.
+   */
+  function renderNotificationContent() {
+    if (state.loading) {
+      return (
+        <div className="notification-center__loading">
+          <span className="spinner" />
+          Loading notifications...
+        </div>
+      );
+    }
+
+    if (state.notifications.length === 0) {
+      let emptyTitle = "No notifications yet";
+      let emptyMessage = "New care activity will appear here.";
+
+      if (filter === "unread") {
+        emptyTitle = "You are all caught up";
+        emptyMessage = "There are no unread care updates.";
+      }
+
+      return (
+        <div className="notification-center__empty">
+          <span aria-hidden="true">
+            <BellIcon size={26} />
+          </span>
+          <h2>{emptyTitle}</h2>
+          <p>{emptyMessage}</p>
+        </div>
+      );
+    }
+
+    const notificationCards = [];
+
+    for (const notification of state.notifications) {
+      const isBusy = state.busyId === notification._id;
+      const busyAll = Boolean(state.busyAll);
+
+      // `push` adds one React element to the end of the cards array.
+      notificationCards.push(
+        <article
+          className={getHistoryItemClass(notification)}
+          key={notification._id}
+        >
+          <span className="notification-history__icon" aria-hidden="true">
+            {notification.isRead ? (
+              <CheckIcon size={17} />
+            ) : (
+              <BellIcon size={17} />
+            )}
+          </span>
+
+          <div className="notification-history__content">
+            <div>
+              <strong>{notification.title}</strong>
+
+              {!notification.isRead && <span>New</span>}
+            </div>
+
+            <p>{notification.message}</p>
+
+            <time>{formatNotificationDate(notification.createdAt)}</time>
+          </div>
+
+          <div className="notification-history__actions">
+            {!notification.isRead && (
+              <Button
+                variant="secondary"
+                disabled={busyAll}
+                isLoading={isBusy}
+                onClick={() => {
+                  markRead(notification._id);
+                }}
+              >
+                Mark read
+              </Button>
+            )}
+
+            {isReminderNotification(notification) && (
+              <Button
+                variant="ghost"
+                disabled={isBusy || busyAll}
+                onClick={() => {
+                  dismiss(notification._id);
+                }}
+              >
+                Remind later
+              </Button>
+            )}
+
+            <Button
+              variant="ghost"
+              disabled={isBusy || busyAll}
+              onClick={() => {
+                openNotification(notification);
+              }}
+            >
+              Open
+              <ChevronRightIcon size={16} />
+            </Button>
+          </div>
+        </article>,
+      );
+    }
+
+    return <div className="notification-history">{notificationCards}</div>;
+  }
+
+  const allFilterIsActive = filter === "all";
+  const unreadFilterIsActive = filter === "unread";
+  const hasBusyNotification = Boolean(state.busyId);
+  const disableMarkAll = state.unreadCount === 0 || hasBusyNotification;
 
   return (
     <main>
       <HeaderComponent />
+
       <div className="feature-page notification-center">
         <section className="notification-center__hero">
           <div className="notification-center__title">
             <span aria-hidden="true">
               <BellIcon size={23} />
             </span>
+
             <div>
-              <span className="eyebrow">
-                Care activity
-              </span>
+              <span className="eyebrow">Care activity</span>
               <h1>Your notifications</h1>
               <p>
-                Booking responses, wellness updates,
-                reminders, and care coordination activity.
+                Booking responses, wellness updates, reminders, and care
+                coordination activity.
               </p>
             </div>
           </div>
@@ -315,26 +501,23 @@ export function NotificationsPage() {
             <button
               type="button"
               role="tab"
-              aria-selected={filter === "all"}
-              className={
-                filter === "all"
-                  ? "notification-filter__button notification-filter__button--active"
-                  : "notification-filter__button"
-              }
-              onClick={() => changeFilter("all")}
+              aria-selected={allFilterIsActive}
+              className={getFilterButtonClass(allFilterIsActive)}
+              onClick={() => {
+                changeFilter("all");
+              }}
             >
               All notifications
             </button>
+
             <button
               type="button"
               role="tab"
-              aria-selected={filter === "unread"}
-              className={
-                filter === "unread"
-                  ? "notification-filter__button notification-filter__button--active"
-                  : "notification-filter__button"
-              }
-              onClick={() => changeFilter("unread")}
+              aria-selected={unreadFilterIsActive}
+              className={getFilterButtonClass(unreadFilterIsActive)}
+              onClick={() => {
+                changeFilter("unread");
+              }}
             >
               Unread
               <span>{state.unreadCount}</span>
@@ -344,10 +527,7 @@ export function NotificationsPage() {
           <Button
             variant="secondary"
             isLoading={state.busyAll}
-            disabled={
-              state.unreadCount === 0
-              || Boolean(state.busyId)
-            }
+            disabled={disableMarkAll}
             onClick={markAllRead}
           >
             <CheckIcon size={17} />
@@ -361,114 +541,7 @@ export function NotificationsPage() {
           </div>
         )}
 
-        {state.loading ? (
-          <div className="notification-center__loading">
-            <span className="spinner" />
-            Loading notifications...
-          </div>
-        ) : state.notifications.length === 0 ? (
-          <div className="notification-center__empty">
-            <span aria-hidden="true">
-              <BellIcon size={26} />
-            </span>
-            <h2>
-              {filter === "unread"
-                ? "You are all caught up"
-                : "No notifications yet"}
-            </h2>
-            <p>
-              {filter === "unread"
-                ? "There are no unread care updates."
-                : "New care activity will appear here."}
-            </p>
-          </div>
-        ) : (
-          <div className="notification-history">
-            {state.notifications.map((notification) => {
-              const isBusy =
-                state.busyId === notification._id;
-
-              return (
-                <article
-                  className={
-                    notification.isRead
-                      ? "notification-history__item"
-                      : "notification-history__item notification-history__item--unread"
-                  }
-                  key={notification._id}
-                >
-                  <span
-                    className="notification-history__icon"
-                    aria-hidden="true"
-                  >
-                    {notification.isRead ? (
-                      <CheckIcon size={17} />
-                    ) : (
-                      <BellIcon size={17} />
-                    )}
-                  </span>
-
-                  <div className="notification-history__content">
-                    <div>
-                      <strong>{notification.title}</strong>
-                      {!notification.isRead && (
-                        <span>New</span>
-                      )}
-                    </div>
-                    <p>{notification.message}</p>
-                    <time>
-                      {formatNotificationDate(
-                        notification.createdAt,
-                      )}
-                    </time>
-                  </div>
-
-                  <div className="notification-history__actions">
-                    {!notification.isRead && (
-                      <Button
-                        variant="secondary"
-                        disabled={Boolean(state.busyAll)}
-                        isLoading={isBusy}
-                        onClick={() =>
-                          markRead(notification._id)
-                        }
-                      >
-                        Mark read
-                      </Button>
-                    )}
-                    {isReminderNotification(notification) && (
-                      <Button
-                        variant="ghost"
-                        disabled={
-                          isBusy
-                          || Boolean(state.busyAll)
-                        }
-                        onClick={() =>
-                          dismiss(notification._id)
-                        }
-                      >
-                        Remind later
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      disabled={
-                        isBusy
-                        || Boolean(state.busyAll)
-                      }
-                      onClick={() =>
-                        openNotification(notification)
-                      }
-                    >
-                      Open
-                      <ChevronRightIcon size={16} />
-                    </Button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+        {renderNotificationContent()}
 
         <Pagination
           page={state.pagination.page}

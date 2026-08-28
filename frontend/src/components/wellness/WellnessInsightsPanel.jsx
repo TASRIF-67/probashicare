@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../Button.jsx";
 import { Card } from "../Card.jsx";
 import { AlertIcon, CheckIcon, InsightsIcon } from "../Icons.jsx";
@@ -15,13 +15,40 @@ function formatDate(value) {
     return "Not available";
   }
 
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(value));
+  // new Date converts the stored value. Intl.DateTimeFormat creates a locale
+  // formatter, and format returns readable date text.
+  const date = new Date(value);
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+  });
+
+  return formatter.format(date);
 }
 
 /** Makes an enum readable. @param {string} value - Enum value. @returns {string} Display label. @sideEffects None. */
 function humanize(value) {
+  // String converts the value to text. replaceAll changes every underscore.
   const text = String(value || "").replaceAll("_", " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
+
+  // charAt gets the first character. slice copies characters from index 1.
+  const firstCharacter = text.charAt(0).toUpperCase();
+  const remainingCharacters = text.slice(1);
+
+  return firstCharacter + remainingCharacters;
+}
+
+/**
+ * Selects the singular or plural report label.
+ * @param {number} reportCount - Number of source reports.
+ * @returns {string} The word report or reports.
+ * @sideEffects None.
+ */
+function getReportWord(reportCount) {
+  if (reportCount === 1) {
+    return "report";
+  }
+
+  return "reports";
 }
 
 /**
@@ -31,11 +58,19 @@ function humanize(value) {
  * @sideEffects Loads and updates alerts and may request a Gemini summary.
  */
 export function WellnessInsightsPanel({ profileId }) {
+  // useToast returns the shared toast API. Destructuring reads showToast.
   const { showToast } = useToast();
+
+  // Every useState call returns the current value and a setter function.
   const [alerts, setAlerts] = useState([]);
   const [alertPage, setAlertPage] = useState(1);
   const [alertPagination, setAlertPagination] = useState(null);
-  const [alertSummary, setAlertSummary] = useState({ activeCount: 0, low: 0, medium: 0, high: 0 });
+  const [alertSummary, setAlertSummary] = useState({
+    activeCount: 0,
+    low: 0,
+    medium: 0,
+    high: 0,
+  });
   const [filters, setFilters] = useState({ status: "", severity: "" });
   const [loadingAlerts, setLoadingAlerts] = useState(true);
   const [alertError, setAlertError] = useState("");
@@ -55,6 +90,7 @@ export function WellnessInsightsPanel({ profileId }) {
   async function loadAlerts() {
     setLoadingAlerts(true);
     setAlertError("");
+    // This plain object becomes URL query parameters in the frontend service.
     const query = {
       page: alertPage,
       limit: 3,
@@ -68,6 +104,7 @@ export function WellnessInsightsPanel({ profileId }) {
     }
 
     try {
+      // await pauses until the Axios Promise resolves or throws.
       const data = await wellnessAlertService.listAlerts(profileId, query);
       setAlerts(data.alerts);
       setAlertPagination(data.pagination);
@@ -86,10 +123,13 @@ export function WellnessInsightsPanel({ profileId }) {
     }
   }
 
+  // useEffect runs after render. It is not async itself, so it does not return
+  // a Promise to React. Any dependency change loads the correct alert page.
   useEffect(() => {
     loadAlerts();
   }, [alertPage, profileId, filters.status, filters.severity]);
 
+  // This separate effect loads the saved summary when profileId changes.
   useEffect(() => {
     /**
      * Loads a saved insight without generating a new one.
@@ -112,9 +152,20 @@ export function WellnessInsightsPanel({ profileId }) {
 
   /** Changes one list filter. @param {import("react").ChangeEvent<HTMLSelectElement>} event - Select event. @returns {void} @sideEffects Updates filters. */
   function changeFilter(event) {
+    // event.target is the select element. Destructuring reads its two fields.
     const { name, value } = event.target;
+
     setAlertPage(1);
-    setFilters((current) => ({ ...current, [name]: value }));
+    setFilters((currentFilters) => {
+      // Spread copies current fields. Bracket notation updates the field whose
+      // name came from the select, either status or severity.
+      const nextFilters = {
+        ...currentFilters,
+      };
+      nextFilters[name] = value;
+
+      return nextFilters;
+    });
   }
 
   /** Acknowledges one alert. @param {object} alert - Active alert. @returns {Promise<void>} @sideEffects Updates the API and list. */
@@ -153,7 +204,10 @@ export function WellnessInsightsPanel({ profileId }) {
 
     setBusyAlertId(resolvingAlert._id);
     try {
-      await wellnessAlertService.resolveAlert(resolvingAlert._id, resolutionNote);
+      await wellnessAlertService.resolveAlert(
+        resolvingAlert._id,
+        resolutionNote,
+      );
       showToast("Wellness alert resolved.", "success");
       setResolvingAlert(null);
       setResolutionNote("");
@@ -173,7 +227,10 @@ export function WellnessInsightsPanel({ profileId }) {
       const data = await wellnessInsightService.generateInsight(profileId);
       setInsight(data.insight);
       if (data.generatedBy === "fallback") {
-        showToast("Gemini was unavailable. A rule-based summary was created.", "info");
+        showToast(
+          "Gemini was unavailable. A rule-based summary was created.",
+          "info",
+        );
       } else if (data.reused) {
         showToast("The saved summary is still current.", "success");
       } else {
@@ -186,12 +243,21 @@ export function WellnessInsightsPanel({ profileId }) {
     }
   }
 
+  // Boolean converts IDs/objects into clear true-or-false UI flags. trim
+  // removes outside whitespace before measuring the resolution note.
+  const hasBusyAlert = Boolean(busyAlertId);
+  const resolutionModalIsOpen = Boolean(resolvingAlert);
+  const cleanResolutionNote = resolutionNote.trim();
+  const resolutionNoteIsValid = cleanResolutionNote.length >= 3;
+
   return (
     <div className="wellness-insights">
       <section>
         <div className="wellness-section-heading">
           <div>
-            <span><AlertIcon /></span>
+            <span>
+              <AlertIcon />
+            </span>
             <div>
               <h2>Early wellness alerts</h2>
               <p>Rule-based informational screening, not a diagnosis.</p>
@@ -199,15 +265,32 @@ export function WellnessInsightsPanel({ profileId }) {
           </div>
         </div>
         <div className="wellness-alert-summary">
-          <Card><strong>{alertSummary.activeCount}</strong><span>Open alerts</span></Card>
-          <Card><strong>{alertSummary.high}</strong><span>High</span></Card>
-          <Card><strong>{alertSummary.medium}</strong><span>Medium</span></Card>
-          <Card><strong>{alertSummary.low}</strong><span>Low</span></Card>
+          <Card>
+            <strong>{alertSummary.activeCount}</strong>
+            <span>Open alerts</span>
+          </Card>
+          <Card>
+            <strong>{alertSummary.high}</strong>
+            <span>High</span>
+          </Card>
+          <Card>
+            <strong>{alertSummary.medium}</strong>
+            <span>Medium</span>
+          </Card>
+          <Card>
+            <strong>{alertSummary.low}</strong>
+            <span>Low</span>
+          </Card>
         </div>
         <div className="wellness-alert-filters">
           <label className="field">
             <span>Status</span>
-            <select className="input" name="status" value={filters.status} onChange={changeFilter}>
+            <select
+              className="input"
+              name="status"
+              value={filters.status}
+              onChange={changeFilter}
+            >
               <option value="">All statuses</option>
               <option value="active">Active</option>
               <option value="acknowledged">Acknowledged</option>
@@ -216,7 +299,12 @@ export function WellnessInsightsPanel({ profileId }) {
           </label>
           <label className="field">
             <span>Severity</span>
-            <select className="input" name="severity" value={filters.severity} onChange={changeFilter}>
+            <select
+              className="input"
+              name="severity"
+              value={filters.severity}
+              onChange={changeFilter}
+            >
               <option value="">All severities</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
@@ -224,56 +312,183 @@ export function WellnessInsightsPanel({ profileId }) {
             </select>
           </label>
         </div>
-        {loadingAlerts && <div className="page-loader-inline"><span className="spinner" /> Loading alerts</div>}
+        {loadingAlerts && (
+          <div className="page-loader-inline">
+            <span className="spinner" /> Loading alerts
+          </div>
+        )}
         {alertError && <div className="alert alert--error">{alertError}</div>}
-        {!loadingAlerts && !alerts.length && <Card className="wellness-empty"><AlertIcon /><h3>No alerts in this view</h3><p>No recent pattern matches these filters.</p></Card>}
+        {!loadingAlerts && alerts.length === 0 && (
+          <Card className="wellness-empty">
+            <AlertIcon />
+            <h3>No alerts in this view</h3>
+            <p>No recent pattern matches these filters.</p>
+          </Card>
+        )}
         <div className="wellness-alert-list">
+          {/* map creates one card for every alert in the current page. */}
           {alerts.map((alert) => (
-            <Card className={"wellness-alert-card wellness-alert-card--" + alert.severity} key={alert._id}>
+            <Card
+              className={
+                "wellness-alert-card wellness-alert-card--" + alert.severity
+              }
+              key={alert._id}
+            >
               <div className="wellness-alert-card__heading">
-                <div><span className="eyebrow">{humanize(alert.category)}</span><h3>{alert.title}</h3></div>
-                <div><span className={"severity-badge severity-badge--" + alert.severity}>{humanize(alert.severity)}</span><span className="status-badge">{humanize(alert.status)}</span></div>
+                <div>
+                  <span className="eyebrow">{humanize(alert.category)}</span>
+                  <h3>{alert.title}</h3>
+                </div>
+                <div>
+                  <span
+                    className={
+                      "severity-badge severity-badge--" + alert.severity
+                    }
+                  >
+                    {humanize(alert.severity)}
+                  </span>
+                  <span className="status-badge">{humanize(alert.status)}</span>
+                </div>
               </div>
               <p>{alert.message}</p>
-              <small>Triggered {formatDate(alert.createdAt)} from {alert.sourceReportIds.length} report{alert.sourceReportIds.length === 1 ? "" : "s"}</small>
-              <div className="wellness-alert-card__reports">{alert.sourceReportIds.map((report) => <span key={report._id}>{formatDate(report.visitDate)}</span>)}</div>
-              {alert.resolutionNote && <div className="record-note">Resolution: {alert.resolutionNote}</div>}
+              <small>
+                Triggered {formatDate(alert.createdAt)} from{" "}
+                {alert.sourceReportIds.length}{" "}
+                {getReportWord(alert.sourceReportIds.length)}
+              </small>
+              <div className="wellness-alert-card__reports">
+                {/* map creates one date badge per populated source report. */}
+                {alert.sourceReportIds.map((report) => (
+                  <span key={report._id}>{formatDate(report.visitDate)}</span>
+                ))}
+              </div>
+              {alert.resolutionNote && (
+                <div className="record-note">
+                  Resolution: {alert.resolutionNote}
+                </div>
+              )}
               {alert.status !== "resolved" && (
                 <div className="wellness-alert-actions">
-                  {alert.status === "active" && <Button variant="secondary" isLoading={busyAlertId === alert._id} disabled={Boolean(busyAlertId)} onClick={() => acknowledge(alert)}><CheckIcon size={16} /> Acknowledge</Button>}
-                  <Button disabled={Boolean(busyAlertId)} onClick={() => openResolve(alert)}>Resolve</Button>
+                  {alert.status === "active" && (
+                    <Button
+                      variant="secondary"
+                      isLoading={busyAlertId === alert._id}
+                      disabled={hasBusyAlert}
+                      onClick={() => acknowledge(alert)}
+                    >
+                      <CheckIcon size={16} /> Acknowledge
+                    </Button>
+                  )}
+                  <Button
+                    disabled={hasBusyAlert}
+                    onClick={() => openResolve(alert)}
+                  >
+                    Resolve
+                  </Button>
                 </div>
               )}
             </Card>
           ))}
         </div>
-        {alertPagination && <Pagination page={alertPagination.page} pages={alertPagination.pages} total={alertPagination.total} label="alerts" disabled={loadingAlerts} onPageChange={setAlertPage} />}
+        {alertPagination && (
+          <Pagination
+            page={alertPagination.page}
+            pages={alertPagination.pages}
+            total={alertPagination.total}
+            label="alerts"
+            disabled={loadingAlerts}
+            onPageChange={setAlertPage}
+          />
+        )}
       </section>
 
       <Card className="wellness-insight-card">
         <div className="wellness-insight-card__heading">
-          <div><span className="feature-icon"><InsightsIcon /></span><div><h2>Family wellness summary</h2><p>Generated only when requested.</p></div></div>
-          <Button isLoading={generatingInsight} disabled={loadingInsight} onClick={generate}>{insight ? "Refresh summary" : "Generate summary"}</Button>
+          <div>
+            <span className="feature-icon">
+              <InsightsIcon />
+            </span>
+            <div>
+              <h2>Family wellness summary</h2>
+              <p>Generated only when requested.</p>
+            </div>
+          </div>
+          <Button
+            isLoading={generatingInsight}
+            disabled={loadingInsight}
+            onClick={generate}
+          >
+            {insight ? "Refresh summary" : "Generate summary"}
+          </Button>
         </div>
-        {loadingInsight && <div className="page-loader-inline"><span className="spinner" /> Loading saved summary</div>}
-        {insightError && <div className="alert alert--error">{insightError}</div>}
+        {loadingInsight && (
+          <div className="page-loader-inline">
+            <span className="spinner" /> Loading saved summary
+          </div>
+        )}
+        {insightError && (
+          <div className="alert alert--error">{insightError}</div>
+        )}
         {!loadingInsight && !insight && <p>No saved summary yet.</p>}
         {insight && (
           <div className="wellness-insight-content">
-            <div className="wellness-insight-meta"><span>{formatDate(insight.periodStart)} to {formatDate(insight.periodEnd)}</span><span>Generated by {insight.generatedBy}</span><span>{formatDate(insight.generatedAt)}</span></div>
+            <div className="wellness-insight-meta">
+              <span>
+                {formatDate(insight.periodStart)} to{" "}
+                {formatDate(insight.periodEnd)}
+              </span>
+              <span>Generated by {insight.generatedBy}</span>
+              <span>{formatDate(insight.generatedAt)}</span>
+            </div>
             <p>{insight.summary}</p>
             <h3>Highlights</h3>
-            <ul>{insight.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}</ul>
+            <ul>
+              {/* map creates one list item per validated summary highlight. */}
+              {insight.highlights.map((highlight) => (
+                <li key={highlight}>{highlight}</li>
+              ))}
+            </ul>
             <h3>Recommended follow-up</h3>
             <p>{insight.recommendedFollowUp}</p>
           </div>
         )}
-        <div className="wellness-disclaimer">This limited summary is not medical advice or a diagnosis. Contact a qualified healthcare professional for health concerns.</div>
+        <div className="wellness-disclaimer">
+          This limited summary is not medical advice or a diagnosis. Contact a
+          qualified healthcare professional for health concerns.
+        </div>
       </Card>
 
-      <Modal isOpen={Boolean(resolvingAlert)} title="Resolve wellness alert" onClose={closeResolve}>
-        <label className="field" htmlFor="resolution-note"><span>Resolution note</span><textarea id="resolution-note" className="input textarea" maxLength={1000} value={resolutionNote} onChange={(event) => setResolutionNote(event.target.value)} /></label>
-        <div className="modal-actions"><Button variant="secondary" disabled={Boolean(busyAlertId)} onClick={closeResolve}>Cancel</Button><Button isLoading={Boolean(busyAlertId)} disabled={resolutionNote.trim().length < 3} onClick={resolve}>Resolve alert</Button></div>
+      <Modal
+        isOpen={resolutionModalIsOpen}
+        title="Resolve wellness alert"
+        onClose={closeResolve}
+      >
+        <label className="field" htmlFor="resolution-note">
+          <span>Resolution note</span>
+          <textarea
+            id="resolution-note"
+            className="input textarea"
+            maxLength={1000}
+            value={resolutionNote}
+            onChange={(event) => setResolutionNote(event.target.value)}
+          />
+        </label>
+        <div className="modal-actions">
+          <Button
+            variant="secondary"
+            disabled={hasBusyAlert}
+            onClick={closeResolve}
+          >
+            Cancel
+          </Button>
+          <Button
+            isLoading={hasBusyAlert}
+            disabled={!resolutionNoteIsValid}
+            onClick={resolve}
+          >
+            Resolve alert
+          </Button>
+        </div>
       </Modal>
     </div>
   );

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppHeader } from "../../components/AppHeader.jsx";
 import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
@@ -17,10 +17,23 @@ import { normalizeApiError } from "../../services/api.js";
 import { subscriptionService } from "../../services/subscriptionService.js";
 
 const PAYMENT_METHODS = [
-  { value: "test_card", label: "Test card" },
-  { value: "test_mobile_banking", label: "Test mobile banking" },
-  { value: "test_wallet", label: "Test wallet" },
+  {
+    value: "test_card",
+    label: "Test card",
+  },
+  {
+    value: "test_mobile_banking",
+    label: "Test mobile banking",
+  },
+  {
+    value: "test_wallet",
+    label: "Test wallet",
+  },
 ];
+
+const PAYMENT_PAGE_SIZE = 3;
+const STRIPE_STATUS_ATTEMPTS = 6;
+const STRIPE_STATUS_DELAY_MILLISECONDS = 1000;
 
 /**
  * Formats a stored date and time for subscription presentation.
@@ -29,12 +42,22 @@ const PAYMENT_METHODS = [
  * @sideEffects None.
  */
 function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString() : "Not available";
+  if (!value) {
+    return "Not available";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
+
+  return date.toLocaleString();
 }
 
 /**
  * Formats the access period stored with a subscription plan.
- * @param {{durationValue: number, durationType: string}} plan - Backend-controlled plan duration.
+ * @param {{durationValue: number, durationType: string}} plan - Plan duration.
  * @returns {string} Human-readable access period.
  * @sideEffects None.
  */
@@ -43,24 +66,61 @@ function formatPlanDuration(plan) {
     return "24-hour access";
   }
 
-  if (plan.durationValue === 1) {
-    if (plan.durationType === "months") {
-      return "1 month";
-    }
-
-    if (plan.durationType === "years") {
-      return "1 year";
-    }
+  if (plan.durationValue === 1 && plan.durationType === "months") {
+    return "1 month";
   }
 
-  return `${plan.durationValue} ${plan.durationType}`;
+  if (plan.durationValue === 1 && plan.durationType === "years") {
+    return "1 year";
+  }
+
+  return plan.durationValue + " " + plan.durationType;
 }
 
 /**
- * Displays one backend-controlled Premium plan without repeating shared benefits.
- * @param {{plan: object, onSelect: (plan: object) => void}} props - Plan data and checkout selection handler.
- * @returns {import("react").ReactElement} One comparison-friendly plan card.
- * @sideEffects Calls `onSelect` when the purchase button is activated.
+ * Converts an internal payment method into a readable label.
+ * @param {object} payment - Stored payment snapshot.
+ * @returns {string} Provider or prototype method label.
+ * @sideEffects None.
+ */
+function formatPaymentMethod(payment) {
+  if (payment.provider === "stripe") {
+    return "Stripe sandbox";
+  }
+
+  // `split` creates an array around underscores and `join` reconnects the
+  // pieces with spaces, for example "test_card" becomes "test card".
+  return String(payment.paymentMethod || "")
+    .split("_")
+    .join(" ");
+}
+
+/**
+ * Waits briefly between Stripe status requests.
+ * @param {number} milliseconds - Delay duration.
+ * @returns {Promise<void>} Promise resolved after the browser timer finishes.
+ * @sideEffects Creates one browser timer.
+ */
+function waitForDelay(milliseconds) {
+  // A Promise represents a value that will become available in the future.
+  return new Promise(
+    /**
+     * Resolves the Promise when the browser timer completes.
+     * @param {() => void} resolve - Promise completion function.
+     * @returns {void}
+     * @sideEffects Schedules one browser timer.
+     */
+    function resolveAfterTimer(resolve) {
+      window.setTimeout(resolve, milliseconds);
+    },
+  );
+}
+
+/**
+ * Displays one backend-controlled Premium plan.
+ * @param {{plan: object, onSelect: (plan: object) => void}} props - Card data.
+ * @returns {import("react").ReactElement} One plan card.
+ * @sideEffects Calls onSelect when the button is activated.
  */
 function SubscriptionPlanCard({ plan, onSelect }) {
   let badge = "Flexible access";
@@ -69,10 +129,17 @@ function SubscriptionPlanCard({ plan, onSelect }) {
   if (plan.code === "monthly") {
     badge = "Most popular";
     className += " subscription-plan-card--featured";
+  } else if (plan.code === "yearly") {
+    badge = "Best long-term value";
   }
 
-  if (plan.code === "yearly") {
-    badge = "Best long-term value";
+  /**
+   * Sends the full selected plan back to the page.
+   * @returns {void}
+   * @sideEffects Opens the checkout dialog through parent state.
+   */
+  function selectPlan() {
+    onSelect(plan);
   }
 
   return (
@@ -91,15 +158,230 @@ function SubscriptionPlanCard({ plan, onSelect }) {
         <CheckIcon size={16} />
         Complete Premium access
       </div>
-      <Button onClick={() => onSelect(plan)}>
-        Choose {plan.name}
-      </Button>
+      <Button onClick={selectPlan}>Choose {plan.name}</Button>
     </Card>
   );
 }
 
 /**
- * Renders Family trial, plans, prototype checkout, access, and payment history.
+ * Displays one Family-owned payment record.
+ * @param {{payment: object}} props - Payment to display.
+ * @returns {import("react").ReactElement} Payment history row.
+ * @sideEffects None.
+ */
+function PaymentHistoryRow({ payment }) {
+  const displayedTime = payment.completedAt || payment.createdAt;
+  const paymentMethodLabel = formatPaymentMethod(payment);
+
+  return (
+    <div className="subscription-payment-row">
+      <div>
+        <strong>{payment.planSnapshot.name}</strong>
+        <span>Transaction ID: {payment.transactionReference}</span>
+        {payment.confirmationReference && (
+          <small>Confirmation: {payment.confirmationReference}</small>
+        )}
+      </div>
+      <span>BDT {payment.amount.toLocaleString()}</span>
+      <span>{paymentMethodLabel}</span>
+      <span className={"status-badge status-badge--" + payment.status}>
+        {payment.status}
+      </span>
+      <time>{formatDateTime(displayedTime)}</time>
+    </div>
+  );
+}
+
+/**
+ * Displays the hosted Stripe or prototype payment steps.
+ * @param {object} props - Checkout state and action handlers.
+ * @param {object|null} props.checkout - Selected plan and optional payment.
+ * @param {boolean} props.stripeEnabled - Whether Stripe is configured.
+ * @param {string} props.paymentMethod - Selected prototype method.
+ * @param {string} props.busy - Active operation name.
+ * @param {(event: import("react").ChangeEvent<HTMLSelectElement>) => void} props.onPaymentMethodChange - Method handler.
+ * @param {() => Promise<void>} props.onClose - Close handler.
+ * @param {() => Promise<void>} props.onBeginPrototype - Prototype handler.
+ * @param {() => Promise<void>} props.onBeginStripe - Stripe handler.
+ * @param {(action: "success"|"failure"|"cancel") => Promise<void>} props.onFinishPrototype - Settlement handler.
+ * @returns {import("react").ReactElement} Checkout modal.
+ * @sideEffects Calls supplied handlers after user actions.
+ */
+function SubscriptionCheckoutModal({
+  checkout,
+  stripeEnabled,
+  paymentMethod,
+  busy,
+  onPaymentMethodChange,
+  onClose,
+  onBeginPrototype,
+  onBeginStripe,
+  onFinishPrototype,
+}) {
+  let title = "Prototype checkout";
+  let warning =
+    "Development simulation. Do not enter real financial information.";
+
+  if (stripeEnabled) {
+    title = "Stripe test checkout";
+    warning = "Stripe sandbox mode uses test cards and never moves real money.";
+  }
+
+  /**
+   * Completes the prototype payment.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the parent settlement handler.
+   */
+  async function simulateSuccess() {
+    await onFinishPrototype("success");
+  }
+
+  /**
+   * Fails the prototype payment.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the parent settlement handler.
+   */
+  async function simulateFailure() {
+    await onFinishPrototype("failure");
+  }
+
+  /**
+   * Cancels the prototype payment.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the parent settlement handler.
+   */
+  async function cancelPrototype() {
+    await onFinishPrototype("cancel");
+  }
+
+  let checkoutStep = null;
+
+  if (checkout && stripeEnabled) {
+    checkoutStep = (
+      <>
+        <p>
+          Stripe will open its secure hosted test page. Use card 4242 4242 4242
+          4242, any future expiry, and any CVC.
+        </p>
+        <div className="modal-actions">
+          <Button
+            variant="secondary"
+            disabled={Boolean(busy)}
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            isLoading={busy === "stripe-checkout"}
+            disabled={Boolean(busy)}
+            onClick={onBeginStripe}
+          >
+            Continue to Stripe sandbox
+          </Button>
+        </div>
+      </>
+    );
+  } else if (checkout && !checkout.payment) {
+    checkoutStep = (
+      <>
+        <label className="field">
+          <span>Test payment method</span>
+          <select
+            className="input"
+            value={paymentMethod}
+            onChange={onPaymentMethodChange}
+          >
+            {PAYMENT_METHODS.map(
+              /**
+               * Converts one payment option into an option element.
+               * @param {{value: string, label: string}} method - Option data.
+               * @returns {import("react").ReactElement} Select option.
+               * @sideEffects None.
+               */
+              function renderPaymentMethod(method) {
+                return (
+                  <option value={method.value} key={method.value}>
+                    {method.label}
+                  </option>
+                );
+              },
+            )}
+          </select>
+        </label>
+        <div className="modal-actions">
+          <Button
+            variant="secondary"
+            disabled={Boolean(busy)}
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            isLoading={busy === "create-payment"}
+            disabled={Boolean(busy)}
+            onClick={onBeginPrototype}
+          >
+            Create test payment
+          </Button>
+        </div>
+      </>
+    );
+  } else if (checkout?.payment) {
+    checkoutStep = (
+      <>
+        <p>
+          <ClockIcon size={16} />
+          Transaction ID: {checkout.payment.transactionReference}
+        </p>
+        <div className="prototype-actions">
+          <Button
+            isLoading={busy === "success"}
+            disabled={Boolean(busy)}
+            onClick={simulateSuccess}
+          >
+            Simulate success
+          </Button>
+          <Button
+            variant="secondary"
+            isLoading={busy === "failure"}
+            disabled={Boolean(busy)}
+            onClick={simulateFailure}
+          >
+            Simulate failure
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={Boolean(busy)}
+            onClick={cancelPrototype}
+          >
+            Cancel payment
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <Modal isOpen={Boolean(checkout)} title={title} onClose={onClose}>
+      {checkout && (
+        <div className="subscription-modal-content">
+          <div className="alert alert--warning">{warning}</div>
+          <div className="subscription-checkout-summary">
+            <MoneyIcon />
+            <div>
+              <strong>{checkout.plan.name}</strong>
+              <span>BDT {checkout.plan.price.toLocaleString()}</span>
+            </div>
+          </div>
+          {checkoutStep}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/**
+ * Renders Family trial, plans, checkout, access, and payment history.
  * @returns {import("react").ReactElement} Authenticated subscription page.
  * @sideEffects Loads and mutates subscription/payment data through the API.
  */
@@ -119,161 +401,265 @@ export function FamilySubscriptionPage() {
   const [paymentMethod, setPaymentMethod] = useState("test_card");
   const [paymentPage, setPaymentPage] = useState(1);
   const [busy, setBusy] = useState("");
+  // `useRef` retains the same Set between renders without causing renders when
+  // entries are added. The Set prevents cancelling a transaction twice.
   const settledPaymentIds = useRef(new Set());
   const stripeReturnHandled = useRef(false);
   const { showToast } = useToast();
   const { refreshSubscription } = useSubscription();
-  const reminderDismissalHasEnded =
-    state.reminder?.dismissedUntil &&
-    new Date(state.reminder.dismissedUntil).getTime() <= Date.now();
-  const shouldShowReminder =
-    state.reminder &&
-    (!state.reminder.dismissedUntil || reminderDismissalHasEnded);
+
+  let reminderDismissalHasEnded = false;
+
+  if (state.reminder?.dismissedUntil) {
+    const dismissalEnd = new Date(state.reminder.dismissedUntil).getTime();
+    reminderDismissalHasEnded = dismissalEnd <= Date.now();
+  }
+
+  const reminderWasNotDismissed = !state.reminder?.dismissedUntil;
+  const shouldShowReminder = Boolean(
+    state.reminder && (reminderWasNotDismissed || reminderDismissalHasEnded),
+  );
 
   /**
-   * Reloads plans, access, reminder, and payment history.
+   * Reloads plans, access, reminder, and one payment-history page.
    * @returns {Promise<void>}
-   * @sideEffects Calls three subscription APIs and updates page state.
+   * @sideEffects Calls three APIs concurrently and updates page state.
    */
-  const loadPage = useCallback(async () => {
-    try {
-      const results = await Promise.all([
-        subscriptionService.listPlans(),
-        refreshSubscription(),
-        subscriptionService.listPayments({ page: paymentPage, limit: 3 }),
-      ]);
-      setState({
-        loading: false,
-        plans: results[0].plans,
-        paymentOptions: results[0].paymentOptions,
-        subscription: results[1].subscription,
-        access: results[1].access,
-        reminder: results[1].reminder,
-        payments: results[2].payments,
-        paymentPagination: results[2].pagination,
-        error: "",
-      });
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        loading: false,
-        error: normalizeApiError(error).message,
-      }));
-    }
-  }, [paymentPage, refreshSubscription]);
-
-  useEffect(() => {
-    loadPage();
-  }, [loadPage]);
-
-  useEffect(() => {
-    if (stripeReturnHandled.current) {
-      return;
-    }
-
-    const parameters = new URLSearchParams(window.location.search);
-    const stripeResult = parameters.get("stripe");
-    const sessionId = parameters.get("session_id");
-    const paymentId = parameters.get("payment_id");
-
-    if (!stripeResult) {
-      return;
-    }
-
-    stripeReturnHandled.current = true;
-
-    /**
-     * Reconciles the browser return with caller-owned backend payment state.
-     * @returns {Promise<void>}
-     * @sideEffects Calls the API, refreshes subscription data, and cleans the URL.
-     */
-    async function handleStripeReturn() {
+  const loadPage = useCallback(
+    async function loadSubscriptionPage() {
       try {
-        if (stripeResult === "success" && sessionId) {
-          let payment = null;
+        // `Promise.all` starts independent requests together and waits until all
+        // of them succeed. Destructuring gives each result a readable name.
+        const results = await Promise.all([
+          subscriptionService.listPlans(),
+          refreshSubscription(),
+          subscriptionService.listPayments({
+            page: paymentPage,
+            limit: PAYMENT_PAGE_SIZE,
+          }),
+        ]);
+        const planData = results[0];
+        const subscriptionData = results[1];
+        const paymentData = results[2];
 
-          // Webhook delivery can finish just after Stripe redirects the browser.
-          // These short checks read only caller-owned local status and stop early.
-          for (let attempt = 0; attempt < 6; attempt += 1) {
-            payment =
-              await subscriptionService.getStripeCheckoutStatus(sessionId);
+        setState({
+          loading: false,
+          plans: planData.plans,
+          paymentOptions: planData.paymentOptions,
+          subscription: subscriptionData.subscription,
+          access: subscriptionData.access,
+          reminder: subscriptionData.reminder,
+          payments: paymentData.payments,
+          paymentPagination: paymentData.pagination,
+          error: "",
+        });
+      } catch (error) {
+        const normalizedError = normalizeApiError(error);
 
-            if (payment.status !== "pending") {
-              break;
+        setState(
+          /**
+           * Keeps loaded data while applying the latest request error.
+           * @param {object} currentState - Existing page state.
+           * @returns {object} Updated page state.
+           * @sideEffects None.
+           */
+          function preserveDataAndShowError(currentState) {
+            // The spread operator copies existing properties before replacing
+            // loading and error, so previously loaded page data is preserved.
+            return {
+              ...currentState,
+              loading: false,
+              error: normalizedError.message,
+            };
+          },
+        );
+      }
+    },
+    [paymentPage, refreshSubscription],
+  );
+
+  useEffect(
+    /**
+     * Reloads page data when the selected history page changes.
+     * @returns {void}
+     * @sideEffects Starts the asynchronous page request.
+     */
+    function loadWhenPageChanges() {
+      // The Promise is intentionally not returned to React.
+      void loadPage();
+    },
+    [loadPage],
+  );
+
+  useEffect(
+    /**
+     * Reconciles Stripe query parameters once after browser return.
+     * @returns {undefined}
+     * @sideEffects May poll payment state, refresh data, toast, and clean URL.
+     */
+    function reconcileStripeBrowserReturn() {
+      if (stripeReturnHandled.current) {
+        return undefined;
+      }
+
+      // `URLSearchParams` safely reads values from the browser query string.
+      const parameters = new URLSearchParams(window.location.search);
+      const stripeResult = parameters.get("stripe");
+      const sessionId = parameters.get("session_id");
+      const paymentId = parameters.get("payment_id");
+
+      if (!stripeResult) {
+        return undefined;
+      }
+
+      stripeReturnHandled.current = true;
+
+      /**
+       * Reconciles Stripe's browser redirect with signed webhook state.
+       * @returns {Promise<void>}
+       * @sideEffects Polls caller-owned status, refreshes data, shows a toast,
+       * and removes Stripe parameters from the URL.
+       */
+      async function handleStripeReturn() {
+        try {
+          if (stripeResult === "success" && sessionId) {
+            let payment = null;
+
+            // The webhook can arrive just after the browser redirect. This loop
+            // performs a small, bounded number of caller-owned status checks.
+            for (
+              let attempt = 0;
+              attempt < STRIPE_STATUS_ATTEMPTS;
+              attempt += 1
+            ) {
+              payment =
+                await subscriptionService.getStripeCheckoutStatus(sessionId);
+
+              if (payment.status !== "pending") {
+                break;
+              }
+
+              await waitForDelay(STRIPE_STATUS_DELAY_MILLISECONDS);
             }
 
-            await new Promise((resolveDelay) => {
-              window.setTimeout(resolveDelay, 1000);
-            });
+            if (payment?.status === "completed") {
+              showToast(
+                "Stripe test payment completed. Premium access is active.",
+                "success",
+              );
+            } else {
+              showToast(
+                "Stripe accepted the test checkout. The signed webhook is still processing.",
+                "info",
+              );
+            }
+          } else if (stripeResult === "cancelled" && paymentId) {
+            await subscriptionService.cancelStripeCheckout(paymentId);
+            showToast("Stripe test checkout was cancelled.", "info");
           }
 
-          if (payment?.status === "completed") {
-            showToast(
-              "Stripe test payment completed. Premium access is active.",
-              "success",
-            );
-          } else {
-            showToast(
-              "Stripe accepted the test checkout. The signed webhook is still processing.",
-              "info",
-            );
-          }
-        } else if (stripeResult === "cancelled" && paymentId) {
-          await subscriptionService.cancelStripeCheckout(paymentId);
-          showToast("Stripe test checkout was cancelled.", "info");
+          await loadPage();
+        } catch (error) {
+          const normalizedError = normalizeApiError(error);
+          showToast(normalizedError.message, "error");
+        } finally {
+          // `replaceState` cleans the address bar without reloading the page.
+          window.history.replaceState({}, "", "/subscription");
         }
-
-        await loadPage();
-      } catch (error) {
-        showToast(normalizeApiError(error).message, "error");
-      } finally {
-        window.history.replaceState({}, "", "/subscription");
       }
-    }
 
-    handleStripeReturn();
-  }, [loadPage, showToast]);
+      void handleStripeReturn();
+      return undefined;
+    },
+    [loadPage, showToast],
+  );
 
   const pendingPaymentId = checkout?.payment?._id || "";
 
-  useEffect(() => {
+  useEffect(
     /**
-     * Cancels an unfinished transaction when navigation unmounts this checkout.
-     * @returns {void}
-     * @sideEffects Sends a best-effort cancellation request to the backend.
+     * Registers cleanup for an unfinished prototype payment.
+     * @returns {() => void} React cleanup function.
+     * @sideEffects May send best-effort cancellation during cleanup.
      */
-    function cancelAbandonedCheckout() {
-      if (
-        pendingPaymentId &&
-        !settledPaymentIds.current.has(pendingPaymentId)
-      ) {
-        subscriptionService.cancelPayment(pendingPaymentId).catch(() => {
-          // Backend timeout cleanup handles interruptions where this request fails.
-        });
+    function cancelPrototypePaymentWhenCheckoutUnmounts() {
+      /**
+       * Cancels an unfinished transaction when navigation unmounts checkout.
+       * @returns {void}
+       * @sideEffects Sends a best-effort cancellation request.
+       */
+      function cancelAbandonedCheckout() {
+        const paymentWasSettled =
+          settledPaymentIds.current.has(pendingPaymentId);
+
+        if (pendingPaymentId && !paymentWasSettled) {
+          // `catch` handles a rejected Promise. Timeout cleanup on the backend
+          // remains the fallback if this best-effort request cannot finish.
+          void subscriptionService.cancelPayment(pendingPaymentId).catch(
+            /**
+             * Leaves stale-payment cleanup to the backend after failure.
+             * @returns {undefined}
+             * @sideEffects None.
+             */
+            function ignoreNavigationCancellationFailure() {
+              return undefined;
+            },
+          );
+        }
       }
-    }
 
-    return cancelAbandonedCheckout;
-  }, [pendingPaymentId]);
+      return cancelAbandonedCheckout;
+    },
+    [pendingPaymentId],
+  );
 
-  /** Activates the one-time trial. @returns {Promise<void>} @sideEffects Calls API and refreshes page. */
+  /**
+   * Opens checkout for a selected plan.
+   * @param {object} selectedPlan - Backend plan record.
+   * @returns {void}
+   * @sideEffects Updates checkout state.
+   */
+  function selectPlan(selectedPlan) {
+    setCheckout({
+      plan: selectedPlan,
+      payment: null,
+    });
+  }
+
+  /**
+   * Stores the selected prototype payment method.
+   * @param {import("react").ChangeEvent<HTMLSelectElement>} event - Change event.
+   * @returns {void}
+   * @sideEffects Updates payment-method state.
+   */
+  function changePaymentMethod(event) {
+    setPaymentMethod(event.target.value);
+  }
+
+  /**
+   * Activates the one-time trial.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the API, shows feedback, and refreshes the page.
+   */
   async function activateTrial() {
     setBusy("trial");
+
     try {
       await subscriptionService.activateTrial();
       showToast("Your seven-day Premium trial is active.", "success");
       await loadPage();
     } catch (error) {
-      showToast(normalizeApiError(error).message, "error");
+      const normalizedError = normalizeApiError(error);
+      showToast(normalizedError.message, "error");
     } finally {
       setBusy("");
     }
   }
 
   /**
-   * Creates a real Stripe sandbox Session and opens its hosted payment page.
+   * Creates a Stripe sandbox Session and opens its hosted payment page.
    * @returns {Promise<void>}
-   * @sideEffects Calls the API and navigates the browser to Stripe Checkout.
+   * @sideEffects Calls the API and navigates away to Stripe Checkout.
    */
   async function beginStripeCheckout() {
     if (!checkout?.plan) {
@@ -288,39 +674,51 @@ export function FamilySubscriptionPage() {
       );
       window.location.assign(result.checkoutUrl);
     } catch (error) {
-      showToast(normalizeApiError(error).message, "error");
+      const normalizedError = normalizeApiError(error);
+      showToast(normalizedError.message, "error");
       setBusy("");
     }
   }
 
-  /** Creates a pending checkout payment. @returns {Promise<void>} @sideEffects Calls API and updates modal. */
-  async function beginCheckout() {
+  /**
+   * Creates a pending prototype payment from the selected plan and method.
+   * @returns {Promise<void>}
+   * @sideEffects Calls the API and places the payment in checkout state.
+   */
+  async function beginPrototypeCheckout() {
     if (!checkout?.plan) {
       return;
     }
 
     setBusy("create-payment");
+
     try {
-      const payment = await subscriptionService.purchase({
+      const requestBody = {
         planCode: checkout.plan.code,
         paymentMethod,
+      };
+      const payment = await subscriptionService.purchase(requestBody);
+
+      setCheckout({
+        plan: checkout.plan,
+        payment,
       });
-      setCheckout({ plan: checkout.plan, payment });
       await loadPage();
     } catch (error) {
-      showToast(normalizeApiError(error).message, "error");
+      const normalizedError = normalizeApiError(error);
+      showToast(normalizedError.message, "error");
     } finally {
       setBusy("");
     }
   }
 
   /**
-   * Completes, fails, or cancels the pending simulation.
-   * @param {"success"|"failure"|"cancel"} action - Prototype result.
+   * Completes, fails, or cancels the pending prototype payment.
+   * @param {"success"|"failure"|"cancel"} action - Requested test result.
    * @returns {Promise<void>}
-   * @sideEffects Calls payment API, closes modal, and refreshes state.
+   * @sideEffects Calls the settlement API, closes checkout, and refreshes data.
    */
-  async function finishCheckout(action) {
+  async function finishPrototypeCheckout(action) {
     const paymentId = checkout?.payment?._id;
 
     if (!paymentId) {
@@ -328,30 +726,37 @@ export function FamilySubscriptionPage() {
     }
 
     setBusy(action);
+
     try {
       if (action === "success") {
         await subscriptionService.simulateSuccess(paymentId);
         showToast("Prototype payment completed. Premium is active.", "success");
       } else if (action === "failure") {
         await subscriptionService.simulateFailure(paymentId);
-        showToast("The simulated payment failed. Access was not changed.", "info");
+        showToast(
+          "The simulated payment failed. Access was not changed.",
+          "info",
+        );
       } else {
         await subscriptionService.cancelPayment(paymentId);
       }
+
+      // `Set.add` stores a unique payment ID so cleanup will not cancel it.
       settledPaymentIds.current.add(paymentId);
       setCheckout(null);
       await loadPage();
     } catch (error) {
-      showToast(normalizeApiError(error).message, "error");
+      const normalizedError = normalizeApiError(error);
+      showToast(normalizedError.message, "error");
     } finally {
       setBusy("");
     }
   }
 
-    /**
-   * Closes checkout and cancels a pending payment before hiding the modal.
+  /**
+   * Closes checkout and cancels a pending prototype payment first.
    * @returns {Promise<void>}
-   * @sideEffects May call the cancellation API, refresh history, and close the modal.
+   * @sideEffects May cancel a payment, refresh history, and close the modal.
    */
   async function closeCheckout() {
     if (busy) {
@@ -374,26 +779,89 @@ export function FamilySubscriptionPage() {
       showToast("The unfinished payment was cancelled.", "info");
       await loadPage();
     } catch (error) {
-      showToast(normalizeApiError(error).message, "error");
+      const normalizedError = normalizeApiError(error);
+      showToast(normalizedError.message, "error");
     } finally {
       setBusy("");
     }
   }
-/** Dismisses the current renewal reminder for one day. @returns {Promise<void>} @sideEffects Persists dismissal. */
+
+  /**
+   * Dismisses the current renewal reminder for one day.
+   * @returns {Promise<void>}
+   * @sideEffects Persists dismissal and updates page state.
+   */
   async function dismissReminder() {
-    if (!state.reminder?._id) {
+    const reminderId = state.reminder?._id;
+
+    if (!reminderId || busy) {
       return;
     }
-    await subscriptionService.dismissReminder(state.reminder._id, 24);
-    setState((current) => ({ ...current, reminder: null }));
+
+    setBusy("dismiss-reminder");
+
+    try {
+      await subscriptionService.dismissReminder(reminderId, 24);
+      setState(
+        /**
+         * Removes the successfully dismissed reminder from local state.
+         * @param {object} currentState - Existing page state.
+         * @returns {object} State without a visible reminder.
+         * @sideEffects None.
+         */
+        function removeDismissedReminder(currentState) {
+          return {
+            ...currentState,
+            reminder: null,
+          };
+        },
+      );
+    } catch (error) {
+      const normalizedError = normalizeApiError(error);
+      showToast(normalizedError.message, "error");
+    } finally {
+      setBusy("");
+    }
   }
 
-  const stripeEnabled = Boolean(
-    state.paymentOptions?.stripeEnabled,
-  );
+  // `Boolean` converts undefined/true/false into an explicit boolean.
+  const stripeEnabled = Boolean(state.paymentOptions?.stripeEnabled);
 
   if (state.loading) {
-    return <main><AppHeader /><div className="page-loader"><span className="spinner" /> Loading subscription</div></main>;
+    return (
+      <main>
+        <AppHeader />
+        <div className="page-loader">
+          <span className="spinner" />
+          Loading subscription
+        </div>
+      </main>
+    );
+  }
+
+  let paymentProviderLabel = "Prototype payments for testing";
+
+  if (stripeEnabled) {
+    paymentProviderLabel = "Stripe secure sandbox payments";
+  }
+
+  let trialAction = (
+    <span className="subscription-trial-card__used">
+      <CheckIcon size={16} />
+      Trial already used
+    </span>
+  );
+
+  if (!state.subscription?.trialUsed) {
+    trialAction = (
+      <Button
+        isLoading={busy === "trial"}
+        disabled={Boolean(busy)}
+        onClick={activateTrial}
+      >
+        Activate free trial
+      </Button>
+    );
   }
 
   return (
@@ -405,28 +873,40 @@ export function FamilySubscriptionPage() {
             <span className="eyebrow">Family subscription</span>
             <h1>Premium care, on your terms.</h1>
             <p>
-              Every plan unlocks the same Premium tools. Choose the access period
-              that matches your family&apos;s current care needs.
+              Every plan unlocks the same Premium tools. Choose the access
+              period that matches your family&apos;s current care needs.
             </p>
           </div>
           <span className="subscription-page-heading__note">
             <ShieldCheckIcon size={17} />
-            {stripeEnabled
-              ? "Stripe secure sandbox payments"
-              : "Prototype payments for testing"}
+            {paymentProviderLabel}
           </span>
         </header>
+
         {state.error && <div className="alert alert--error">{state.error}</div>}
+
         {shouldShowReminder && (
           <div className="subscription-reminder">
-            <div><strong>{state.reminder.title}</strong><p>{state.reminder.message}</p></div>
-            <Button variant="secondary" onClick={dismissReminder}>Remind me later</Button>
+            <div>
+              <strong>{state.reminder.title}</strong>
+              <p>{state.reminder.message}</p>
+            </div>
+            <Button
+              variant="secondary"
+              isLoading={busy === "dismiss-reminder"}
+              disabled={Boolean(busy)}
+              onClick={dismissReminder}
+            >
+              Remind me later
+            </Button>
           </div>
         )}
+
         <CurrentSubscriptionCard
           subscription={state.subscription}
           access={state.access}
         />
+
         <section className="subscription-trial-card">
           <div className="subscription-trial-card__icon">
             <ShieldCheckIcon />
@@ -436,14 +916,7 @@ export function FamilySubscriptionPage() {
             <h2>Explore every Premium tool for seven days.</h2>
             <p>No test payment is required to activate an eligible trial.</p>
           </div>
-          {!state.subscription?.trialUsed ? (
-            <Button isLoading={busy === "trial"} onClick={activateTrial}>Activate free trial</Button>
-          ) : (
-            <span className="subscription-trial-card__used">
-              <CheckIcon size={16} />
-              Trial already used
-            </span>
-          )}
+          {trialAction}
         </section>
 
         <section className="subscription-includes">
@@ -452,149 +925,107 @@ export function FamilySubscriptionPage() {
             <h2>One Premium experience. Three access periods.</h2>
           </div>
           <div className="subscription-includes__items">
-            <span><CheckIcon size={16} /> Caregiver booking coordination</span>
-            <span><CheckIcon size={16} /> Wellness insights and AI summaries</span>
-            <span><CheckIcon size={16} /> Early alerts and advanced vital trends</span>
-            <span><CheckIcon size={16} /> Manual renewal with no automatic billing</span>
+            <span>
+              <CheckIcon size={16} />
+              Caregiver booking coordination
+            </span>
+            <span>
+              <CheckIcon size={16} />
+              Wellness insights and AI summaries
+            </span>
+            <span>
+              <CheckIcon size={16} />
+              Early alerts and advanced vital trends
+            </span>
+            <span>
+              <CheckIcon size={16} />
+              Manual renewal with no automatic billing
+            </span>
           </div>
         </section>
 
-        <section className="subscription-plan-section" aria-labelledby="plan-options-title">
+        <section
+          className="subscription-plan-section"
+          aria-labelledby="plan-options-title"
+        >
           <div className="subscription-plan-section__heading">
             <div>
               <span className="eyebrow">Choose your duration</span>
-              <h2 id="plan-options-title">Simple options without hidden differences.</h2>
+              <h2 id="plan-options-title">
+                Simple options without hidden differences.
+              </h2>
             </div>
-            <p>Prices are backend-controlled development values shown in BDT.</p>
+            <p>
+              Prices are backend-controlled development values shown in BDT.
+            </p>
           </div>
           <div className="subscription-plan-grid">
-          {state.plans.map((plan) => (
-            <SubscriptionPlanCard
-              key={plan._id}
-              plan={plan}
-              onSelect={(selectedPlan) => {
-                setCheckout({ plan: selectedPlan, payment: null });
-              }}
-            />
-          ))}
-          </div>
-        </section>
-        <section className="subscription-history" id="payment-history">
-          <div className="page-heading"><span className="eyebrow">Payment records</span><h2>Payment history</h2></div>
-          {!state.payments.length && <div className="empty-state">No payments yet.</div>}
-          {state.payments.map((payment) => (
-            <div className="subscription-payment-row" key={payment._id}>
-              <div><strong>{payment.planSnapshot.name}</strong><span>Transaction ID: {payment.transactionReference}</span>{payment.confirmationReference && <small>Confirmation: {payment.confirmationReference}</small>}</div>
-              <span>BDT {payment.amount.toLocaleString()}</span>
-              <span>{payment.provider === "stripe" ? "Stripe sandbox" : payment.paymentMethod.replaceAll("_", " ")}</span>
-              <span className={"status-badge status-badge--" + payment.status}>{payment.status}</span>
-              <time>{formatDateTime(payment.completedAt || payment.createdAt)}</time>
-            </div>
-          ))}
-          {state.paymentPagination && <Pagination page={state.paymentPagination.page} pages={state.paymentPagination.pages} total={state.paymentPagination.total} label="payments" disabled={state.loading} onPageChange={setPaymentPage} />}
-        </section>
-      </div>
-      <Modal
-        isOpen={Boolean(checkout)}
-        title={stripeEnabled ? "Stripe test checkout" : "Prototype checkout"}
-        onClose={closeCheckout}
-      >
-        {checkout && (
-          <div className="subscription-modal-content">
-            <div className="alert alert--warning">
-              {stripeEnabled
-                ? "Stripe sandbox mode uses test cards and never moves real money."
-                : "Development simulation. Do not enter real financial information."}
-            </div>
-            <div className="subscription-checkout-summary">
-              <MoneyIcon />
-              <div>
-                <strong>{checkout.plan.name}</strong>
-                <span>BDT {checkout.plan.price.toLocaleString()}</span>
-              </div>
-            </div>
-            {stripeEnabled ? (
-              <>
-                <p>
-                  Stripe will open its secure hosted test page. Use card
-                  4242 4242 4242 4242, any future expiry, and any CVC.
-                </p>
-                <div className="modal-actions">
-                  <Button variant="secondary" onClick={closeCheckout}>
-                    Cancel
-                  </Button>
-                  <Button
-                    isLoading={busy === "stripe-checkout"}
-                    disabled={Boolean(busy)}
-                    onClick={beginStripeCheckout}
-                  >
-                    Continue to Stripe sandbox
-                  </Button>
-                </div>
-              </>
-            ) : !checkout.payment ? (
-              <>
-                <label className="field">
-                  <span>Test payment method</span>
-                  <select
-                    className="input"
-                    value={paymentMethod}
-                    onChange={(event) => setPaymentMethod(event.target.value)}
-                  >
-                    {PAYMENT_METHODS.map((method) => (
-                      <option value={method.value} key={method.value}>
-                        {method.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="modal-actions">
-                  <Button variant="secondary" onClick={closeCheckout}>
-                    Cancel
-                  </Button>
-                  <Button
-                    isLoading={busy === "create-payment"}
-                    onClick={beginCheckout}
-                  >
-                    Create test payment
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p>
-                  <ClockIcon size={16} />
-                  Transaction ID: {checkout.payment.transactionReference}
-                </p>
-                <div className="prototype-actions">
-                  <Button
-                    isLoading={busy === "success"}
-                    disabled={Boolean(busy)}
-                    onClick={() => finishCheckout("success")}
-                  >
-                    Simulate success
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    isLoading={busy === "failure"}
-                    disabled={Boolean(busy)}
-                    onClick={() => finishCheckout("failure")}
-                  >
-                    Simulate failure
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    disabled={Boolean(busy)}
-                    onClick={() => finishCheckout("cancel")}
-                  >
-                    Cancel payment
-                  </Button>
-                </div>
-              </>
+            {state.plans.map(
+              /**
+               * Converts one plan record into a plan card.
+               * @param {object} plan - Backend plan record.
+               * @returns {import("react").ReactElement} Plan card.
+               * @sideEffects None.
+               */
+              function renderPlan(plan) {
+                return (
+                  <SubscriptionPlanCard
+                    key={plan._id}
+                    plan={plan}
+                    onSelect={selectPlan}
+                  />
+                );
+              },
             )}
           </div>
-        )}
-      </Modal>
+        </section>
+
+        <section className="subscription-history" id="payment-history">
+          <div className="page-heading">
+            <span className="eyebrow">Payment records</span>
+            <h2>Payment history</h2>
+          </div>
+
+          {state.payments.length === 0 && (
+            <div className="empty-state">No payments yet.</div>
+          )}
+
+          {state.payments.map(
+            /**
+             * Converts one payment record into a history row.
+             * @param {object} payment - Family-owned payment.
+             * @returns {import("react").ReactElement} Payment row.
+             * @sideEffects None.
+             */
+            function renderPayment(payment) {
+              return <PaymentHistoryRow key={payment._id} payment={payment} />;
+            },
+          )}
+
+          {state.paymentPagination && (
+            <Pagination
+              page={state.paymentPagination.page}
+              pages={state.paymentPagination.pages}
+              total={state.paymentPagination.total}
+              label="payments"
+              disabled={state.loading}
+              onPageChange={setPaymentPage}
+            />
+          )}
+        </section>
+      </div>
+
+      <SubscriptionCheckoutModal
+        checkout={checkout}
+        stripeEnabled={stripeEnabled}
+        paymentMethod={paymentMethod}
+        busy={busy}
+        onPaymentMethodChange={changePaymentMethod}
+        onClose={closeCheckout}
+        onBeginPrototype={beginPrototypeCheckout}
+        onBeginStripe={beginStripeCheckout}
+        onFinishPrototype={finishPrototypeCheckout}
+      />
     </main>
   );
 }

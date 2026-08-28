@@ -22,9 +22,12 @@ const EDITABLE_SECTIONS = [
  */
 
 function toProfileResponse(profile, link) {
-  // Mongoose documents contain internal metadata, so convert the profile to a plain object.
+  // 'toObject()' is a Mongoose document method. It removes Mongoose document
+  // behavior and returns an ordinary JavaScript object that is safe to copy.
   const profileData = profile.toObject();
 
+  // 'return' gives this object back to the caller. It does not send an HTTP
+  // response by itself.
   return {
     // The spread copies every public profile field into the response object.
     ...profileData,
@@ -46,10 +49,15 @@ function toProfileResponse(profile, link) {
 async function synchronizeOwnerRelationship(profile, link) {
   // Editors may update profile data, but their own relationship label must remain unchanged.
   if (link.permission !== "owner") {
+    // A bare 'return' stops this function. Because the function is async,
+    // JavaScript still represents its completion with a resolved Promise.
     return;
   }
 
   link.relationship = profile.personalInformation.familyRelationship;
+
+  // 'await' pauses this function until Mongoose finishes saving the link.
+  // A rejected save Promise automatically travels to Express error handling.
   await link.save();
 }
 
@@ -69,13 +77,18 @@ export async function createElderlyProfile(request, response) {
   // Validate cross-field rules before starting a database transaction.
   validateElderlyProfilePayload(request.body);
 
+  // 'startSession()' opens a MongoDB session. The session lets the profile
+  // and access-link writes run as one transaction.
   const session = await mongoose.startSession();
   let profile;
   let link;
 
   try {
     // The profile and its owner link must either both exist or both roll back.
+    // 'withTransaction()' runs the async callback. MongoDB commits only when
+    // every awaited operation succeeds; otherwise it rolls the writes back.
     await session.withTransaction(async () => {
+      // The array form lets Mongoose attach this transaction session to create().
       const profileDocuments = await ElderlyProfile.create(
         [
           {
@@ -87,6 +100,7 @@ export async function createElderlyProfile(request, response) {
         { session },
       );
 
+      // Array index zero selects the first and only created profile.
       profile = profileDocuments[0];
 
       const linkDocuments = await ElderlyFamilyLink.create(
@@ -103,6 +117,7 @@ export async function createElderlyProfile(request, response) {
         { session },
       );
 
+      // Array index zero selects the first and only created link.
       link = linkDocuments[0];
     });
   } finally {
@@ -110,12 +125,17 @@ export async function createElderlyProfile(request, response) {
     await session.endSession();
   }
 
-  response.status(201).json({
+  const responseBody = {
     success: true,
     data: {
       profile: toProfileResponse(profile, link),
     },
-  });
+  };
+
+  // 'status(201)' selects HTTP Created. 'json()' converts responseBody to
+  // JSON and completes the HTTP request.
+  response.status(201);
+  response.json(responseBody);
 }
 
 /**
@@ -132,7 +152,10 @@ export async function createElderlyProfile(request, response) {
 export async function listElderlyProfiles(request, response) {
   const status = request.query.status || "active";
 
-  if (!["active", "archived", "all"].includes(status)) {
+  const allowedStatuses = ["active", "archived", "all"];
+
+  // 'includes()' returns true when the array contains the supplied status.
+  if (!allowedStatuses.includes(status)) {
     throw new ApiError(422, "Status must be active, archived, or all.");
   }
 
@@ -140,11 +163,15 @@ export async function listElderlyProfiles(request, response) {
   const links = await ElderlyFamilyLink.find({
     familyUserId: request.user._id,
     status: "active",
-  }).lean(); // lean --> skip building full Document instances, just give me plain JavaScript objects.
+  })
+    // 'lean()' asks Mongoose for plain objects because this function will not
+    // call document methods such as save() on the returned links.
+    .lean();
 
   const linkedProfileIds = [];
 
   for (const link of links) {
+    // 'push()' adds one value to the end of an array.
     linkedProfileIds.push(link.elderlyProfileId);
   }
 
@@ -159,33 +186,45 @@ export async function listElderlyProfiles(request, response) {
     profileFilter.status = status;
   }
 
+  // 'sort({ updatedAt: -1 })' asks MongoDB to return newest updates first.
   const profiles = await ElderlyProfile.find(profileFilter).sort({
     updatedAt: -1,
   });
 
-  // A Map stores each link under its profile ID for a direct lookup below.
+  // 'Map' is a built-in key/value collection. It avoids repeatedly searching
+  // the link array while profiles are converted below.
   const linksByProfile = new Map();
 
   for (const link of links) {
+    // 'toString()' converts MongoDB's ObjectId object to comparable text.
     const profileId = link.elderlyProfileId.toString();
+
+    // 'set()' stores the link under its profile ID key.
     linksByProfile.set(profileId, link);
   }
 
   const result = [];
 
   for (const profile of profiles) {
+    // 'get()' retrieves the Map value stored under this profile ID.
     const link = linksByProfile.get(profile._id.toString());
     const profileResponse = toProfileResponse(profile, link);
+
+    // 'push()' appends the prepared profile to the result array.
     result.push(profileResponse);
   }
 
-  response.json({
+  const responseBody = {
     success: true,
     data: {
       profiles: result,
+      // 'length' contains the number of elements in the result array.
       count: result.length,
     },
-  });
+  };
+
+  // 'json()' converts responseBody to JSON and completes the request.
+  response.json(responseBody);
 }
 
 /**
@@ -305,6 +344,8 @@ export async function updateProfileSection(request, response) {
   const { section } = request.params;
 
   // Restrict dynamic property access to the known editable section names.
+  // 'includes()' confirms that user-controlled route text exactly matches a
+  // section that this controller allows.
   if (!EDITABLE_SECTIONS.includes(section)) {
     throw new ApiError(404, "Profile section not found.");
   }
@@ -356,6 +397,8 @@ export async function archiveElderlyProfile(request, response) {
   });
 
   profile.status = "archived";
+
+  // 'new Date()' creates a Date object containing the current time.
   profile.archivedAt = new Date();
   await profile.save();
 

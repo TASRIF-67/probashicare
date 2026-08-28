@@ -32,13 +32,13 @@ function analyzeBloodPressure(reports, results) {
   const lowReadings = [];
   const thresholds = WELLNESS_ALERT_RULES.bloodPressure;
 
+  // Number.isFinite accepts real numbers without converting strings. push adds
+  // each threshold-matching reading to the end of its result array.
+
   for (const report of reports) {
     const vitals = report.vitals || {};
 
-    if (
-      Number.isFinite(vitals.systolic) &&
-      Number.isFinite(vitals.diastolic)
-    ) {
+    if (Number.isFinite(vitals.systolic) && Number.isFinite(vitals.diastolic)) {
       const reading = {
         reportId: report._id,
         systolic: vitals.systolic,
@@ -63,33 +63,40 @@ function analyzeBloodPressure(reports, results) {
   }
 
   if (highReadings.length >= WELLNESS_ALERT_RULES.repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-high-blood-pressure",
-      category: "blood_pressure",
-      severity: "high",
-      title: "Repeated elevated blood-pressure readings",
-      message: "Multiple recent reports contain elevated blood-pressure readings.",
-      detectedValues: {
-        unit: "mmHg",
-        readings: highReadings,
-      },
-      sourceReportIds: highReadings.map((reading) => reading.reportId),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-high-blood-pressure",
+        category: "blood_pressure",
+        severity: "high",
+        title: "Repeated elevated blood-pressure readings",
+        message:
+          "Multiple recent reports contain elevated blood-pressure readings.",
+        detectedValues: {
+          unit: "mmHg",
+          readings: highReadings,
+        },
+        // map creates a new array containing one reportId per reading.
+        sourceReportIds: highReadings.map((reading) => reading.reportId),
+      }),
+    );
   }
 
   if (lowReadings.length >= WELLNESS_ALERT_RULES.repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-low-blood-pressure",
-      category: "blood_pressure",
-      severity: "high",
-      title: "Repeated low blood-pressure readings",
-      message: "Multiple recent reports contain low blood-pressure readings.",
-      detectedValues: {
-        unit: "mmHg",
-        readings: lowReadings,
-      },
-      sourceReportIds: lowReadings.map((reading) => reading.reportId),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-low-blood-pressure",
+        category: "blood_pressure",
+        severity: "high",
+        title: "Repeated low blood-pressure readings",
+        message: "Multiple recent reports contain low blood-pressure readings.",
+        detectedValues: {
+          unit: "mmHg",
+          readings: lowReadings,
+        },
+        // map creates a new array containing one reportId per reading.
+        sourceReportIds: lowReadings.map((reading) => reading.reportId),
+      }),
+    );
   }
 }
 
@@ -106,8 +113,10 @@ function analyzeBloodSugar(reports, results) {
   const thresholds = WELLNESS_ALERT_RULES.bloodSugarMgDl;
 
   for (const report of reports) {
+    // Optional chaining returns undefined instead of throwing when vitals is missing.
     const value = report.vitals?.bloodSugar;
 
+    // Number.isFinite rejects missing, text, Infinity, and NaN values.
     if (!Number.isFinite(value)) {
       continue;
     }
@@ -130,33 +139,40 @@ function analyzeBloodSugar(reports, results) {
   }
 
   if (highReadings.length >= WELLNESS_ALERT_RULES.repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-elevated-blood-sugar",
-      category: "blood_sugar",
-      severity: "high",
-      title: "Repeated elevated blood-sugar readings",
-      message: "Multiple recent reports contain elevated blood-sugar readings.",
-      detectedValues: {
-        unit: "mg/dL",
-        readings: highReadings,
-      },
-      sourceReportIds: highReadings.map((reading) => reading.reportId),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-elevated-blood-sugar",
+        category: "blood_sugar",
+        severity: "high",
+        title: "Repeated elevated blood-sugar readings",
+        message:
+          "Multiple recent reports contain elevated blood-sugar readings.",
+        detectedValues: {
+          unit: "mg/dL",
+          readings: highReadings,
+        },
+        // map creates a new array containing one reportId per reading.
+        sourceReportIds: highReadings.map((reading) => reading.reportId),
+      }),
+    );
   }
 
   if (lowReadings.length >= WELLNESS_ALERT_RULES.repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-low-blood-sugar",
-      category: "blood_sugar",
-      severity: "high",
-      title: "Repeated low blood-sugar readings",
-      message: "Multiple recent reports contain low blood-sugar readings.",
-      detectedValues: {
-        unit: "mg/dL",
-        readings: lowReadings,
-      },
-      sourceReportIds: lowReadings.map((reading) => reading.reportId),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-low-blood-sugar",
+        category: "blood_sugar",
+        severity: "high",
+        title: "Repeated low blood-sugar readings",
+        message: "Multiple recent reports contain low blood-sugar readings.",
+        detectedValues: {
+          unit: "mg/dL",
+          readings: lowReadings,
+        },
+        // map creates a new array containing one reportId per reading.
+        sourceReportIds: lowReadings.map((reading) => reading.reportId),
+      }),
+    );
   }
 }
 
@@ -171,8 +187,10 @@ function analyzeWeight(reports, results) {
   const readings = [];
 
   for (const report of reports) {
+    // Optional chaining safely handles reports with no vitals object.
     const weightKg = report.vitals?.weightKg;
 
+    // Number.isFinite ensures calculations use an actual numeric weight.
     if (Number.isFinite(weightKg)) {
       readings.push({
         reportId: report._id,
@@ -188,24 +206,29 @@ function analyzeWeight(reports, results) {
 
   const latest = readings[0];
   const oldest = readings[readings.length - 1];
+  // Math.abs removes the negative sign because gain and loss both matter.
   const changePercent =
     Math.abs((latest.value - oldest.value) / oldest.value) * 100;
 
   if (changePercent >= WELLNESS_ALERT_RULES.weightChangePercent) {
-    results.push(createRuleResult({
-      ruleId: "significant-weight-change",
-      category: "weight",
-      severity: "medium",
-      title: "Notable recent weight change",
-      message: "Recent recorded weights changed by at least the demonstration threshold.",
-      detectedValues: {
-        unit: "kg",
-        oldest,
-        latest,
-        changePercent: Number(changePercent.toFixed(1)),
-      },
-      sourceReportIds: [oldest.reportId, latest.reportId],
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "significant-weight-change",
+        category: "weight",
+        severity: "medium",
+        title: "Notable recent weight change",
+        message:
+          "Recent recorded weights changed by at least the demonstration threshold.",
+        detectedValues: {
+          unit: "kg",
+          oldest,
+          latest,
+          // toFixed returns text; Number converts the rounded text back to a number.
+          changePercent: Number(changePercent.toFixed(1)),
+        },
+        sourceReportIds: [oldest.reportId, latest.reportId],
+      }),
+    );
   }
 }
 
@@ -221,6 +244,8 @@ function analyzeDailyWellness(reports, results) {
   const mealReports = [];
   const moodReports = [];
 
+  // includes returns true when a recorded enum appears in a concern list.
+  // push adds each matching report to the correct result array.
   for (const report of reports) {
     if (["missed", "partially-taken"].includes(report.medicineIntakeStatus)) {
       medicineReports.push(report);
@@ -238,48 +263,64 @@ function analyzeDailyWellness(reports, results) {
   const repeatedCount = WELLNESS_ALERT_RULES.repeatedCount;
 
   if (medicineReports.length >= repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-medicine-not-taken",
-      category: "medicine",
-      severity: "high",
-      title: "Repeated medicine-intake concerns",
-      message: "Multiple recent reports show missed or partially taken medicine.",
-      detectedValues: {
-        count: medicineReports.length,
-        statuses: medicineReports.map((report) => report.medicineIntakeStatus),
-      },
-      sourceReportIds: medicineReports.map((report) => report._id),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-medicine-not-taken",
+        category: "medicine",
+        severity: "high",
+        title: "Repeated medicine-intake concerns",
+        message:
+          "Multiple recent reports show missed or partially taken medicine.",
+        detectedValues: {
+          count: medicineReports.length,
+          // map returns one status value for every matching report.
+          statuses: medicineReports.map(
+            (report) => report.medicineIntakeStatus,
+          ),
+        },
+        // map returns one source ID for every matching report.
+        sourceReportIds: medicineReports.map((report) => report._id),
+      }),
+    );
   }
 
   if (mealReports.length >= repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-incomplete-meals",
-      category: "meal",
-      severity: "medium",
-      title: "Repeated meal-intake concerns",
-      message: "Multiple recent reports show missed or partially completed meals.",
-      detectedValues: {
-        count: mealReports.length,
-        statuses: mealReports.map((report) => report.mealStatus),
-      },
-      sourceReportIds: mealReports.map((report) => report._id),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-incomplete-meals",
+        category: "meal",
+        severity: "medium",
+        title: "Repeated meal-intake concerns",
+        message:
+          "Multiple recent reports show missed or partially completed meals.",
+        detectedValues: {
+          count: mealReports.length,
+          // map returns one status value for every matching report.
+          statuses: mealReports.map((report) => report.mealStatus),
+        },
+        // map returns one source ID for every matching report.
+        sourceReportIds: mealReports.map((report) => report._id),
+      }),
+    );
   }
 
   if (moodReports.length >= repeatedCount) {
-    results.push(createRuleResult({
-      ruleId: "repeated-low-mood",
-      category: "mood",
-      severity: "medium",
-      title: "Repeated low mood reports",
-      message: "Multiple recent reports describe low or distressed mood.",
-      detectedValues: {
-        count: moodReports.length,
-        moods: moodReports.map((report) => report.mood),
-      },
-      sourceReportIds: moodReports.map((report) => report._id),
-    }));
+    results.push(
+      createRuleResult({
+        ruleId: "repeated-low-mood",
+        category: "mood",
+        severity: "medium",
+        title: "Repeated low mood reports",
+        message: "Multiple recent reports describe low or distressed mood.",
+        detectedValues: {
+          count: moodReports.length,
+          // map returns one mood value for every matching report.
+          moods: moodReports.map((report) => report.mood),
+        },
+        // map returns one source ID for every matching report.
+        sourceReportIds: moodReports.map((report) => report._id),
+      }),
+    );
   }
 }
 
@@ -294,11 +335,15 @@ function buildDedupeKey(ruleId, reportIds) {
   const values = [];
 
   for (const reportId of reportIds) {
+    // toString converts an ObjectId to stable text; push stores that text.
     values.push(reportId.toString());
   }
 
+  // sort makes source order irrelevant. join combines IDs with commas.
   values.sort();
-  return ruleId + ":" + values.join(",");
+  const dedupeKey = ruleId + ":" + values.join(",");
+
+  return dedupeKey;
 }
 
 /**
@@ -308,6 +353,8 @@ function buildDedupeKey(ruleId, reportIds) {
  * @sideEffects Reads submitted WellnessReport documents.
  */
 export async function analyzeRecentWellnessReports(elderlyProfileId) {
+  // find returns matching reports. sort orders newest first, limit caps
+  // analysis input, and lean returns plain objects.
   const reports = await WellnessReport.find({
     elderlyProfileId,
     status: "submitted",
@@ -358,10 +405,9 @@ export async function analyzeAndCreateWellnessAlerts(elderlyProfileId) {
   const alerts = [];
 
   for (const result of analysis.ruleResults) {
-    const dedupeKey = buildDedupeKey(
-      result.ruleId,
-      result.sourceReportIds,
-    );
+    const dedupeKey = buildDedupeKey(result.ruleId, result.sourceReportIds);
+    // findOneAndUpdate with upsert performs one atomic database operation.
+    // $setOnInsert applies fields only when this dedupeKey is first inserted.
     const alert = await WellnessAlert.findOneAndUpdate(
       {
         dedupeKey,
@@ -387,6 +433,7 @@ export async function analyzeAndCreateWellnessAlerts(elderlyProfileId) {
         setDefaultsOnInsert: true,
       },
     );
+    // push records the returned existing or newly inserted alert.
     alerts.push(alert);
   }
 

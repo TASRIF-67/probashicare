@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+// One user can have only one active password-reset record. Requesting another
+// link deletes/replaces the older record.
 const passwordResetTokenSchema = new mongoose.Schema(
   {
     userId: {
@@ -16,6 +18,8 @@ const passwordResetTokenSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
+      // MongoDB removes expired records asynchronously. The controller also
+      // requires expiresAt > now so an expired token cannot be used meanwhile.
       expires: 0,
     },
   },

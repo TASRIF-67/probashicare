@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card } from "../Card.jsx";
 import { ClockIcon, MoneyIcon, ShieldCheckIcon } from "../Icons.jsx";
@@ -12,12 +12,40 @@ import { normalizeApiError } from "../../services/api.js";
  * @sideEffects None.
  */
 function formatMoney(amount) {
-  return "BDT " + Number(amount || 0).toLocaleString();
+  // `Number` normalizes undefined/null to zero for an empty analytics result.
+  const numericAmount = Number(amount || 0);
+  return "BDT " + numericAmount.toLocaleString();
+}
+
+/**
+ * Displays one subscription metric.
+ * @param {object} props - Metric presentation values.
+ * @param {import("react").ReactNode} props.icon - Metric icon.
+ * @param {string} props.label - Short metric label.
+ * @param {string|number} props.value - Main metric value.
+ * @param {string} props.detail - Supporting metric text.
+ * @param {string} [props.iconClassName=""] - Optional icon style modifier.
+ * @returns {import("react").ReactElement} One analytics metric card.
+ * @sideEffects None.
+ */
+function AnalyticsMetric({ icon, label, value, detail, iconClassName = "" }) {
+  const className = "metric-card__icon " + iconClassName;
+
+  return (
+    <Card className="overview-metric">
+      <span className={className}>{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <span>{detail}</span>
+      </div>
+    </Card>
+  );
 }
 
 /**
  * Adds subscription analytics to the existing Admin overview.
- * @returns {import("react").ReactElement} Revenue, access, plan, and transaction summaries.
+ * @returns {import("react").ReactElement} Revenue and payment summaries.
  * @sideEffects Loads the protected subscription analytics API.
  */
 export function AdminBusinessAnalytics() {
@@ -27,45 +55,66 @@ export function AdminBusinessAnalytics() {
     error: "",
   });
 
-  useEffect(() => {
-    let isActive = true;
-
+  useEffect(
     /**
-     * Loads current simulated business metrics.
-     * @returns {Promise<void>}
-     * @sideEffects Calls the Admin analytics API and updates local state.
+     * Starts one analytics request when the component mounts.
+     * @returns {() => void} Cleanup that blocks late state updates.
+     * @sideEffects Calls the Admin API through loadAnalytics.
      */
-    async function loadAnalytics() {
-      try {
-        const analytics = await adminService.getSubscriptionAnalytics();
+    function loadBusinessAnalyticsOnMount() {
+      let isActive = true;
 
-        if (isActive) {
-          setState({
-            loading: false,
-            analytics,
-            error: "",
-          });
-        }
-      } catch (error) {
-        if (isActive) {
-          setState({
-            loading: false,
-            analytics: null,
-            error: normalizeApiError(error).message,
-          });
+      /**
+       * Loads current simulated business metrics.
+       * @returns {Promise<void>}
+       * @sideEffects Calls the Admin analytics API and updates local state.
+       */
+      async function loadAnalytics() {
+        try {
+          const analytics = await adminService.getSubscriptionAnalytics();
+
+          if (isActive) {
+            setState({
+              loading: false,
+              analytics,
+              error: "",
+            });
+          }
+        } catch (error) {
+          if (isActive) {
+            const normalizedError = normalizeApiError(error);
+
+            setState({
+              loading: false,
+              analytics: null,
+              error: normalizedError.message,
+            });
+          }
         }
       }
-    }
 
-    loadAnalytics();
+      // Do not return this Promise to React; the effect returns cleanup below.
+      void loadAnalytics();
 
-    return () => {
-      isActive = false;
-    };
-  }, []);
+      /**
+       * Prevents a finished request from updating an unmounted component.
+       * @returns {void}
+       * @sideEffects Changes the local effect flag.
+       */
+      return function stopAnalyticsStateUpdates() {
+        isActive = false;
+      };
+    },
+    [],
+  );
 
   if (state.loading) {
-    return <div className="page-loader-inline"><span className="spinner" /> Loading business analytics</div>;
+    return (
+      <div className="page-loader-inline">
+        <span className="spinner" />
+        Loading business analytics
+      </div>
+    );
   }
 
   if (state.error) {
@@ -73,9 +122,17 @@ export function AdminBusinessAnalytics() {
   }
 
   const analytics = state.analytics;
+  const unsuccessfulPayments =
+    analytics.totals.failed + analytics.totals.cancelled;
+  const revenueDetail = analytics.totals.completed + " successful payments";
+  const premiumDetail = analytics.activeTrials + " active trials";
+  const pendingDetail = analytics.totals.failed + " failed attempts";
 
   return (
-    <section className="admin-business-analytics" aria-label="Subscription business analytics">
+    <section
+      className="admin-business-analytics"
+      aria-label="Subscription business analytics"
+    >
       <div className="overview-panel__header">
         <div>
           <h2>Subscription business</h2>
@@ -85,36 +142,68 @@ export function AdminBusinessAnalytics() {
       </div>
 
       <div className="overview-metrics">
-        <Card className="overview-metric">
-          <span className="metric-card__icon"><MoneyIcon /></span>
-          <div><small>Simulated revenue</small><strong>{formatMoney(analytics.totals.completedRevenue)}</strong><span>{analytics.totals.completed} successful payments</span></div>
-        </Card>
-        <Card className="overview-metric">
-          <span className="metric-card__icon metric-card__icon--success"><ShieldCheckIcon /></span>
-          <div><small>Active Premium</small><strong>{analytics.activePremiumFamilies}</strong><span>{analytics.activeTrials} active trials</span></div>
-        </Card>
-        <Card className="overview-metric">
-          <span className="metric-card__icon metric-card__icon--pending"><ClockIcon /></span>
-          <div><small>Pending payments</small><strong>{analytics.totals.pending}</strong><span>{analytics.totals.failed} failed attempts</span></div>
-        </Card>
+        <AnalyticsMetric
+          icon={<MoneyIcon />}
+          label="Simulated revenue"
+          value={formatMoney(analytics.totals.completedRevenue)}
+          detail={revenueDetail}
+        />
+        <AnalyticsMetric
+          icon={<ShieldCheckIcon />}
+          iconClassName="metric-card__icon--success"
+          label="Active Premium"
+          value={analytics.activePremiumFamilies}
+          detail={premiumDetail}
+        />
+        <AnalyticsMetric
+          icon={<ClockIcon />}
+          iconClassName="metric-card__icon--pending"
+          label="Pending payments"
+          value={analytics.totals.pending}
+          detail={pendingDetail}
+        />
       </div>
 
       <div className="admin-business-grid">
         <Card>
           <h3>Plan performance</h3>
-          {!analytics.planDistribution.length && <p>No completed payments yet.</p>}
-          {analytics.planDistribution.map((plan) => (
-            <div className="admin-plan-row" key={plan._id}>
-              <span><strong>{plan.name}</strong><small>{plan.transactions} transactions</small></span>
-              <strong>{formatMoney(plan.revenue)}</strong>
-            </div>
-          ))}
+          {analytics.planDistribution.length === 0 && (
+            <p>No completed payments yet.</p>
+          )}
+          {analytics.planDistribution.map(
+            /**
+             * Converts one aggregation row into a plan-performance row.
+             * @param {object} plan - Aggregated plan metrics.
+             * @returns {import("react").ReactElement} Plan row.
+             * @sideEffects None.
+             */
+            function renderPlanResult(plan) {
+              return (
+                <div className="admin-plan-row" key={plan._id}>
+                  <span>
+                    <strong>{plan.name}</strong>
+                    <small>{plan.transactions} transactions</small>
+                  </span>
+                  <strong>{formatMoney(plan.revenue)}</strong>
+                </div>
+              );
+            },
+          )}
         </Card>
         <Card>
           <h3>Payment health</h3>
-          <div className="admin-plan-row"><span>All attempts</span><strong>{analytics.totals.all}</strong></div>
-          <div className="admin-plan-row"><span>Completed</span><strong>{analytics.totals.completed}</strong></div>
-          <div className="admin-plan-row"><span>Failed or cancelled</span><strong>{analytics.totals.failed + analytics.totals.cancelled}</strong></div>
+          <div className="admin-plan-row">
+            <span>All attempts</span>
+            <strong>{analytics.totals.all}</strong>
+          </div>
+          <div className="admin-plan-row">
+            <span>Completed</span>
+            <strong>{analytics.totals.completed}</strong>
+          </div>
+          <div className="admin-plan-row">
+            <span>Failed or cancelled</span>
+            <strong>{unsuccessfulPayments}</strong>
+          </div>
         </Card>
       </div>
     </section>

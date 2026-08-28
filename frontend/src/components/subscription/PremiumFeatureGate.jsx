@@ -3,7 +3,7 @@ import { Modal } from "../Modal.jsx";
 
 /**
  * Explains a locked Premium action without replacing backend authorization.
- * @param {{isOpen: boolean, onClose: Function, featureName?: string}} props - Modal state.
+ * @param {{isOpen: boolean, onClose: () => void, featureName?: string}} props - Modal state.
  * @returns {import("react").ReactElement} Upgrade dialog.
  * @sideEffects Navigates through React Router when View plans is selected.
  */
@@ -20,7 +20,11 @@ export function PremiumFeatureGate({
           Existing bookings and care history remain available.
         </p>
         <div className="modal-actions">
-          <button className="button button--secondary" type="button" onClick={onClose}>
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={onClose}
+          >
             Not now
           </button>
           <Link className="button button--primary" to="/subscription">

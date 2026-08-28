@@ -1,54 +1,68 @@
 import { api } from "./api.js";
 
 /**
- * Creates an unverified family account.
- * @param {{name: string, email: string, password: string}} input - Signup form values.
- * @returns {Promise<{message: string, email: string}>} Verification instructions and normalized email.
- * @sideEffects Calls POST `/auth/signup`, creating a user and sending email.
+ * Creates an unverified Family account.
+ * @param {{name: string, email: string, password: string}} input - Form data.
+ * @returns {Promise<{message: string, email: string}>} Verification details.
+ * @sideEffects Creates an account/token and sends verification email.
  */
 async function signup(input) {
-  const response = await api.post("/auth/signup", input);
+  const response = await api.post(
+    "/auth/signup",
+    input,
+  );
   return response.data.data;
 }
 
 /**
- * Creates an unverified caregiver account and draft application profile.
- * @param {{name: string, email: string, phone: string, password: string, confirmPassword: string}} input - Caregiver signup form values.
- * @returns {Promise<{message: string, email: string}>} Verification instructions and normalized email.
- * @sideEffects Calls POST `/auth/caregiver/signup`, creating records and sending verification email.
+ * Creates an unverified Caregiver account and draft profile.
+ * @param {{name: string, email: string, phone: string, password: string, confirmPassword: string}} input - Form data.
+ * @returns {Promise<{message: string, email: string}>} Verification details.
+ * @sideEffects Creates records and sends verification email.
  */
 async function caregiverSignup(input) {
-  const response = await api.post("/auth/caregiver/signup", input);
+  const response = await api.post(
+    "/auth/caregiver/signup",
+    input,
+  );
   return response.data.data;
 }
 
 /**
  * Starts an email/password session.
- * @param {{email: string, password: string}} input - Login credentials.
- * @returns {Promise<{user: object}>} Authenticated public user payload.
- * @sideEffects Calls POST `/auth/login` and receives an HTTP-only cookie.
+ * @param {{email: string, password: string}} input - Credentials.
+ * @returns {Promise<{user: object}>} Public authenticated user.
+ * @sideEffects Receives an HTTP-only session cookie.
  */
 async function login(input) {
-  const response = await api.post("/auth/login", input);
+  const response = await api.post(
+    "/auth/login",
+    input,
+  );
   return response.data.data;
 }
 
 /**
- * Starts or creates a family session from Google Identity Services.
+ * Starts or creates a Family session through Google.
  * @param {string} credential - Google ID token.
- * @returns {Promise<{user: object}>} Authenticated public user payload.
- * @sideEffects Calls POST `/auth/google`; may create/link a user and set a cookie.
+ * @returns {Promise<{user: object}>} Public authenticated user.
+ * @sideEffects May create/link User and receives an HTTP-only cookie.
  */
 async function loginWithGoogle(credential) {
-  const response = await api.post("/auth/google", { credential });
+  const requestBody = {
+    credential,
+  };
+  const response = await api.post(
+    "/auth/google",
+    requestBody,
+  );
   return response.data.data;
 }
 
 /**
  * Retrieves the current cookie-backed session.
- * @param {void} _unused - This function accepts no arguments.
- * @returns {Promise<{user: object}>} Current public user payload.
- * @sideEffects Calls GET `/auth/me`.
+ * @returns {Promise<{user: object}>} Current public user.
+ * @sideEffects Sends one authenticated GET request.
  */
 async function getCurrentUser() {
   const response = await api.get("/auth/me");
@@ -56,21 +70,23 @@ async function getCurrentUser() {
 }
 
 /**
- * Updates the authenticated family owner's account information.
- * @param {{name: string, email: string, currentPassword?: string}} input - Editable identity fields and password confirmation for an email change.
- * @returns {Promise<{user?: object, email?: string, requiresEmailVerification: boolean, message: string}>} Updated user or re-verification instructions.
- * @sideEffects Calls PATCH `/auth/account`; an email change sends mail and clears the server session.
+ * Updates the authenticated Family owner's name/sign-in email.
+ * @param {{name: string, email: string, currentPassword?: string}} input - Values.
+ * @returns {Promise<{user?: object, email?: string, requiresEmailVerification: boolean, message: string}>} Result.
+ * @sideEffects May send verification mail and clear the server session.
  */
 async function updateFamilyAccount(input) {
-  const response = await api.patch("/auth/account", input);
+  const response = await api.patch(
+    "/auth/account",
+    input,
+  );
   return response.data.data;
 }
 
 /**
  * Ends the current session.
- * @param {void} _unused - This function accepts no arguments.
  * @returns {Promise<{message: string}>} Server confirmation.
- * @sideEffects Calls POST `/auth/logout` and clears the session cookie.
+ * @sideEffects Clears the server session cookie.
  */
 async function logout() {
   const response = await api.post("/auth/logout");
@@ -78,13 +94,21 @@ async function logout() {
 }
 
 /**
- * Verifies an email using a one-time token.
- * @param {string} token - Token from the emailed link.
+ * Verifies an email using the raw one-time token.
+ * @param {string} token - Token from the emailed URL.
  * @returns {Promise<{message: string}>} Verification confirmation.
- * @sideEffects Calls GET `/auth/verify-email` and updates the user in the database.
+ * @sideEffects May mark User verified and token used.
  */
 async function verifyEmail(token) {
-  const response = await api.get("/auth/verify-email", { params: { token } });
+  const requestOptions = {
+    params: {
+      token,
+    },
+  };
+  const response = await api.get(
+    "/auth/verify-email",
+    requestOptions,
+  );
   return response.data.data;
 }
 
@@ -92,42 +116,50 @@ async function verifyEmail(token) {
  * Requests a replacement verification link.
  * @param {string} email - Unverified account email.
  * @returns {Promise<{message: string}>} Enumeration-safe confirmation.
- * @sideEffects Calls POST `/auth/resend-verification` and may send email.
+ * @sideEffects May replace a token and send email.
  */
 async function resendVerification(email) {
-  const response = await api.post("/auth/resend-verification", { email });
+  const requestBody = {
+    email,
+  };
+  const response = await api.post(
+    "/auth/resend-verification",
+    requestBody,
+  );
   return response.data.data;
 }
 
 /**
- * Requests a one-hour password-reset email without revealing account existence.
- * @param {string} email - Password account email entered by the visitor.
- * @returns {Promise<{message: string}>} Neutral email-delivery confirmation.
- * @sideEffects Calls POST `/auth/forgot-password` and may trigger an email.
+ * Requests a one-hour password-reset email.
+ * @param {string} email - Password account email.
+ * @returns {Promise<{message: string}>} Neutral confirmation.
+ * @sideEffects May replace a reset token and send email.
  */
 async function forgotPassword(email) {
-  const response = await api.post("/auth/forgot-password", {
+  const requestBody = {
     email,
-  });
+  };
+  const response = await api.post(
+    "/auth/forgot-password",
+    requestBody,
+  );
   return response.data.data;
 }
 
 /**
- * Replaces a password using the one-time token from the recovery email.
- * @param {{token: string, password: string, confirmPassword: string}} input - Reset token and matching passwords.
+ * Replaces a password using an emailed one-time token.
+ * @param {{token: string, password: string, confirmPassword: string}} input - Reset data.
  * @returns {Promise<{message: string}>} Password-update confirmation.
- * @sideEffects Calls POST `/auth/reset-password` and invalidates the reset token.
+ * @sideEffects Updates password, consumes token, and clears server session.
  */
 async function resetPassword(input) {
-  const response = await api.post("/auth/reset-password", input);
+  const response = await api.post(
+    "/auth/reset-password",
+    input,
+  );
   return response.data.data;
 }
 
-/*
- * To add a similar frontend API, create a typed-by-documentation method here or in
- * a feature service, return only `response.data.data`, expose it through a context
- * or custom hook, then consume that abstraction from the route-level page.
- */
 export const authService = {
   signup,
   caregiverSignup,

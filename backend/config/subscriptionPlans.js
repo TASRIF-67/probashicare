@@ -1,8 +1,11 @@
 import { PREMIUM_ENTITLEMENTS } from "../utils/subscriptionConstants.js";
 
 /**
- * Development-only plan prices controlled by the backend.
- * These BDT amounts are prototype values and are not production pricing.
+ * Backend-authoritative development plan definitions.
+ *
+ * The frontend may select only a plan code. Price, currency, duration, access
+ * level, and entitlement values always come from this trusted configuration.
+ * These BDT prices are test values rather than production commercial pricing.
  */
 export const SUBSCRIPTION_PLAN_DEFINITIONS = [
   {
@@ -14,6 +17,7 @@ export const SUBSCRIPTION_PLAN_DEFINITIONS = [
     durationValue: 24,
     price: 199,
     currency: "BDT",
+    // Array spread creates a new features array for this plan.
     features: [...PREMIUM_ENTITLEMENTS],
     isActive: true,
   },
@@ -44,4 +48,10 @@ export const SUBSCRIPTION_PLAN_DEFINITIONS = [
   },
 ];
 
-/* Add a plan here, then run db:sync-subscription-plans. */
+/*
+ * After changing a definition, run:
+ * npm.cmd run db:sync-subscription-plans --prefix backend
+ *
+ * Existing FamilySubscription and SubscriptionPayment snapshots remain
+ * unchanged, which preserves historical prices and entitlements.
+ */

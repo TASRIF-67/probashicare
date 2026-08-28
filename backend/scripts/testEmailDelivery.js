@@ -31,7 +31,16 @@ async function testEmailDelivery() {
   console.log("Provider message ID:", result.messageId);
 }
 
-testEmailDelivery().catch((error) => {
+/**
+ * Reports a failed SMTP test and sets a non-zero process exit code.
+ * @param {Error} error - Connection or message-delivery failure.
+ * @returns {void}
+ * @sideEffects Writes to stderr and changes process.exitCode.
+ */
+function handleEmailTestFailure(error) {
   console.error("Email delivery test failed:", error.message);
   process.exitCode = 1;
-});
+}
+
+// `catch` runs only when the Promise returned by testEmailDelivery rejects.
+testEmailDelivery().catch(handleEmailTestFailure);
