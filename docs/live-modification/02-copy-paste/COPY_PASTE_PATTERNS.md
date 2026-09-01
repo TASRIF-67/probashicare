@@ -2,6 +2,13 @@
 
 These snippets follow the existing project structure. Replace example names carefully instead of pasting blindly.
 
+For a faster layer-specific reference, open:
+
+- [FRONTEND_COPY_PASTE_GUIDE.md](FRONTEND_COPY_PASTE_GUIDE.md) for React pages, services, forms, context, loading, routing, Premium UI, and frontend flows for all five assigned features.
+- [BACKEND_COPY_PASTE_GUIDE.md](BACKEND_COPY_PASTE_GUIDE.md) for schemas, routes, controllers, validation, permissions, MongoDB, transactions, external APIs, and backend flows for all five assigned features.
+
+This combined guide remains the deeper source for advanced patterns shared across both layers.
+
 ## Use this first: requirement-to-pattern index
 
 | If the question says... | Start with |
@@ -30,7 +37,7 @@ These snippets follow the existing project structure. Replace example names care
 | Verify before showing faculty | 1 and 35 |
 
 For the first five minutes of any test, also open
-`LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md`.
+[LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md](../01-foundations/LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md).
 
 ## 1. Safe working sequence
 

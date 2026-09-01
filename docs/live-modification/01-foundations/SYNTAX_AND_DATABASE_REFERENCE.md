@@ -20,7 +20,7 @@ Memorize these meanings first:
 - loading, error, empty, and success are four separate UI states.
 
 For the full emergency workflow, read
-`LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md` first.
+[LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md](LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md) first.
 
 ## 1. Reading a dotted expression
 

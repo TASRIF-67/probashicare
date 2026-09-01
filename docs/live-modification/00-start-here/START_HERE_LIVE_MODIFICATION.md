@@ -423,10 +423,12 @@ Confirm:
 
 ## 15. Read next only when needed
 
-1. `LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md` for high-value code blocks.
-2. `COPY_PASTE_PATTERNS.md` for reusable templates.
-3. `MY_FEATURES_FILE_MAP.md` to locate assigned features.
-4. The closest feature's full-stack guide.
-5. `SYNTAX_AND_DATABASE_REFERENCE.md` for unclear syntax/MongoDB concepts.
+1. [LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md](../01-foundations/LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md) for high-value code blocks.
+2. [FRONTEND_COPY_PASTE_GUIDE.md](../02-copy-paste/FRONTEND_COPY_PASTE_GUIDE.md) for React pages, components, services, context, and UI behavior.
+3. [BACKEND_COPY_PASTE_GUIDE.md](../02-copy-paste/BACKEND_COPY_PASTE_GUIDE.md) for Express, Mongoose, MongoDB, permissions, external APIs, and tests.
+4. [COPY_PASTE_PATTERNS.md](../02-copy-paste/COPY_PASTE_PATTERNS.md) for combined and advanced templates.
+5. [MY_FEATURES_FILE_MAP.md](../04-my-feature-reference/MY_FEATURES_FILE_MAP.md) to locate assigned features.
+6. The closest feature's full-stack guide.
+7. [SYNTAX_AND_DATABASE_REFERENCE.md](../01-foundations/SYNTAX_AND_DATABASE_REFERENCE.md) for unclear syntax or MongoDB concepts.
 
 Do not read every guide before coding. Understand the question, trace one flow, and open only the reference needed for the current layer.

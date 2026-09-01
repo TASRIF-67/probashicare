@@ -1,62 +1,50 @@
-# ProbashiCare Live Modification Practice
+# ProbashiCare Live Modification Study Center
 
-This directory is a student-readable study area for the ProbashiCare live modification test.
+This folder contains the study and copy-paste references for the practice/live-modification branch.
 
-The code exercises are intentionally implemented on the branch:
+## Fastest exam path
 
-~~~text
-practice/live-modification
-~~~
+1. Open [Start Here](00-start-here/START_HERE_LIVE_MODIFICATION.md).
+2. If the requirement is still unclear, follow the [Worst-Case Full-Stack Checklist](00-start-here/WORST_CASE_FULL_STACK_CHECKLIST.md) sequentially.
+3. Decide whether the task is frontend, backend, database, or full stack.
+4. Open the matching [copy-paste guide](02-copy-paste/README.md).
+5. Use the relevant [feature guide](03-feature-guides/README.md).
+6. Verify with the [command reference](00-start-here/COMMANDS_QUICK_REFERENCE.md).
 
-The deployed main branch is not changed unless this practice branch is later merged intentionally.
+## Folder structure
 
-## Study order
+| Folder | Use it for |
+| --- | --- |
+| [00-start-here](00-start-here/README.md) | First-five-minute workflow, project structure, emergency sequence, commands, Git, testing, and shortcuts. |
+| [01-foundations](01-foundations/README.md) | JavaScript, React, Express, Mongoose, MongoDB, and advanced concepts. |
+| [02-copy-paste](02-copy-paste/README.md) | Ready-to-adapt frontend, backend, and advanced full-stack code patterns. |
+| [03-feature-guides](03-feature-guides/README.md) | Complete architecture and workflows for each of your five features. |
+| [04-my-feature-reference](04-my-feature-reference/README.md) | File map, function inventory, viva, GitHub contribution, and deployment answers. |
 
-1. Elderly Health Profile Management
-2. Gemini Wellness Summaries and Fallback Logic
-3. In-app Notifications
-4. Family Subscription and Payment Management
-5. Family Account Management and Email Re-verification
+## Which guide should I open?
 
-This order begins with normal CRUD and gradually introduces authorization, transactions, external services, and fallbacks.
+| Question type | Open |
+| --- | --- |
+| Add or change a button/page/form | [Frontend guide](02-copy-paste/FRONTEND_COPY_PASTE_GUIDE.md) |
+| Add or change an API/query/schema | [Backend guide](02-copy-paste/BACKEND_COPY_PASTE_GUIDE.md) |
+| Do not know which file or folder to edit | [Project structure and responsibilities](00-start-here/PROJECT_STRUCTURE_AND_FILE_RESPONSIBILITIES.md) |
+| Complete frontend plus backend | Backend guide first, then frontend guide |
+| Completely unclear complex requirement | [Worst-case sequential checklist](00-start-here/WORST_CASE_FULL_STACK_CHECKLIST.md) |
+| Difficult aggregation/transaction/provider logic | [Advanced combined patterns](02-copy-paste/COPY_PASTE_PATTERNS.md) |
+| Forgotten syntax | [Foundations index](01-foundations/README.md) |
+| Explain your assigned work | [My feature reference](04-my-feature-reference/README.md) |
 
-## Read these first
+## Practice method
 
-1. **START_HERE_LIVE_MODIFICATION.md**: turn an exam question into files, functions, an API contract, and a safe implementation order.
-2. **COMMANDS_QUICK_REFERENCE.md**: PowerShell, npm, verification, Git, database-script, port, and Stripe commands in one place.
-3. **LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md**: the highest-value full-stack blocks first, followed by moderate-to-advanced JavaScript, React, Express, MongoDB, security, testing, and deployment.
-4. **COPY_PASTE_PATTERNS.md**: requirement-to-pattern index and reusable project-compatible blocks.
-5. The full-stack guide for the feature being practised.
-
-## Documents
-
-- **START_HERE_LIVE_MODIFICATION.md**: first-five-minute decision guide, request tracing, layer ownership, implementation order, debugging, Copilot use, and exam timing.
-- **COMMANDS_QUICK_REFERENCE.md**: command-only reference for setup, running, testing, Git operations, branch switching, safe cleanup, ports, and local Stripe webhooks.
-- **LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md**: urgent exam workflow plus moderate-to-advanced concepts and code.
-- **MY_FEATURES_FILE_MAP.md**: where each assigned feature lives.
-- **MY_FEATURE_FUNCTION_INVENTORY.md**: the necessary functions in each feature file and their responsibilities.
-- **JS_REACT_MERN_CHEATSHEET.md**: JavaScript, React, Express, and Mongoose basics used in this project.
-- **SYNTAX_AND_DATABASE_REFERENCE.md**: dot notation, Promises, React syntax, Mongoose CRUD, operators, aggregation, indexes, and transactions.
-- **ELDERLY_PROFILE_FULL_STACK_GUIDE.md**: complete first-feature flow, API contracts, database logic, errors, viva notes, and a practice modification.
-- **GEMINI_WELLNESS_FULL_STACK_GUIDE.md**: complete privacy, Gemini/fallback, cache, API, database, frontend, test, and viva flow.
-- **NOTIFICATION_SYSTEM_FULL_STACK_GUIDE.md**: complete event producer, idempotency, API, MongoDB, context, polling, UI, tests, modifications, and viva flow.
-- **SUBSCRIPTION_PAYMENT_FULL_STACK_GUIDE.md**: complete plan, access, expiry, prototype payment, Stripe webhook, history, Admin analytics, tests, modifications, and viva flow.
-- **FAMILY_ACCOUNT_REVERIFICATION_FULL_STACK_GUIDE.md**: complete account update, password confirmation, token, mail, session, MongoDB, frontend, tests, deployment, and viva flow.
-- **COPY_PASTE_PATTERNS.md**: small project-compatible patterns for live modifications.
-
-## How to practise
-
-For each exercise:
-
-1. Write the requirement in one sentence.
-2. Identify the page, service, route, controller, and model.
-3. Write the database query first on paper.
-4. Write the backend response shape.
-5. Write the frontend state and request.
-6. Add loading, empty, success, and error states.
-7. Run syntax checks and the frontend build.
-8. Explain the complete flow aloud without reading.
+1. Rewrite the requirement in one sentence.
+2. Identify page, service, route, middleware, controller, service, and model.
+3. Write the request and response contract.
+4. Copy the closest pattern.
+5. Let Copilot continue only small sections.
+6. Verify every suggested field and function against the repository.
+7. Run syntax/build checks.
+8. Explain the complete flow aloud.
 
 ## Safety
 
-A separate practice database is safest. If you intentionally use the configured learning database, inspect every query first and ensure a smoke script deletes only fixtures it created. Never place credentials in Markdown or commit a real environment file.
+Use exact database filters and exact Git paths. Never add environment files or real credentials to documentation. Inspect Git status before and after every practice change.

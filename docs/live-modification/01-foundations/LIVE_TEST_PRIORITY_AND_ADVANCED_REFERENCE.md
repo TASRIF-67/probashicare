@@ -1199,4 +1199,4 @@ Start with these existing project examples:
 9. Form page: `ProfileForm.jsx`.
 10. API wrapper: any file in `frontend/src/services`.
 
-The larger reusable blocks remain in `COPY_PASTE_PATTERNS.md`. Search that file by requirement word before writing from memory.
+The larger reusable blocks remain in [COPY_PASTE_PATTERNS.md](../02-copy-paste/COPY_PASTE_PATTERNS.md). Search that file by requirement word before writing from memory.
