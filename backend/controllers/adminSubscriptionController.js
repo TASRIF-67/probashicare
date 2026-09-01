@@ -45,6 +45,10 @@ export function escapeRegularExpression(value) {
  * @sideEffects Expires stale prototypes and reads MongoDB aggregates.
  */
 export async function getSubscriptionAnalytics(_request, response) {
+  // Execution sequence:
+  // 1. Expire abandoned prototype attempts before calculating totals.
+  // 2. Run independent payment, revenue, subscription, and plan aggregations.
+  // 3. Combine aggregate rows into dashboard-friendly metrics and respond.
   await expireStalePrototypePayments();
 
   const now = new Date();

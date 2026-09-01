@@ -30,6 +30,10 @@ export function CreateElderlyProfilePage() {
    * @sideEffects Calls create and auth APIs, shows feedback, and changes route.
    */
   async function handleCreate(value) {
+    // Execution sequence:
+    // 1. Disable repeat submission and clear previous field errors.
+    // 2. Create the profile, refresh onboarding state, and navigate to detail.
+    // 3. Normalize backend errors and always restore the submit button.
     setIsSubmitting(true);
     setErrors({});
     try {

@@ -70,6 +70,10 @@ export function AdminBusinessAnalytics() {
        * @sideEffects Calls the Admin analytics API and updates local state.
        */
       async function loadAnalytics() {
+        // Execution sequence:
+        // 1. Request server-aggregated business metrics.
+        // 2. Store them only while this effect remains active.
+        // 3. Normalize errors and avoid state writes after unmount.
         try {
           const analytics = await adminService.getSubscriptionAnalytics();
 

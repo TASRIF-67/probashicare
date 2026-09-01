@@ -168,6 +168,10 @@ export async function synchronizeSubscriptionReminders(
   subscription,
   nowValue = new Date(),
 ) {
+  // Execution sequence:
+  // 1. Stop for records without an expiry or outside active/trial status.
+  // 2. Calculate remaining time and select plan-specific thresholds.
+  // 3. Create stable, idempotent reminder or expiry notifications.
   if (!subscription.currentPeriodEndsAt) {
     return null;
   }

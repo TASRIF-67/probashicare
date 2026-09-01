@@ -63,6 +63,7 @@ export async function getAuthorizedElderlyProfile({
 }) {
   // Invalid identifiers use the same response as missing records to avoid leaking details.
   // 'isValidObjectId()' checks the ID format before MongoDB receives the query.
+  // Step 1: Reject an invalid identifier using the concealed 404 response.
   if (!mongoose.isValidObjectId(profileId)) {
     throw new ApiError(
       404,
@@ -70,6 +71,7 @@ export async function getAuthorizedElderlyProfile({
     );
   }
 
+  // Step 2: Describe the required family relationship and permission.
   const linkFilter = {
     elderlyProfileId: profileId,
     familyUserId,
@@ -81,6 +83,7 @@ export async function getAuthorizedElderlyProfile({
 
   // Check the relationship before loading health data so unauthorized callers learn nothing.
   // 'findOne()' returns the first matching access link or null when none exists.
+  // Step 3: Verify access before reading private health information.
   const link = await ElderlyFamilyLink.findOne(linkFilter);
 
   if (!link) {
@@ -90,6 +93,7 @@ export async function getAuthorizedElderlyProfile({
     );
   }
 
+  // Step 4: Build the profile query only after authorization succeeds.
   const profileFilter = {
     _id: profileId,
   };
@@ -100,6 +104,7 @@ export async function getAuthorizedElderlyProfile({
   }
 
   // 'findOne()' returns the authorized profile document or null.
+  // Step 5: Load the profile and apply the requested archive rule.
   const profile = await ElderlyProfile.findOne(profileFilter);
 
   if (!profile) {
@@ -109,6 +114,7 @@ export async function getAuthorizedElderlyProfile({
     );
   }
 
+  // Step 6: Return both the profile data and the permission link.
   return {
     profile,
     link,

@@ -101,6 +101,7 @@ export async function getLatestWellnessInsight(elderlyProfileId) {
  * @sideEffects Reads reports, may call Gemini, and may create WellnessInsight.
  */
 export async function generateWellnessInsight(elderlyProfileId) {
+  // Step 1: Read submitted reports and build deterministic local analysis.
   const analysis = await analyzeRecentWellnessReports(elderlyProfileId);
 
   if (analysis.reports.length === 0) {
@@ -110,6 +111,7 @@ export async function generateWellnessInsight(elderlyProfileId) {
     };
   }
 
+  // Step 2: Identify the exact report collection with a stable signature.
   const reportSignature = buildReportSignature(analysis.reports);
 
   // Date.now returns the current time as milliseconds. Subtracting the
@@ -129,6 +131,7 @@ export async function generateWellnessInsight(elderlyProfileId) {
 
   // This cache deliberately reuses only a recent Gemini result. A fallback can
   // be retried on refresh in case the external service becomes available.
+  // Step 3: Reuse a recent Gemini result for unchanged reports.
   const recentInsight = await WellnessInsight.findOne(cacheFilter)
     .sort({
       generatedAt: -1,
@@ -142,9 +145,11 @@ export async function generateWellnessInsight(elderlyProfileId) {
     };
   }
 
+  // Step 4: Ask Gemini for a sanitized summary.
   let summaryData = await generateGeminiWellnessSummary(analysis.reports);
   let generatedBy = "gemini";
 
+  // Step 5: Select the deterministic fallback when Gemini is unavailable.
   if (!summaryData) {
     summaryData = buildFallbackWellnessSummary(analysis);
     generatedBy = "fallback";
@@ -162,6 +167,7 @@ export async function generateWellnessInsight(elderlyProfileId) {
     reportIds.push(report._id);
   }
 
+  // Step 6: Build one provider-independent record for storage and the UI.
   const insightInput = {
     elderlyProfileId,
     reportIds,
@@ -176,9 +182,11 @@ export async function generateWellnessInsight(elderlyProfileId) {
   };
 
   // create validates insightInput against the schema and inserts one document.
+  // Step 7: Save the final summary for later display and reuse.
   const insightDocument = await WellnessInsight.create(insightInput);
 
   // toObject converts the Mongoose document to a plain response-safe object.
+  // Step 8: Convert the saved document into response-safe plain data.
   const plainInsight = insightDocument.toObject();
 
   return {

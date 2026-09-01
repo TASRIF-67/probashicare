@@ -283,6 +283,10 @@ export function ElderlyProfileListPage() {
      * @sideEffects Reads the profile API and updates page state.
      */
     async function loadProfiles() {
+      // Execution sequence:
+      // 1. Preserve old list data while showing the loading state.
+      // 2. Request active caller-visible profiles from the service.
+      // 3. Ignore stale effect results and store data or error.
       // Passing a function to setState gives us the latest previous state.
       setState(
         /**

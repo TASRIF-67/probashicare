@@ -199,6 +199,10 @@ export function validateElderlyProfilePayload(
     requirePersonalInformation = true,
   } = {},
 ) {
+  // Execution sequence:
+  // 1. Validate personal information and every repeated-section shape.
+  // 2. Apply emergency-contact and medication cross-field rules.
+  // 3. Throw one 422 error map or call next for the controller.
   const errors = {};
   const payload = body || {};
 

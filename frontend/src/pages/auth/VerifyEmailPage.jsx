@@ -101,6 +101,10 @@ export function VerifyEmailPage() {
        * @sideEffects Calls verification and may update state.
        */
       async function verifyToken() {
+        // Execution sequence:
+        // 1. Submit the URL token through the verification helper.
+        // 2. Store success or normalized failure only for the active effect.
+        // 3. Let effect cleanup suppress late state updates.
         try {
           const data =
             await requestEmailVerification(token);

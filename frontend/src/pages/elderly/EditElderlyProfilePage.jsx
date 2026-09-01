@@ -30,6 +30,10 @@ export function EditElderlyProfilePage() {
      * @sideEffects Reads the profile API and updates page state.
      */
     async function loadProfile() {
+      // Execution sequence:
+      // 1. Request the authorized profile for the route ID.
+      // 2. Store profile data or a normalized page error.
+      // 3. End initial loading even when the request fails.
       try {
         // 'await' pauses until the authorized profile request finishes.
         const data = await elderlyProfileService.getProfile(profileId);
@@ -55,6 +59,10 @@ export function EditElderlyProfilePage() {
    * @sideEffects Calls update API, displays feedback, and changes route.
    */
   async function handleUpdate(value) {
+    // Execution sequence:
+    // 1. Lock submission and clear stale errors.
+    // 2. Save the complete validated form through the service.
+    // 3. Navigate on success or map errors, then unlock submission.
     setIsSubmitting(true);
     setErrors({});
     try {

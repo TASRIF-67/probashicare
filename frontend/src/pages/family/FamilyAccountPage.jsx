@@ -113,21 +113,26 @@ export function FamilyAccountPage() {
    * @sideEffects Calls API, refreshes/clears auth, toasts, and may navigate.
    */
   async function handleSubmit(event) {
+    // Step 1: Keep React in control instead of refreshing the browser page.
     event.preventDefault();
+    // Step 2: Enter saving state and clear old field errors.
     setIsSaving(true);
     setErrors({});
 
     try {
+      // Step 3: Build only the fields accepted by the account API.
       const requestBody = {
         name: form.name,
         email: form.email,
         currentPassword: form.currentPassword,
       };
+      // Step 4: Wait for password checks, account update, and possible email.
       const result =
         await authService.updateFamilyAccount(
           requestBody,
         );
 
+      // Step 5a: Email change ends the session and moves to public login.
       if (result.requiresEmailVerification) {
         // The server already cleared its cookie. Remove the cached user before
         // replacing this protected route with the public login page.
@@ -142,6 +147,7 @@ export function FamilyAccountPage() {
         return;
       }
 
+      // Step 5b: Name-only change refreshes the authenticated user in context.
       await refreshUser();
 
       setForm(
@@ -164,12 +170,14 @@ export function FamilyAccountPage() {
         "success",
       );
     } catch (error) {
+      // Step 6: Map backend validation details back to the form.
       const normalizedError =
         normalizeApiError(error);
       setErrors(
         createFormErrors(normalizedError),
       );
     } finally {
+      // Step 7: Re-enable submission after success or failure.
       setIsSaving(false);
     }
   }

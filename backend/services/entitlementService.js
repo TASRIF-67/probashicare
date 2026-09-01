@@ -43,6 +43,10 @@ export function determineSubscriptionAccess(
   subscription,
   nowValue = new Date(),
 ) {
+  // Execution sequence:
+  // 1. Normalize the comparison time and reject invalid dates.
+  // 2. Return Core access for missing, cancelled, or expired records.
+  // 3. Return the stored Premium snapshot only for effective paid/trial access.
   const now = new Date(nowValue);
 
   if (Number.isNaN(now.getTime())) {

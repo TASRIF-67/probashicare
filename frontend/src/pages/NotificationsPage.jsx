@@ -121,6 +121,10 @@ export function NotificationsPage() {
    */
   const loadNotifications = useCallback(
     async (showLoading = true) => {
+      // Execution sequence:
+      // 1. Optionally keep current records while marking the page loading.
+      // 2. Request the active filter/page and store records plus pagination.
+      // 3. Normalize errors and finish loading for the latest effect.
       if (showLoading) {
         setState((currentState) => {
           return {
@@ -244,6 +248,7 @@ export function NotificationsPage() {
    */
   async function markAllRead() {
     try {
+      // Step 1: Enter the page-wide notification action state.
       setState((currentState) => {
         return {
           ...currentState,
@@ -251,8 +256,10 @@ export function NotificationsPage() {
         };
       });
 
+      // Step 2: Persist the caller-owned bulk update in the backend.
       await notificationService.markAllAsRead();
 
+      // Step 3: Reload the correct page after unread records disappear.
       if (filter === "unread" && page !== 1) {
         // Changing page causes the effect to load the first unread page.
         setPage(1);
@@ -260,8 +267,10 @@ export function NotificationsPage() {
         await loadNotifications(false);
       }
 
+      // Step 4: Synchronize the shared navigation-bell count.
       await refreshUnreadCount();
 
+      // Step 5: Confirm success only after page and context state agree.
       showToast("All notifications marked as read.", "success");
     } catch (requestError) {
       const normalizedError = normalizeApiError(requestError);
@@ -284,6 +293,10 @@ export function NotificationsPage() {
    * @sideEffects May call the read API and changes the current route.
    */
   async function openNotification(notification) {
+    // Execution sequence:
+    // 1. Mark the chosen row busy and persist read state when necessary.
+    // 2. Refresh page/bell data before navigating to its safe action path.
+    // 3. Clear busy state after success or failure.
     try {
       setState((currentState) => {
         return {
@@ -322,6 +335,10 @@ export function NotificationsPage() {
    * @sideEffects Calls the dismissal API and updates page state.
    */
   async function dismiss(notificationId) {
+    // Execution sequence:
+    // 1. Mark one reminder row busy.
+    // 2. Persist the dismissal window and reload caller-owned records.
+    // 3. Refresh the bell count and always clear busy state.
     try {
       setState((currentState) => {
         return {

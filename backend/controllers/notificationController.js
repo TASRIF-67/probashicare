@@ -46,6 +46,10 @@ function readPositiveInteger(value, fallback, maximum = null) {
  * @sideEffects Reads caller-owned Notification documents from MongoDB.
  */
 export async function listNotifications(request, response) {
+  // Execution sequence:
+  // 1. Normalize pagination and build a caller-owned filter.
+  // 2. Apply the optional unread condition.
+  // 3. Load records and counts concurrently, then return pagination.
   const page = readPositiveInteger(request.query.page, DEFAULT_PAGE);
   const limit = readPositiveInteger(
     request.query.limit,
@@ -167,6 +171,10 @@ export async function markNotificationRead(request, response) {
  * @sideEffects Atomically updates every unread Notification owned by the caller.
  */
 export async function markAllNotificationsRead(request, response) {
+  // Execution sequence:
+  // 1. Capture one timestamp for the complete bulk operation.
+  // 2. Update only unread notifications owned by the caller.
+  // 3. Return the changed count for frontend synchronization.
   // One Date object gives every notification changed by this operation exactly
   // the same read timestamp.
   const readAt = new Date();
@@ -207,6 +215,10 @@ export async function markAllNotificationsRead(request, response) {
  * @sideEffects Updates dismissedUntil on one caller-owned Notification.
  */
 export async function dismissNotification(request, response) {
+  // Execution sequence:
+  // 1. Convert validated hours into an exact future timestamp.
+  // 2. Atomically update only the caller-owned notification.
+  // 3. Conceal missing and foreign records behind the same 404.
   const dismissalDuration =
     request.reminderDismissalHours * HOURS_TO_MILLISECONDS;
 

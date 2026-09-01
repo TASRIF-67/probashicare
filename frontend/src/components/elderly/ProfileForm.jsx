@@ -941,13 +941,16 @@ export function ProfileForm({
    * @sideEffects Changes steps or invokes the supplied final API submission.
    */
   async function handleStepSubmit(event) {
+    // Step 1: Keep the current multi-step form inside React.
     event.preventDefault();
 
+    // Step 2: Submit to the page only from the final review step.
     if (step.key === "review") {
       await onSubmit(value);
       return;
     }
 
+    // Step 3: Otherwise advance one step without exceeding the final index.
     setStepIndex((current) => {
       // 'Math.min()' prevents the next index from going beyond the last step.
       return Math.min(current + 1, STEPS.length - 1);

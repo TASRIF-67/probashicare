@@ -21,6 +21,7 @@ import { Notification } from "../models/Notification.js";
 export async function createNotification(input) {
   // `toString()` converts either a string ID or Mongoose ObjectId into the same
   // text format. Joining it with `eventKey` creates a per-user event identity.
+  // Step 1: Create a stable identity for this recipient and business event.
   const recipientIdText = input.recipientUserId.toString();
   const deduplicationKey = recipientIdText + ":" + input.eventKey;
 
@@ -31,6 +32,7 @@ export async function createNotification(input) {
   const actorUserId = input.actorUserId || null;
   const priority = input.priority || "normal";
 
+  // Step 2: Build values used only when this event is first inserted.
   const valuesForNewDocument = {
     recipient: input.recipientUserId,
     recipientUserId: input.recipientUserId,
@@ -55,6 +57,7 @@ export async function createNotification(input) {
     },
   };
 
+  // Step 3: Configure one atomic and validated upsert.
   const queryOptions = {
     // `upsert` inserts when no matching deduplication key exists.
     upsert: true,
@@ -66,12 +69,14 @@ export async function createNotification(input) {
     setDefaultsOnInsert: true,
   };
 
+  // Step 4: Join the caller transaction when notification is a side effect.
   if (input.session) {
     // A producer can pass its transaction session so the business action and
     // notification either both commit or both roll back.
     queryOptions.session = input.session;
   }
 
+  // Step 5: Keep retries from resetting an existing notification.
   const update = {
     // `$setOnInsert` writes values only when this upsert creates a document.
     // Repeating the same event therefore returns the original notification
@@ -81,6 +86,7 @@ export async function createNotification(input) {
 
   // Returning the Mongoose Query is valid because it is awaitable like a
   // Promise. The caller can use `await createNotification(...)`.
+  // Step 6: Execute and return the find-or-create operation.
   return Notification.findOneAndUpdate(filter, update, queryOptions);
 }
 
@@ -103,6 +109,10 @@ export async function createNotification(input) {
  * @sideEffects Upserts one notification per unique recipient in MongoDB.
  */
 export async function createNotificationsForUsers(input) {
+  // Execution sequence:
+  // 1. Normalize recipient IDs and remove duplicates with a Set.
+  // 2. Reuse the idempotent single-recipient creator for each user.
+  // 3. Return every created or previously existing event record.
   // `Set` stores only unique values. Adding the same user ID twice keeps one
   // value, so one family member cannot receive duplicate copies of an event.
   const uniqueRecipientIds = new Set();

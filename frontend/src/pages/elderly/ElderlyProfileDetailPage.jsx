@@ -635,6 +635,10 @@ export function ElderlyProfileDetailPage() {
      * @sideEffects Reads the profile API and updates page state.
      */
     async function loadProfile() {
+      // Execution sequence:
+      // 1. Load the authorized profile selected by the URL.
+      // 2. Store either profile data or a normalized error.
+      // 3. End page loading after success or failure.
       try {
         // 'await' pauses until the service Promise resolves or rejects.
         const data = await elderlyProfileService.getProfile(profileId);
@@ -686,6 +690,10 @@ export function ElderlyProfileDetailPage() {
    * @sideEffects Updates MongoDB, refreshes auth, shows feedback, and navigates.
    */
   async function handleArchive() {
+    // Execution sequence:
+    // 1. Lock the confirmation action while the request runs.
+    // 2. Soft-archive through the API and refresh shared user state.
+    // 3. Navigate on success or show an error, then unlock the action.
     setIsArchiving(true);
 
     try {

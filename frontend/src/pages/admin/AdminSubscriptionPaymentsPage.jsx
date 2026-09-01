@@ -130,6 +130,10 @@ export function AdminSubscriptionPaymentsPage() {
        * @sideEffects Calls the Admin API and updates page state.
        */
       async function loadPayments() {
+        // Execution sequence:
+        // 1. Preserve current rows while starting the filtered request.
+        // 2. Load the authorized Admin payment page.
+        // 3. Ignore stale effects and store rows/pagination or an error.
         setState(
           /**
            * Preserves current records while a filtered page is loading.

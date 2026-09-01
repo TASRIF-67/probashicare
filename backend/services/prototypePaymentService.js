@@ -150,8 +150,10 @@ export async function completePrototypePayment(
   paymentId,
   completedAtValue = new Date(),
 ) {
+  // Step 1: Stop unless development payment simulation is enabled.
   requirePrototypePaymentsEnabled();
 
+  // Step 2: Normalize completion time before opening the transaction.
   const completedAt = new Date(completedAtValue);
   const session = await mongoose.startSession();
   let output;
@@ -160,6 +162,7 @@ export async function completePrototypePayment(
     await session.withTransaction(async () => {
       // Ownership is part of the query. `session` joins this read to the same
       // transaction used by every write below.
+      // Step 3: Load the caller-owned payment inside the transaction.
       const payment = await SubscriptionPayment.findOne({
         _id: paymentId,
         family: familyUserId,
@@ -171,6 +174,7 @@ export async function completePrototypePayment(
 
       // A repeated successful confirmation returns the previous result and must
       // never extend the subscription a second time.
+      // Step 4: Make repeated success callbacks idempotent.
       if (payment.status === "completed" && payment.activationAppliedAt) {
         const subscription = await FamilySubscription.findById(
           payment.subscription,
@@ -188,6 +192,7 @@ export async function completePrototypePayment(
         throw new ApiError(409, "Only a pending payment can be completed.");
       }
 
+      // Step 5: Load the subscription owned by the same family.
       const subscription = await FamilySubscription.findOne({
         _id: payment.subscription,
         family: familyUserId,
@@ -206,6 +211,7 @@ export async function completePrototypePayment(
       }
 
       // Early renewal begins at a future expiry. Expired/new access begins now.
+      // Step 6: Start now or extend from a future expiry.
       const periodStart = selectRenewalStart(completedAt, renewableExpiry);
       const planSnapshot = payment.planSnapshot;
       const periodEnd = calculateSubscriptionPeriodEnd(
@@ -214,6 +220,7 @@ export async function completePrototypePayment(
         planSnapshot.durationValue,
       );
 
+      // Step 7: Apply the authoritative plan snapshot to Premium access.
       subscription.currentPlan = payment.plan;
       subscription.accessLevel = "premium";
       subscription.status = "active";
@@ -228,6 +235,7 @@ export async function completePrototypePayment(
         session,
       });
 
+      // Step 8: Mark the payment completed exactly once.
       payment.status = "completed";
       payment.completedAt = completedAt;
 
@@ -242,6 +250,7 @@ export async function completePrototypePayment(
         session,
       });
 
+      // Step 9: Create one success notification in the transaction.
       const deduplicationKey = "payment:" + payment._id + ":completed";
 
       await Notification.updateOne(
@@ -280,6 +289,7 @@ export async function completePrototypePayment(
     await session.endSession();
   }
 
+  // Step 10: Return the committed payment and subscription state.
   return output;
 }
 

@@ -96,6 +96,11 @@ export async function createStripeCheckoutSession(
   familyEmail,
   planCode,
 ) {
+  // Execution sequence:
+  // 1. Load the trusted plan and create caller-owned pending history.
+  // 2. Create hosted Stripe Checkout using the authoritative plan snapshot.
+  // 3. Save provider identifiers locally and return the redirect URL.
+  // 4. Mark local history failed if provider session creation fails.
   const stripe = getStripeClient();
   const plan = await SubscriptionPlan.findOne({
     code: planCode,
@@ -233,6 +238,11 @@ export async function completeStripeCheckoutPayment(
   stripeEventId,
   completedAtValue = new Date(),
 ) {
+  // Execution sequence:
+  // 1. Read signed metadata and validate the provider payment details.
+  // 2. Open a transaction and make webhook replay idempotent.
+  // 3. Activate or extend Premium and complete local payment history.
+  // 4. Create one success notification and return committed state.
   // Optional chaining safely reads signed provider metadata that may be absent.
   const paymentId = checkoutSession.metadata?.paymentId;
   const familyUserId = checkoutSession.metadata?.familyUserId;
@@ -486,11 +496,14 @@ export function constructStripeWebhookEvent(rawBody, signature) {
  * @sideEffects May update payment, subscription, and notification documents.
  */
 export async function processStripeWebhookEvent(event) {
+  // Step 1: Route the verified Stripe event by its type.
   if (event.type === "checkout.session.completed") {
+    // Step 2a: Completed Checkout activates the subscription.
     return completeStripeCheckoutPayment(event.data.object, event.id);
   }
 
   if (event.type === "checkout.session.expired") {
+    // Step 2b: Expired Checkout closes the local pending payment.
     return finishStripeCheckout(
       event.data.object,
       "cancelled",
@@ -499,6 +512,7 @@ export async function processStripeWebhookEvent(event) {
     );
   }
 
+  // Step 2c: Detect an asynchronous provider payment failure.
   if (event.type === "checkout.session.async_payment_failed") {
     return finishStripeCheckout(
       event.data.object,
@@ -508,6 +522,7 @@ export async function processStripeWebhookEvent(event) {
     );
   }
 
+  // Step 3: Ignore event types this application does not handle.
   return null;
 }
 
@@ -540,6 +555,10 @@ export async function getStripeCheckoutStatus(familyUserId, checkoutSessionId) {
  * @sideEffects Calls Stripe and updates the local payment.
  */
 export async function cancelOwnedStripeCheckout(familyUserId, paymentId) {
+  // Execution sequence:
+  // 1. Load only the caller-owned Stripe payment attempt.
+  // 2. Expire an open hosted Checkout Session when possible.
+  // 3. Persist local cancellation without changing completed payments.
   const stripe = getStripeClient();
   const payment = await SubscriptionPayment.findOne({
     _id: paymentId,

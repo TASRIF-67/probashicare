@@ -140,6 +140,10 @@ export function NotificationBell() {
    * @sideEffects Updates dropdown state and may load notification data.
    */
   async function toggleMenu() {
+    // Execution sequence:
+    // 1. Toggle visibility and stop immediately when closing.
+    // 2. Load the six-item preview only when opening.
+    // 3. Keep shared errors/toasts consistent if loading fails.
     const shouldOpen = !isOpen;
     setIsOpen(shouldOpen);
 
@@ -164,6 +168,10 @@ export function NotificationBell() {
    * @sideEffects May update shared state and always closes the dropdown.
    */
   async function readNotification(notification) {
+    // Execution sequence:
+    // 1. Persist read state only when the item is currently unread.
+    // 2. Close the menu and navigate to the role-safe related page.
+    // 3. Report read failures without blocking navigation cleanup.
     try {
       if (!notification.isRead) {
         await markAsRead(notification._id);
@@ -182,6 +190,10 @@ export function NotificationBell() {
    * @sideEffects Calls the bulk API and updates shared notification state.
    */
   async function handleMarkAllRead() {
+    // Execution sequence:
+    // 1. Disable the bulk action while the shared context updates.
+    // 2. Persist/readjust all notification state and show feedback.
+    // 3. Restore the bulk button in finally.
     try {
       setIsMarkingAll(true);
       await markAllAsRead();

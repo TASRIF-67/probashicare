@@ -112,6 +112,10 @@ export async function getFamilySubscriptionAccess(
   familyUserId,
   nowValue = new Date(),
 ) {
+  // Execution sequence:
+  // 1. Load or create the Family single subscription record.
+  // 2. Synchronize an exact expiry before calculating access.
+  // 3. Return stored subscription data beside effective entitlements.
   let subscription = await getOrCreateFamilySubscription(familyUserId);
 
   subscription = await synchronizeSubscriptionExpiry(subscription, nowValue);
@@ -133,6 +137,10 @@ export async function getFamilySubscriptionAccess(
  * @throws {ApiError} Returns 409 after the one-time trial has been used.
  */
 export async function activateFamilyTrial(familyUserId, nowValue = new Date()) {
+  // Execution sequence:
+  // 1. Validate activation time and ensure a subscription record exists.
+  // 2. Atomically require unused trial history and eligible Core state.
+  // 3. Set exact trial dates and Premium entitlements once.
   const now = new Date(nowValue);
 
   if (Number.isNaN(now.getTime())) {

@@ -119,6 +119,10 @@ export function ResetPasswordPage() {
    * @sideEffects Calls API and updates visible page state.
    */
   async function handleSubmit(event) {
+    // Execution sequence:
+    // 1. Prevent reload and validate both password fields locally.
+    // 2. Stop on field errors; otherwise submit token and replacement password.
+    // 3. Show the outcome and always restore the submit control.
     event.preventDefault();
     const nextErrors = {};
 

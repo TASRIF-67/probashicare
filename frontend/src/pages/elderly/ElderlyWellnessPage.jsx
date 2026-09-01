@@ -453,12 +453,14 @@ export function ElderlyWellnessPage() {
      * @sideEffects Reads APIs and updates page state.
      */
     async function loadWellnessHistory() {
+      // Step 1: Wait until shared subscription access has finished loading.
       if (subscriptionLoading) {
         return;
       }
 
       try {
         // Promise.all runs the two independent Core requests together.
+        // Step 2: Load the profile and current report page together.
         const results = await Promise.all([
           elderlyProfileService.getProfile(profileId),
           wellnessReportService.listElderlyReports(profileId, {
@@ -468,20 +470,24 @@ export function ElderlyWellnessPage() {
         ]);
         const profileData = results[0];
         const reportData = results[1];
+        // Step 3: Decide whether the Premium trend request is allowed.
         const hasPremium = Boolean(subscriptionData?.access?.isPremium);
         let points = [];
 
+        // Step 4: Load protected vital trends only for effective Premium access.
         if (hasPremium) {
           const trendData = await wellnessReportService.getVitalsTrends(profileId);
           points = trendData.points;
         }
 
+        // Step 5: Keep page one as the source of the latest-report feature.
         let latestReport = state.latestReport;
 
         if (page === 1) {
           latestReport = reportData.reports[0] || null;
         }
 
+        // Step 6: Store every successful request result for the next render.
         setState({
           loading: false,
           profile: profileData.profile,
@@ -493,6 +499,7 @@ export function ElderlyWellnessPage() {
           error: "",
         });
       } catch (error) {
+        // Step 7: Convert any request failure into one readable page state.
         const normalizedError = normalizeApiError(error);
 
         setState({

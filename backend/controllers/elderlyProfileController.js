@@ -75,10 +75,12 @@ async function synchronizeOwnerRelationship(profile, link) {
 
 export async function createElderlyProfile(request, response) {
   // Validate cross-field rules before starting a database transaction.
+  // Step 1: Validate the complete request before opening a transaction.
   validateElderlyProfilePayload(request.body);
 
   // 'startSession()' opens a MongoDB session. The session lets the profile
   // and access-link writes run as one transaction.
+  // Step 2: Start one session for the records that must stay consistent.
   const session = await mongoose.startSession();
   let profile;
   let link;
@@ -89,6 +91,7 @@ export async function createElderlyProfile(request, response) {
     // every awaited operation succeeds; otherwise it rolls the writes back.
     await session.withTransaction(async () => {
       // The array form lets Mongoose attach this transaction session to create().
+      // Step 3: Create the main health-profile document.
       const profileDocuments = await ElderlyProfile.create(
         [
           {
@@ -103,6 +106,7 @@ export async function createElderlyProfile(request, response) {
       // Array index zero selects the first and only created profile.
       profile = profileDocuments[0];
 
+      // Step 4: Create the owner access link in the same transaction.
       const linkDocuments = await ElderlyFamilyLink.create(
         [
           {
@@ -125,6 +129,7 @@ export async function createElderlyProfile(request, response) {
     await session.endSession();
   }
 
+  // Step 5: Format the committed profile and permission for the frontend.
   const responseBody = {
     success: true,
     data: {
@@ -150,6 +155,10 @@ export async function createElderlyProfile(request, response) {
  * @sideEffects Reads ElderlyFamilyLink and ElderlyProfile collections.
  */
 export async function listElderlyProfiles(request, response) {
+  // Execution sequence:
+  // 1. Read and validate the requested archive-status filter.
+  // 2. Load caller-owned access links before reading any health profiles.
+  // 3. Fetch linked profiles, restore link order, and format permissions.
   const status = request.query.status || "active";
 
   const allowedStatuses = ["active", "archived", "all"];
@@ -341,6 +350,10 @@ export async function updatePersonalInformation(request, response) {
  * @sideEffects Replaces one embedded medical/contact section in MongoDB.
  */
 export async function updateProfileSection(request, response) {
+  // Execution sequence:
+  // 1. Allow only known section names before dynamic property access.
+  // 2. Validate that section, require editor access, and save its new value.
+  // 3. Return the same permission-aware profile shape used elsewhere.
   const { section } = request.params;
 
   // Restrict dynamic property access to the known editable section names.
@@ -389,6 +402,10 @@ export async function updateProfileSection(request, response) {
  * @sideEffects Marks the ElderlyProfile archived and records the archive time.
  */
 export async function archiveElderlyProfile(request, response) {
+  // Execution sequence:
+  // 1. Require owner permission through the concealed-404 access service.
+  // 2. Soft-delete with status and archivedAt so health history remains.
+  // 3. Save and return the archived profile state.
   // Archiving is owner-only because it removes the profile from active family workflows.
   const { profile, link } = await getAuthorizedElderlyProfile({
     profileId: request.params.profileId,

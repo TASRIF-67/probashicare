@@ -432,6 +432,10 @@ export function FamilySubscriptionPage() {
      * @sideEffects Calls three APIs concurrently and updates page state.
      */
     async function loadSubscriptionPage() {
+      // Execution sequence:
+      // 1. Load plan catalog, effective access, and payment history together.
+      // 2. Store the complete successful page snapshot.
+      // 3. Preserve old data while displaying a normalized request error.
       try {
         // `Promise.all` starts independent requests together and waits until all
         // of them succeed. Destructuring gives each result a readable name.
@@ -525,13 +529,16 @@ export function FamilySubscriptionPage() {
        * @sideEffects Polls caller-owned status, refreshes data, shows a toast,
        * and removes Stripe parameters from the URL.
        */
+      // Flow A: Reconcile browser redirect with authoritative webhook state.
       async function handleStripeReturn() {
         try {
+          // Step 1: Poll only after a successful Stripe return.
           if (stripeResult === "success" && sessionId) {
             let payment = null;
 
             // The webhook can arrive just after the browser redirect. This loop
             // performs a small, bounded number of caller-owned status checks.
+            // Step 2: Retry briefly because webhook delivery may follow redirect.
             for (
               let attempt = 0;
               attempt < STRIPE_STATUS_ATTEMPTS;
@@ -558,17 +565,20 @@ export function FamilySubscriptionPage() {
                 "info",
               );
             }
+          // Step 3: Cancel the owned local payment after a cancelled Checkout.
           } else if (stripeResult === "cancelled" && paymentId) {
             await subscriptionService.cancelStripeCheckout(paymentId);
             showToast("Stripe test checkout was cancelled.", "info");
           }
 
+          // Step 4: Reload access and payment history after reconciliation.
           await loadPage();
         } catch (error) {
           const normalizedError = normalizeApiError(error);
           showToast(normalizedError.message, "error");
         } finally {
           // `replaceState` cleans the address bar without reloading the page.
+          // Step 5: Remove provider parameters without another page load.
           window.history.replaceState({}, "", "/subscription");
         }
       }
@@ -667,6 +677,10 @@ export function FamilySubscriptionPage() {
    * @sideEffects Calls the API and navigates away to Stripe Checkout.
    */
   async function beginStripeCheckout() {
+    // Execution sequence:
+    // 1. Require a selected trusted plan and lock checkout actions.
+    // 2. Create the server-owned Stripe Session and redirect to its URL.
+    // 3. Restore local controls only when session creation fails.
     if (!checkout?.plan) {
       return;
     }
@@ -691,6 +705,10 @@ export function FamilySubscriptionPage() {
    * @sideEffects Calls the API and places the payment in checkout state.
    */
   async function beginPrototypeCheckout() {
+    // Execution sequence:
+    // 1. Require a selected plan and build the prototype request body.
+    // 2. Create pending payment history and attach it to modal state.
+    // 3. Refresh history and always unlock checkout controls.
     if (!checkout?.plan) {
       return;
     }
@@ -723,16 +741,20 @@ export function FamilySubscriptionPage() {
    * @returns {Promise<void>}
    * @sideEffects Calls the settlement API, closes checkout, and refreshes data.
    */
+  // Flow B: Settle one development payment using the chosen test outcome.
   async function finishPrototypeCheckout(action) {
+    // Step 1: Read the pending local payment selected by checkout.
     const paymentId = checkout?.payment?._id;
 
     if (!paymentId) {
       return;
     }
 
+    // Step 2: Disable other checkout actions while settlement runs.
     setBusy(action);
 
     try {
+      // Step 3: Call exactly one backend transition for the selected outcome.
       if (action === "success") {
         await subscriptionService.simulateSuccess(paymentId);
         showToast("Prototype payment completed. Premium is active.", "success");
@@ -747,7 +769,9 @@ export function FamilySubscriptionPage() {
       }
 
       // `Set.add` stores a unique payment ID so cleanup will not cancel it.
+      // Step 4: Prevent unmount cleanup from cancelling a settled payment.
       settledPaymentIds.current.add(paymentId);
+      // Step 5: Close checkout and refresh access/history after success.
       setCheckout(null);
       await loadPage();
     } catch (error) {
@@ -764,6 +788,10 @@ export function FamilySubscriptionPage() {
    * @sideEffects May cancel a payment, refresh history, and close the modal.
    */
   async function closeCheckout() {
+    // Execution sequence:
+    // 1. Stop while another settlement action is running.
+    // 2. Close immediately when no pending payment exists.
+    // 3. Otherwise cancel the unfinished attempt, refresh, and close.
     if (busy) {
       return;
     }
@@ -797,6 +825,10 @@ export function FamilySubscriptionPage() {
    * @sideEffects Persists dismissal and updates page state.
    */
   async function dismissReminder() {
+    // Execution sequence:
+    // 1. Require a visible reminder and an idle page.
+    // 2. Persist the 24-hour dismissal through the backend.
+    // 3. Remove it locally or show an error, then clear busy state.
     const reminderId = state.reminder?._id;
 
     if (!reminderId || busy) {

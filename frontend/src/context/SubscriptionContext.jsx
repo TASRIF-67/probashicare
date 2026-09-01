@@ -32,6 +32,10 @@ export function SubscriptionProvider({ children }) {
    * @sideEffects Calls the subscription API and updates shared React state.
    */
   const refreshSubscription = useCallback(async () => {
+    // Execution sequence:
+    // 1. Reset shared access for non-Family sessions.
+    // 2. Preserve current data while requesting authoritative access.
+    // 3. Store subscription/access data or a safe context error.
     if (user?.role !== "family") {
       setState({
         loading: false,

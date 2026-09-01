@@ -401,6 +401,11 @@ export function analyzeWellnessReportValues(reports) {
  * @sideEffects Reads reports and upserts WellnessAlert documents.
  */
 export async function analyzeAndCreateWellnessAlerts(elderlyProfileId) {
+  // Execution sequence:
+  // 1. Analyze the newest submitted reports with deterministic rules.
+  // 2. Build a stable key for each rule/report combination.
+  // 3. Atomically upsert alerts so repeated analysis stays idempotent.
+  // 4. Return the analysis and persisted alerts.
   const analysis = await analyzeRecentWellnessReports(elderlyProfileId);
   const alerts = [];
 

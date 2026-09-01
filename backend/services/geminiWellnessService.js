@@ -128,6 +128,11 @@ function validateGeminiOutput(value) {
  * @sideEffects Sends only whitelisted anonymous values to the Gemini API.
  */
 export async function generateGeminiWellnessSummary(reports, options = {}) {
+  // Execution sequence:
+  // 1. Resolve configuration and sanitize reports to an anonymous whitelist.
+  // 2. Build the constrained prompt/schema and call Gemini with a timeout.
+  // 3. Parse and validate provider JSON as untrusted input.
+  // 4. Return null on failure so deterministic fallback can run.
   let apiKey = env.geminiApiKey;
 
   // Tests can intentionally supply an API key, including an empty string.

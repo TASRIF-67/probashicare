@@ -38,6 +38,7 @@ export function NotificationProvider({ children }) {
    * @returns {Promise<void>} Resolves after the count is updated or skipped.
    * @sideEffects Calls the unread-count API and updates React state.
    */
+  // Flow A: Refresh only the small unread badge value.
   const refreshUnreadCount = useCallback(async () => {
     if (!user) {
       setUnreadCount(0);
@@ -63,6 +64,7 @@ export function NotificationProvider({ children }) {
    * }>} Data returned by the notification API.
    * @sideEffects Calls the list API and updates shared React state.
    */
+  // Flow B: Load dropdown/list records and update shared state.
   const loadNotifications = useCallback(
     async (options = {}) => {
       if (!user) {
@@ -73,15 +75,19 @@ export function NotificationProvider({ children }) {
         };
       }
 
+      // Step 1: Begin shared loading state and clear the old error.
       setIsLoading(true);
       setError("");
 
       try {
+        // Step 2: Request the current user notification page.
         const data = await notificationService.listNotifications(options);
 
+        // Step 3: Store records and unread count for every context consumer.
         setNotifications(data.notifications);
         setUnreadCount(data.unreadCount);
 
+        // Step 4: Also return data to the bell or page that requested it.
         return data;
       } catch {
         const message = "Notifications could not be loaded.";
@@ -104,6 +110,7 @@ export function NotificationProvider({ children }) {
    * @returns {Promise<void>} Resolves after remote and local state are updated.
    * @sideEffects Sends a PATCH request and updates shared React state.
    */
+  // Flow C: Persist one read action, then mirror it in local shared state.
   const markAsRead = useCallback(async (notificationId) => {
     const data = await notificationService.markAsRead(notificationId);
 

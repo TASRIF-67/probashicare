@@ -68,6 +68,10 @@ export function ForgotPasswordPage() {
    * @sideEffects Calls API and updates visible feedback.
    */
   async function handleSubmit(event) {
+    // Execution sequence:
+    // 1. Prevent reload, lock the form, and normalize the email.
+    // 2. Request a privacy-safe reset response from the backend.
+    // 3. Show success/error and always unlock submission.
     event.preventDefault();
     setIsSubmitting(true);
     setError("");

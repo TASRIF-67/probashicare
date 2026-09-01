@@ -95,6 +95,10 @@ function getVerificationMode(role) {
  * @sideEffects Replaces verification records and sends/prints one email link.
  */
 async function issueVerificationEmail(user) {
+  // Execution sequence:
+  // 1. Generate a raw one-time token and exact expiry.
+  // 2. Delete old tokens and store only the new token hash.
+  // 3. Email the raw-token URL; remove the hash record if delivery fails.
   const token = createVerificationToken();
   const expiresAt = new Date(
     Date.now() +
@@ -141,6 +145,10 @@ async function issueVerificationEmail(user) {
  * @sideEffects Replaces reset record and sends/prints one reset link.
  */
 async function issuePasswordResetEmail(user) {
+  // Execution sequence:
+  // 1. Generate a short-lived raw reset token and expiry.
+  // 2. Replace old reset records with only the token hash.
+  // 3. Send the raw-token URL and clean up on delivery failure.
   const token = createPasswordResetToken();
   const expiresAt = new Date(
     Date.now() +
@@ -350,6 +358,11 @@ export async function caregiverSignup(request, response) {
  * @sideEffects Hashes password, creates User/token, and sends email.
  */
 export async function signup(request, response) {
+  // Execution sequence:
+  // 1. Reject an existing email and hash the validated password.
+  // 2. Create an unverified Family account.
+  // 3. Send verification, rolling back the new account if delivery fails.
+  // 4. Return the public account state without creating a login session.
   const {
     name,
     email,
@@ -509,6 +522,10 @@ export async function forgotPassword(request, response) {
  * @sideEffects Updates password, deletes reset tokens, and clears session.
  */
 export async function resetPassword(request, response) {
+  // Execution sequence:
+  // 1. Hash the URL token and load an unexpired reset record.
+  // 2. Load the user, replace the password hash, and invalidate old resets.
+  // 3. Return success without exposing token validity details beyond the API contract.
   const tokenHash = hashPasswordResetToken(
     request.body.token,
   );
@@ -646,6 +663,10 @@ export async function googleLogin(request, response) {
  * @sideEffects Reads token/User and may mark both records.
  */
 export async function verifyEmail(request, response) {
+  // Execution sequence:
+  // 1. Validate and hash the raw URL token.
+  // 2. Load the unexpired token record and its account.
+  // 3. Mark email verified, consume verification tokens, and complete login.
   const rawToken = request.query.token;
 
   if (
@@ -807,6 +828,7 @@ export async function updateFamilyAccount(
   response,
 ) {
   // Password is hidden by default and selected only for this security check.
+  // Step 1: Load the Family account with its hidden password.
   const account = await User.findById(
     request.user._id,
   ).select("+password");
@@ -818,11 +840,13 @@ export async function updateFamilyAccount(
     );
   }
 
+  // Step 2: Preserve identity in case verification delivery fails.
   const previousState = {
     name: account.name,
     email: account.email,
     isVerified: account.isVerified,
   };
+  // Step 3: Decide whether sensitive email-change rules are required.
   const emailChanged =
     request.body.email !== previousState.email;
 
@@ -849,6 +873,7 @@ export async function updateFamilyAccount(
       );
     }
 
+    // Step 4: Verify the current password before changing sign-in identity.
     const passwordMatches = await bcrypt.compare(
       request.body.currentPassword,
       account.password,
@@ -865,6 +890,7 @@ export async function updateFamilyAccount(
       );
     }
 
+    // Step 5: Reject an email already owned by another account.
     const emailOwner = await User.findOne({
       email: request.body.email,
       _id: {
@@ -885,6 +911,7 @@ export async function updateFamilyAccount(
     }
   }
 
+  // Step 6: Apply the validated name and email to the document.
   account.name = request.body.name;
   account.email = request.body.email;
 
@@ -895,6 +922,7 @@ export async function updateFamilyAccount(
   }
 
   try {
+    // Step 7: Save first, then send verification for a changed email.
     await account.save();
 
     if (emailChanged) {
@@ -916,6 +944,7 @@ export async function updateFamilyAccount(
     if (emailChanged) {
       // SMTP failure must not leave the owner locked out at an email address
       // that never received a verification link.
+      // Step 8: Roll back identity when email delivery fails.
       account.name = previousState.name;
       account.email = previousState.email;
       account.isVerified =
@@ -931,6 +960,7 @@ export async function updateFamilyAccount(
   }
 
   if (emailChanged) {
+    // Step 9a: End the session until the new email is verified.
     response.clearCookie(
       "session",
       SESSION_COOKIE_CLEAR_OPTIONS,
@@ -947,6 +977,7 @@ export async function updateFamilyAccount(
     return;
   }
 
+  // Step 9b: A name-only update keeps the session and returns the user.
   const linked =
     await hasLinkedElderlyProfiles(
       account._id.toString(),

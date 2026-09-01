@@ -36,6 +36,10 @@ export function AuthProvider({ children }) {
        * @sideEffects Calls the API and updates user/loading state.
        */
       async function restoreSession() {
+        // Execution sequence:
+        // 1. Ask the cookie-authenticated API for the current public user.
+        // 2. Store the user only while the provider remains mounted.
+        // 3. Treat an unavailable session as signed out and finish boot loading.
         try {
           const data =
             await authService.getCurrentUser();
@@ -88,6 +92,10 @@ export function AuthProvider({ children }) {
    * @sideEffects Calls API and updates context state.
    */
   async function loginWithGoogle(credential) {
+    // Execution sequence:
+    // 1. Send the Google credential to backend verification.
+    // 2. Store the standardized public user returned by the API.
+    // 3. Return that user for role-aware page navigation.
     const data =
       await authService.loginWithGoogle(credential);
     setUser(data.user);
@@ -100,6 +108,9 @@ export function AuthProvider({ children }) {
    * @sideEffects Calls logout API and updates context state.
    */
   async function logout() {
+    // Execution sequence:
+    // 1. Ask the backend to clear the HttpOnly session cookie.
+    // 2. Clear shared React identity only after the request finishes.
     await authService.logout();
     setUser(null);
   }
@@ -119,6 +130,9 @@ export function AuthProvider({ children }) {
    * @sideEffects Calls /auth/me and updates context state.
    */
   async function refreshUser() {
+    // Execution sequence:
+    // 1. Reload authoritative public identity and onboarding state.
+    // 2. Replace shared user state and return it to the caller.
     const data =
       await authService.getCurrentUser();
     setUser(data.user);

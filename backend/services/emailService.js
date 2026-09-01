@@ -143,6 +143,10 @@ export async function sendVerificationEmail({
   name,
   verificationUrl,
 }) {
+  // Execution sequence:
+  // 1. Use console delivery only when explicitly enabled for development.
+  // 2. Escape user text and construct the verification message.
+  // 3. Send through the shared configured Nodemailer transporter.
   if (useDevelopmentConsoleDelivery()) {
     return printDevelopmentLink(
       "verification",

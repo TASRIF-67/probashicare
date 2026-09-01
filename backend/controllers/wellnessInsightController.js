@@ -46,6 +46,10 @@ async function getAuthorizedAlert(alertId, familyUserId) {
  * @sideEffects Reads access records and WellnessAlert documents.
  */
 export async function listWellnessAlerts(request, response) {
+  // Execution sequence:
+  // 1. Validate pagination and authorize the elderly profile.
+  // 2. Build status and severity filters from validated query values.
+  // 3. Load page records and totals concurrently, then respond.
   // Number converts query text into a numeric page. Invalid text becomes NaN.
   const page = Number(request.query.page || 1);
   const limit = Number(request.query.limit || 3);
@@ -209,6 +213,10 @@ export async function acknowledgeWellnessAlert(request, response) {
  * @sideEffects Atomically resolves one active or acknowledged WellnessAlert.
  */
 export async function resolveWellnessAlert(request, response) {
+  // Execution sequence:
+  // 1. Authorize the alert and linked elderly profile.
+  // 2. Atomically move only unresolved state to resolved.
+  // 3. Store resolution metadata and return the updated alert.
   await getAuthorizedAlert(request.params.alertId, request.user._id);
 
   // $in permits either unresolved status. Including status in this atomic

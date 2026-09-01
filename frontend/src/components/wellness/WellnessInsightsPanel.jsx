@@ -98,6 +98,10 @@ export function WellnessInsightsPanel({ profileId }) {
    * @sideEffects Calls the alert API and updates state.
    */
   async function loadAlerts() {
+    // Execution sequence:
+    // 1. Build the active page/status/severity query.
+    // 2. Load authorized alerts and summary counts.
+    // 3. Store data or normalized error and finish loading.
     setLoadingAlerts(true);
     setAlertError("");
     // This plain object becomes URL query parameters in the frontend service.
@@ -231,6 +235,10 @@ export function WellnessInsightsPanel({ profileId }) {
    * @sideEffects Updates the API, closes the modal, shows a toast, and reloads alerts.
    */
   async function resolve() {
+    // Execution sequence:
+    // 1. Require a selected alert and a meaningful resolution note.
+    // 2. Persist the status transition and refresh the current alert page.
+    // 3. Close/reset the modal or surface a normalized error.
     if (!resolvingAlert || resolutionNote.trim().length < 3) {
       return;
     }
@@ -258,11 +266,15 @@ export function WellnessInsightsPanel({ profileId }) {
    * @sideEffects Calls the generation API, updates state, and may show a toast.
    */
   async function generate() {
+    // Step 1: Disable repeated generation and clear the previous error.
     setGeneratingInsight(true);
     setInsightError("");
     try {
+      // Step 2: Ask the backend to authorize, generate or reuse, and save.
       const data = await wellnessInsightService.generateInsight(profileId);
+      // Step 3: Store the returned insight so React renders the summary.
       setInsight(data.insight);
+      // Step 4: Explain which generation path produced the visible result.
       if (data.generatedBy === "fallback") {
         showToast(
           "Gemini was unavailable. A rule-based summary was created.",
@@ -274,8 +286,10 @@ export function WellnessInsightsPanel({ profileId }) {
         showToast("Wellness summary generated.", "success");
       }
     } catch (error) {
+      // Step 5: Show a normalized API error without replacing old insight data.
       setInsightError(normalizeApiError(error).message);
     } finally {
+      // Step 6: Re-enable generation after success or failure.
       setGeneratingInsight(false);
     }
   }
