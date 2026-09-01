@@ -23,13 +23,15 @@ This order begins with normal CRUD and gradually introduces authorization, trans
 ## Read these first
 
 1. **START_HERE_LIVE_MODIFICATION.md**: turn an exam question into files, functions, an API contract, and a safe implementation order.
-2. **LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md**: the highest-value full-stack blocks first, followed by moderate-to-advanced JavaScript, React, Express, MongoDB, security, testing, and deployment.
-3. **COPY_PASTE_PATTERNS.md**: requirement-to-pattern index and reusable project-compatible blocks.
-4. The full-stack guide for the feature being practised.
+2. **COMMANDS_QUICK_REFERENCE.md**: PowerShell, npm, verification, Git, database-script, port, and Stripe commands in one place.
+3. **LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md**: the highest-value full-stack blocks first, followed by moderate-to-advanced JavaScript, React, Express, MongoDB, security, testing, and deployment.
+4. **COPY_PASTE_PATTERNS.md**: requirement-to-pattern index and reusable project-compatible blocks.
+5. The full-stack guide for the feature being practised.
 
 ## Documents
 
 - **START_HERE_LIVE_MODIFICATION.md**: first-five-minute decision guide, request tracing, layer ownership, implementation order, debugging, Copilot use, and exam timing.
+- **COMMANDS_QUICK_REFERENCE.md**: command-only reference for setup, running, testing, Git operations, branch switching, safe cleanup, ports, and local Stripe webhooks.
 - **LIVE_TEST_PRIORITY_AND_ADVANCED_REFERENCE.md**: urgent exam workflow plus moderate-to-advanced concepts and code.
 - **MY_FEATURES_FILE_MAP.md**: where each assigned feature lives.
 - **MY_FEATURE_FUNCTION_INVENTORY.md**: the necessary functions in each feature file and their responsibilities.
