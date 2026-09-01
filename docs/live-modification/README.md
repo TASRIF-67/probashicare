@@ -27,6 +27,7 @@ This folder contains the study and copy-paste references for the practice/live-m
 | --- | --- |
 | Understand controller/service execution order | [Backend function flow](01-foundations/BACKEND_FUNCTION_FLOW_GUIDE.md) |
 | Understand React handler/effect execution order | [Frontend function flow](01-foundations/FRONTEND_FUNCTION_FLOW_GUIDE.md) |
+| Study React and Router hooks for viva questions | [React hooks and Router guide](01-foundations/REACT_HOOKS_AND_ROUTER_GUIDE.md) |
 | Add or change a button/page/form | [Frontend guide](02-copy-paste/FRONTEND_COPY_PASTE_GUIDE.md) |
 | Add or change an API/query/schema | [Backend guide](02-copy-paste/BACKEND_COPY_PASTE_GUIDE.md) |
 | Do not know which file or folder to edit | [Project structure and responsibilities](00-start-here/PROJECT_STRUCTURE_AND_FILE_RESPONSIBILITIES.md) |
