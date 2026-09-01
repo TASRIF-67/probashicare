@@ -199,11 +199,11 @@ function PaymentHistoryRow({ payment }) {
  * @param {boolean} props.stripeEnabled - Whether Stripe is configured.
  * @param {string} props.paymentMethod - Selected prototype method.
  * @param {string} props.busy - Active operation name.
- * @param {(event: import("react").ChangeEvent<HTMLSelectElement>) => void} props.onPaymentMethodChange - Method handler.
+ * @param {Function} props.onPaymentMethodChange - Payment-method handler.
  * @param {() => Promise<void>} props.onClose - Close handler.
  * @param {() => Promise<void>} props.onBeginPrototype - Prototype handler.
  * @param {() => Promise<void>} props.onBeginStripe - Stripe handler.
- * @param {(action: "success"|"failure"|"cancel") => Promise<void>} props.onFinishPrototype - Settlement handler.
+ * @param {Function} props.onFinishPrototype - Prototype settlement handler.
  * @returns {import("react").ReactElement} Checkout modal.
  * @sideEffects Calls supplied handlers after user actions.
  */
@@ -426,6 +426,11 @@ export function FamilySubscriptionPage() {
    * @sideEffects Calls three APIs concurrently and updates page state.
    */
   const loadPage = useCallback(
+    /**
+     * Implements the memoized subscription-page loading operation.
+     * @returns {Promise<void>} Resolves after page state contains the latest data.
+     * @sideEffects Calls three APIs concurrently and updates page state.
+     */
     async function loadSubscriptionPage() {
       try {
         // `Promise.all` starts independent requests together and waits until all

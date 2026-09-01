@@ -107,22 +107,225 @@ export function WellnessReportDetailPage() {
     loadReport();
   }, [reportId]);
 
-  if (state.loading) return <main><Header /><div className="page-loader"><span className="spinner" /> Loading wellness report</div></main>;
-  if (state.error) return <main><Header /><div className="center-page"><h1>Report unavailable</h1><p>{state.error}</p><Link className="button button--secondary" to={backPath}><ArrowLeftIcon size={18} /> Return to reports</Link></div></main>;
+if (state.loading) {
+    return (
+      <main>
+        <Header />
+        <div className="page-loader">
+          <span className="spinner" />
+          Loading wellness report
+        </div>
+      </main>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <main>
+        <Header />
+        <div className="center-page">
+          <h1>Report unavailable</h1>
+          <p>{state.error}</p>
+          <Link
+            className="button button--secondary"
+            to={backPath}
+          >
+            <ArrowLeftIcon size={18} />
+            Return to reports
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const report = state.report;
+  let pageClassName = "feature-page wellness-detail-page";
+
+  if (isCaregiver) {
+    pageClassName = "caregiver-page wellness-detail-page";
+  }
+
+  let statusBadgeClassName = "status-badge";
+
+  if (report.status === "submitted") {
+    statusBadgeClassName += " status-badge--success";
+  }
+
+  const elderlyName =
+    report.elderly?.preferredName || report.elderly?.fullName;
+  const caregiverName = report.caregiver?.name || "Caregiver";
+  let exerciseDuration = "Not recorded";
+  let bloodPressure = "Not recorded";
+  let bloodSugar = "Not recorded";
+  let weight = "Not recorded";
+
+  if (report.exerciseDurationMinutes !== null
+      && report.exerciseDurationMinutes !== undefined) {
+    exerciseDuration = report.exerciseDurationMinutes + " minutes";
+  }
+
+  if (report.vitals?.systolic !== null
+      && report.vitals?.systolic !== undefined) {
+    bloodPressure =
+      report.vitals.systolic
+      + "/"
+      + report.vitals.diastolic
+      + " mmHg";
+  }
+
+  if (report.vitals?.bloodSugar !== null
+      && report.vitals?.bloodSugar !== undefined) {
+    bloodSugar =
+      report.vitals.bloodSugar
+      + " mg/dL ("
+      + humanize(report.vitals.bloodSugarContext)
+      + ")";
+  }
+
+  if (report.vitals?.weightKg !== null
+      && report.vitals?.weightKg !== undefined) {
+    weight = report.vitals.weightKg + " kg";
+  }
+
   return (
     <main>
       <Header />
-      <div className={isCaregiver ? "caregiver-page wellness-detail-page" : "feature-page wellness-detail-page"}>
-        <Link className="profile-back-link" to={backPath}><ArrowLeftIcon size={17} /> Wellness reports</Link>
-        <section className="wellness-detail-hero"><div><span className="eyebrow">{report.status} care record</span><h1>{report.elderly?.preferredName || report.elderly?.fullName}</h1><p>Visit on {formatDateTime(report.visitDate)} · Reported by {report.caregiver?.name || "Caregiver"}</p></div><span className={`status-badge ${report.status === "submitted" ? "status-badge--success" : ""}`}>{report.status}</span></section>
+      <div className={pageClassName}>
+        <Link
+          className="profile-back-link"
+          to={backPath}
+        >
+          <ArrowLeftIcon size={17} />
+          Wellness reports
+        </Link>
+
+        <section className="wellness-detail-hero">
+          <div>
+            <span className="eyebrow">
+              {report.status} care record
+            </span>
+            <h1>{elderlyName}</h1>
+            <p>
+              Visit on {formatDateTime(report.visitDate)}
+              {" · "}
+              Reported by {caregiverName}
+            </p>
+          </div>
+          <span className={statusBadgeClassName}>
+            {report.status}
+          </span>
+        </section>
+
         <div className="wellness-detail-grid">
-          <Card className="wellness-detail-card"><div className="wellness-detail-card__heading"><span><ActivityIcon /></span><h2>Visit and wellness</h2></div><dl><ReportDetail label="Check in" value={formatDateTime(report.checkInAt)} /><ReportDetail label="Check out" value={formatDateTime(report.checkOutAt)} /><ReportDetail label="Mood" value={humanize(report.mood)} /><ReportDetail label="Exercise" value={report.exerciseDurationMinutes == null ? "Not recorded" : `${report.exerciseDurationMinutes} minutes`} /><ReportDetail label="Next visit" value={formatDateTime(report.nextVisitDate)} /></dl></Card>
-          <Card className="wellness-detail-card"><div className="wellness-detail-card__heading"><span><UtensilsIcon /></span><h2>Meals</h2></div><dl><ReportDetail label="Meal status" value={humanize(report.mealStatus)} /></dl><p>{report.mealNotes || "No meal notes were added."}</p></Card>
-          <Card className="wellness-detail-card"><div className="wellness-detail-card__heading"><span><PillIcon /></span><h2>Medicine summary</h2></div><dl><ReportDetail label="Intake status" value={humanize(report.medicineIntakeStatus)} /></dl><p>{report.medicineNotes || "No medicine notes were added."}</p></Card>
-          <Card className="wellness-detail-card wellness-detail-card--wide"><div className="wellness-detail-card__heading"><span><HeartPulseIcon /></span><h2>Vitals</h2></div><dl className="wellness-vitals-detail"><ReportDetail label="Blood pressure" value={report.vitals?.systolic == null ? "Not recorded" : `${report.vitals.systolic}/${report.vitals.diastolic} mmHg`} /><ReportDetail label="Blood sugar" value={report.vitals?.bloodSugar == null ? "Not recorded" : `${report.vitals.bloodSugar} mg/dL (${humanize(report.vitals.bloodSugarContext)})`} /><ReportDetail label="Weight" value={report.vitals?.weightKg == null ? "Not recorded" : `${report.vitals.weightKg} kg`} /><ReportDetail label="Measured at" value={formatDateTime(report.vitals?.measuredAt)} /></dl></Card>
-          <Card className="wellness-detail-card wellness-detail-card--wide"><div className="wellness-detail-card__heading"><span><ActivityIcon /></span><h2>Health observations</h2></div><p>{report.observations || "No health observations were added."}</p>{report.caregiverNotes && <div className="wellness-handoff"><strong>Caregiver handoff</strong><p>{report.caregiverNotes}</p></div>}</Card>
+          <Card className="wellness-detail-card">
+            <div className="wellness-detail-card__heading">
+              <span>
+                <ActivityIcon />
+              </span>
+              <h2>Visit and wellness</h2>
+            </div>
+            <dl>
+              <ReportDetail
+                label="Check in"
+                value={formatDateTime(report.checkInAt)}
+              />
+              <ReportDetail
+                label="Check out"
+                value={formatDateTime(report.checkOutAt)}
+              />
+              <ReportDetail
+                label="Mood"
+                value={humanize(report.mood)}
+              />
+              <ReportDetail
+                label="Exercise"
+                value={exerciseDuration}
+              />
+              <ReportDetail
+                label="Next visit"
+                value={formatDateTime(report.nextVisitDate)}
+              />
+            </dl>
+          </Card>
+
+          <Card className="wellness-detail-card">
+            <div className="wellness-detail-card__heading">
+              <span>
+                <UtensilsIcon />
+              </span>
+              <h2>Meals</h2>
+            </div>
+            <dl>
+              <ReportDetail
+                label="Meal status"
+                value={humanize(report.mealStatus)}
+              />
+            </dl>
+            <p>{report.mealNotes || "No meal notes were added."}</p>
+          </Card>
+
+          <Card className="wellness-detail-card">
+            <div className="wellness-detail-card__heading">
+              <span>
+                <PillIcon />
+              </span>
+              <h2>Medicine summary</h2>
+            </div>
+            <dl>
+              <ReportDetail
+                label="Intake status"
+                value={humanize(report.medicineIntakeStatus)}
+              />
+            </dl>
+            <p>
+              {report.medicineNotes || "No medicine notes were added."}
+            </p>
+          </Card>
+
+          <Card className="wellness-detail-card wellness-detail-card--wide">
+            <div className="wellness-detail-card__heading">
+              <span>
+                <HeartPulseIcon />
+              </span>
+              <h2>Vitals</h2>
+            </div>
+            <dl className="wellness-vitals-detail">
+              <ReportDetail
+                label="Blood pressure"
+                value={bloodPressure}
+              />
+              <ReportDetail
+                label="Blood sugar"
+                value={bloodSugar}
+              />
+              <ReportDetail
+                label="Weight"
+                value={weight}
+              />
+              <ReportDetail
+                label="Measured at"
+                value={formatDateTime(report.vitals?.measuredAt)}
+              />
+            </dl>
+          </Card>
+
+          <Card className="wellness-detail-card wellness-detail-card--wide">
+            <div className="wellness-detail-card__heading">
+              <span>
+                <ActivityIcon />
+              </span>
+              <h2>Health observations</h2>
+            </div>
+            <p>
+              {report.observations || "No health observations were added."}
+            </p>
+            {report.caregiverNotes && (
+              <div className="wellness-handoff">
+                <strong>Caregiver handoff</strong>
+                <p>{report.caregiverNotes}</p>
+              </div>
+            )}
+          </Card>
         </div>
       </div>
     </main>

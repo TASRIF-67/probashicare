@@ -139,7 +139,10 @@ function humanize(value) {
 
 /**
  * Renders one icon-supported personal detail.
- * @param {{icon: import("react").ComponentType, label: string, value: import("react").ReactNode}} props - Detail icon, label, and value.
+ * @param {object} props - Detail presentation.
+ * @param {import("react").ComponentType} props.icon - Detail icon.
+ * @param {string} props.label - Field label.
+ * @param {import("react").ReactNode} props.value - Displayed field value.
  * @returns {import("react").ReactElement} Definition-list item.
  * @sideEffects None.
  */

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AppHeader } from "../../components/AppHeader.jsx";
 import { Card } from "../../components/Card.jsx";
@@ -236,7 +236,10 @@ function getWellnessAccessPresentation(subscriptionData) {
 /**
  * Displays the identity, report count, subscription access, and subtle health
  * signal that introduce one elderly person's wellness workspace.
- * @param {{profileName: string, reportCount: number, accessPresentation: {label: string, tone: string}}} props - Wellness heading data.
+ * @param {object} props - Wellness heading data.
+ * @param {string} props.profileName - Readable elderly profile name.
+ * @param {number} props.reportCount - Number of submitted reports.
+ * @param {{label: string, tone: string}} props.accessPresentation - Access badge.
  * @returns {import("react").ReactElement} Dedicated wellness page hero.
  * @sideEffects None.
  */
@@ -318,7 +321,10 @@ function WellnessEmptyState() {
 /**
  * Displays submitted wellness reports using consistent desktop columns and
  * readable mobile report cards.
- * @param {{reports: object[], profileId: string, reportCount: number}} props - Current report page and profile identity.
+ * @param {object} props - Current report page and profile identity.
+ * @param {object[]} props.reports - Reports shown on the current page.
+ * @param {string} props.profileId - Authorized elderly profile ID.
+ * @param {number} props.reportCount - Total number of submitted reports.
  * @returns {import("react").ReactElement} Report-history table.
  * @sideEffects React Router navigates when a report row is selected.
  */
@@ -455,7 +461,10 @@ export function ElderlyWellnessPage() {
         // Promise.all runs the two independent Core requests together.
         const results = await Promise.all([
           elderlyProfileService.getProfile(profileId),
-          wellnessReportService.listElderlyReports(profileId, { page, limit: 3 }),
+          wellnessReportService.listElderlyReports(profileId, {
+            page,
+            limit: 3,
+          }),
         ]);
         const profileData = results[0];
         const reportData = results[1];
@@ -467,11 +476,17 @@ export function ElderlyWellnessPage() {
           points = trendData.points;
         }
 
+        let latestReport = state.latestReport;
+
+        if (page === 1) {
+          latestReport = reportData.reports[0] || null;
+        }
+
         setState({
           loading: false,
           profile: profileData.profile,
           reports: reportData.reports,
-          latestReport: page === 1 ? reportData.reports[0] || null : state.latestReport,
+          latestReport,
           pagination: reportData.pagination,
           points,
           hasPremium,
@@ -496,8 +511,36 @@ export function ElderlyWellnessPage() {
     loadWellnessHistory();
   }, [page, profileId, subscriptionData, subscriptionLoading]);
 
-  if (state.loading || subscriptionLoading) return <main><AppHeader /><div className="page-loader"><span className="spinner" /> Loading wellness history</div></main>;
-  if (state.error) return <main><AppHeader /><div className="center-page"><h1>Wellness history unavailable</h1><p>{state.error}</p><Link className="button button--secondary" to="/wellness"><ArrowLeftIcon size={18} /> Return to wellness profiles</Link></div></main>;
+  if (state.loading || subscriptionLoading) {
+    return (
+      <main>
+        <AppHeader />
+        <div className="page-loader">
+          <span className="spinner" />
+          Loading wellness history
+        </div>
+      </main>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <main>
+        <AppHeader />
+        <div className="center-page">
+          <h1>Wellness history unavailable</h1>
+          <p>{state.error}</p>
+          <Link
+            className="button button--secondary"
+            to="/wellness"
+          >
+            <ArrowLeftIcon size={18} />
+            Return to wellness profiles
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const latest = state.latestReport;
   const personal = state.profile.personalInformation;
@@ -572,7 +615,16 @@ export function ElderlyWellnessPage() {
           profileId={profileId}
           reportCount={reportCount}
         />
-        {state.pagination && <Pagination page={state.pagination.page} pages={state.pagination.pages} total={state.pagination.total} label="reports" disabled={state.loading} onPageChange={setPage} />}
+        {state.pagination && (
+          <Pagination
+            page={state.pagination.page}
+            pages={state.pagination.pages}
+            total={state.pagination.total}
+            label="reports"
+            disabled={state.loading}
+            onPageChange={setPage}
+          />
+        )}
       </div>
     </main>
   );

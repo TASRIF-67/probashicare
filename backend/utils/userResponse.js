@@ -3,7 +3,7 @@
  * @param {import("../models/User.js").User} user - Mongoose User document.
  * @param {boolean} [hasLinkedElderlyProfiles=false] - Onboarding completion.
  * @param {string|null} [caregiverApplicationStatus=null] - Caregiver status.
- * @returns {{id: string, name: string, email: string, role: string, isVerified: boolean, hasLinkedElderlyProfiles: boolean, caregiverApplicationStatus: string|null}} Public fields.
+ * @returns {object} Public authentication and onboarding fields.
  * @sideEffects None.
  */
 export function toPublicUser(

@@ -155,7 +155,7 @@ export function AuthProvider({ children }) {
 
 /**
  * Reads session state and actions from AuthProvider.
- * @returns {{user: object|null, isLoading: boolean, login: Function, loginWithGoogle: Function, logout: Function, clearSession: Function, refreshUser: Function}} Auth context.
+ * @returns {object} Current user, loading state, and authentication actions.
  * @sideEffects None.
  */
 export function useAuth() {

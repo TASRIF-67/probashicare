@@ -9,7 +9,12 @@ import { normalizeApiError } from "../../services/api.js";
 import { wellnessAlertService } from "../../services/wellnessAlertService.js";
 import { wellnessInsightService } from "../../services/wellnessInsightService.js";
 
-/** Formats a date for display. @param {string|Date|null} value - Date value. @returns {string} Localized date. @sideEffects None. */
+/**
+ * Formats a stored date for display in the family wellness interface.
+ * @param {string|Date|null} value - Date value returned by the API.
+ * @returns {string} Localized date or a fallback label.
+ * @sideEffects None.
+ */
 function formatDate(value) {
   if (!value) {
     return "Not available";
@@ -25,7 +30,12 @@ function formatDate(value) {
   return formatter.format(date);
 }
 
-/** Makes an enum readable. @param {string} value - Enum value. @returns {string} Display label. @sideEffects None. */
+/**
+ * Converts an internal underscore-separated value into a readable label.
+ * @param {string} value - Enum value returned by the API.
+ * @returns {string} Capitalized display label.
+ * @sideEffects None.
+ */
 function humanize(value) {
   // String converts the value to text. replaceAll changes every underscore.
   const text = String(value || "").replaceAll("_", " ");
@@ -150,7 +160,12 @@ export function WellnessInsightsPanel({ profileId }) {
     loadInsight();
   }, [profileId]);
 
-  /** Changes one list filter. @param {import("react").ChangeEvent<HTMLSelectElement>} event - Select event. @returns {void} @sideEffects Updates filters. */
+  /**
+   * Changes one alert-list filter and returns to the first result page.
+   * @param {import("react").ChangeEvent<HTMLSelectElement>} event - Select change event.
+   * @returns {void}
+   * @sideEffects Updates the alert page and filter state.
+   */
   function changeFilter(event) {
     // event.target is the select element. Destructuring reads its two fields.
     const { name, value } = event.target;
@@ -168,7 +183,12 @@ export function WellnessInsightsPanel({ profileId }) {
     });
   }
 
-  /** Acknowledges one alert. @param {object} alert - Active alert. @returns {Promise<void>} @sideEffects Updates the API and list. */
+  /**
+   * Acknowledges one active alert for the signed-in family member.
+   * @param {object} alert - Active alert selected by the user.
+   * @returns {Promise<void>} Resolves after the alert list is refreshed.
+   * @sideEffects Updates the alert through the API, shows a toast, and reloads alerts.
+   */
   async function acknowledge(alert) {
     setBusyAlertId(alert._id);
     try {
@@ -182,13 +202,22 @@ export function WellnessInsightsPanel({ profileId }) {
     }
   }
 
-  /** Opens resolution input. @param {object} alert - Selected alert. @returns {void} @sideEffects Opens modal. */
+  /**
+   * Opens the resolution modal for one selected alert.
+   * @param {object} alert - Alert the family member wants to resolve.
+   * @returns {void}
+   * @sideEffects Stores the selected alert and clears the previous note.
+   */
   function openResolve(alert) {
     setResolvingAlert(alert);
     setResolutionNote("");
   }
 
-  /** Closes resolution input. @returns {void} @sideEffects Closes modal. */
+  /**
+   * Closes the resolution modal when no alert request is running.
+   * @returns {void}
+   * @sideEffects Clears the selected alert and resolution-note state.
+   */
   function closeResolve() {
     if (!busyAlertId) {
       setResolvingAlert(null);
@@ -196,7 +225,11 @@ export function WellnessInsightsPanel({ profileId }) {
     }
   }
 
-  /** Resolves the selected alert. @returns {Promise<void>} @sideEffects Updates the API and list. */
+  /**
+   * Resolves the selected alert with the family member's explanation.
+   * @returns {Promise<void>} Resolves after the alert list is refreshed.
+   * @sideEffects Updates the API, closes the modal, shows a toast, and reloads alerts.
+   */
   async function resolve() {
     if (!resolvingAlert || resolutionNote.trim().length < 3) {
       return;
@@ -219,7 +252,11 @@ export function WellnessInsightsPanel({ profileId }) {
     }
   }
 
-  /** Requests a Gemini or fallback insight. @returns {Promise<void>} @sideEffects Calls generation API and updates state. */
+  /**
+   * Requests a current Gemini summary or the deterministic fallback summary.
+   * @returns {Promise<void>} Resolves after the insight state is updated.
+   * @sideEffects Calls the generation API, updates state, and may show a toast.
+   */
   async function generate() {
     setGeneratingInsight(true);
     setInsightError("");

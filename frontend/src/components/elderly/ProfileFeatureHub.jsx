@@ -63,7 +63,14 @@ function ProfileFeatureHubSkeleton() {
 
 /**
  * Displays a feature entry page where a family selects the relevant care recipient.
- * @param {{eyebrow: string, title: string, description: string, icon: import("react").ComponentType, actionLabel: string, emptyDescription: string, buildDestination: (profileId: string) => string}} props - Feature presentation and route builder.
+ * @param {object} props - Feature presentation and route builder.
+ * @param {string} props.eyebrow - Small heading label.
+ * @param {string} props.title - Main page heading.
+ * @param {string} props.description - Page explanation.
+ * @param {import("react").ComponentType} props.icon - Feature icon component.
+ * @param {string} props.actionLabel - Profile action label.
+ * @param {string} props.emptyDescription - Empty-state explanation.
+ * @param {(profileId: string) => string} props.buildDestination - Route builder.
  * @returns {import("react").ReactElement} Family profile-selection hub.
  * @sideEffects Loads active family-authorized elderly profiles.
  */

@@ -26,7 +26,8 @@ async function getLatestInsight(profileId) {
  * Requests a new Gemini summary or a local fallback summary.
  * @param {string} profileId - Authorized elderly-profile identifier.
  * @returns {Promise<{insight: object, generatedBy: string, reused: boolean}>} Generation result.
- * @sideEffects Sends an authenticated POST request; the backend may contact Gemini and create a WellnessInsight document.
+ * @sideEffects Sends an authenticated POST request; the backend may contact
+ * Gemini and create a WellnessInsight document.
  */
 async function generateInsight(profileId) {
   const endpoint =

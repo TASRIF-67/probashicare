@@ -4,7 +4,10 @@ import { Modal } from "../Modal.jsx";
 
 /**
  * Displays one controlled renewal reminder on the Family dashboard.
- * @param {{reminder: object|null, onDismiss: Function, isDismissing?: boolean}} props - Reminder state and persisted dismissal action.
+ * @param {object} props - Reminder state and dismissal action.
+ * @param {object|null} props.reminder - Current expiry reminder.
+ * @param {Function} props.onDismiss - Persisted dismissal handler.
+ * @param {boolean} [props.isDismissing] - Whether dismissal is active.
  * @returns {import("react").ReactElement} Renewal reminder modal.
  * @sideEffects Calls the dismissal handler or navigates to subscription plans.
  */

@@ -541,7 +541,13 @@ function createSectionItem(section) {
 
 /**
  * Renders a list editor for one repeatable profile section.
- * @param {{section: string, title: string, description: string, items: object[], errors: object, onChange: Function}} props - Section state and change action.
+ * @param {object} props - Section state and change action.
+ * @param {string} props.section - Profile section key.
+ * @param {string} props.title - Readable section title.
+ * @param {string} props.description - Section guidance.
+ * @param {object[]} props.items - Current repeated records.
+ * @param {object} props.errors - Validation errors by field.
+ * @param {Function} props.onChange - Parent change handler.
  * @returns {import("react").ReactElement} Repeated entry cards and add action.
  * @sideEffects Calls `onChange` when entries are added, edited, or removed.
  */
@@ -840,7 +846,12 @@ function RepeatedSection({ section, title, description, items, errors, onChange 
 
 /**
  * Renders the reusable create/edit elderly profile workflow.
- * @param {{initialProfile?: object|null, onSubmit: (value: object) => Promise<void>, isSubmitting?: boolean, errors?: object, submitLabel?: string}} props - Initial data and submission state.
+ * @param {object} props - Initial data and submission state.
+ * @param {object|null} [props.initialProfile] - Existing profile when editing.
+ * @param {(value: object) => Promise<void>} props.onSubmit - Submission handler.
+ * @param {boolean} [props.isSubmitting] - Whether submission is active.
+ * @param {object} [props.errors] - API validation errors.
+ * @param {string} [props.submitLabel] - Final action label.
  * @returns {import("react").ReactElement} Multi-step profile form.
  * @sideEffects Manages form state and calls `onSubmit` on final confirmation.
  */
@@ -879,7 +890,7 @@ export function ProfileForm({
 
   /**
    * Updates one personal-information field.
-   * @param {import("react").ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>} event - Changed form field.
+   * @param {import("react").ChangeEvent} event - Changed form field.
    * @returns {void}
    * @sideEffects Updates local form state.
    */

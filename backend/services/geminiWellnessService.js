@@ -124,7 +124,7 @@ function validateGeminiOutput(value) {
  * Requests a short non-diagnostic structured summary from Gemini.
  * @param {object[]} reports - Recent submitted wellness reports.
  * @param {{apiKey?: string, fetchFunction?: Function}} [options] - Optional test overrides.
- * @returns {Promise<{summary: string, highlights: string[], recommendedFollowUp: string}|null>} Validated result or null when unavailable.
+ * @returns {Promise<object|null>} Validated summary fields or null when unavailable.
  * @sideEffects Sends only whitelisted anonymous values to the Gemini API.
  */
 export async function generateGeminiWellnessSummary(reports, options = {}) {

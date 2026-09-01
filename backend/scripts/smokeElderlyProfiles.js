@@ -18,11 +18,23 @@ let profileId;
 /**
  * Calls the running API and enforces an expected status.
  * @param {string} path - API path beginning with `/`.
- * @param {{method?: string, body?: object, cookie?: string, expectedStatus?: number}} [options] - Request configuration.
+ * @param {object} [options] - Request configuration.
+ * @param {string} [options.method] - HTTP method.
+ * @param {object} [options.body] - Optional JSON request body.
+ * @param {string} [options.cookie] - Optional session cookie.
+ * @param {number} [options.expectedStatus] - Expected response status.
  * @returns {Promise<{payload: object, cookie: string}>} Parsed JSON and returned session cookie.
  * @sideEffects Makes an HTTP request to the local development API.
  */
-async function callApi(path, { method = "GET", body, cookie, expectedStatus = 200 } = {}) {
+async function callApi(
+  path,
+  {
+    method = "GET",
+    body,
+    cookie,
+    expectedStatus = 200,
+  } = {},
+) {
   const headers = {};
 
   if (body) {

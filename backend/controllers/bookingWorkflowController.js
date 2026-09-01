@@ -139,7 +139,15 @@ async function synchronizeBookingAssignment(booking, session) {
 
 /**
  * Creates a booking notification inside the active booking transaction.
- * @param {{booking: import("../models/Booking.js").Booking, recipientUserId: string|import("mongoose").Types.ObjectId, actorUserId: string|import("mongoose").Types.ObjectId, type: string, title: string, message: string, actionPath: string, session: import("mongoose").ClientSession}} input - Booking event notification details.
+ * @param {object} input - Booking event notification details.
+ * @param {import("../models/Booking.js").Booking} input.booking - Booking event.
+ * @param {string|import("mongoose").Types.ObjectId} input.recipientUserId - Recipient.
+ * @param {string|import("mongoose").Types.ObjectId} input.actorUserId - Actor.
+ * @param {string} input.type - Stable notification type.
+ * @param {string} input.title - Short notification title.
+ * @param {string} input.message - Readable notification message.
+ * @param {string} input.actionPath - Related frontend route.
+ * @param {import("mongoose").ClientSession} input.session - Active transaction.
  * @returns {Promise<void>}
  * @sideEffects Upserts one Notification in the booking transaction.
  */
@@ -159,11 +167,27 @@ async function createBookingNotification(input) {
   });
 }
 
+/**
+ * POST /api/bookings
+ * Auth: authenticated Family account with the required booking entitlement.
+ * Body: validated caregiver, elderly profile, service, dates, and time slots.
+ * Success 201: newly created booking with safe participant fields.
+ * Failure 409: the family or caregiver is already reserved on a chosen date.
+ * Transaction: booking, reservations, and caregiver notification either all
+ * succeed or all roll back together.
+ * @param {import("express").Request} request - Validated Family request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>} Resolves after returning the booking.
+ * @sideEffects Creates booking, reservation, and notification records.
+ */
 export async function createBooking(request, response) {
   const input = request.bookingInput;
   const session = await mongoose.startSession();
   let bookingId;
+
   try {
+    // withTransaction commits every write together and rolls all of them back
+    // when any write throws.
     await session.withTransaction(async () => {
       const selectedDates = [];
 
@@ -171,9 +195,9 @@ export async function createBooking(request, response) {
         selectedDates.push(occurrence.date);
       }
 
-      // This query also covers legacy active bookings created before family
-      // date reservations existed. The unique reservation index below then
-      // protects new requests that arrive concurrently.
+      // This caller-owned query covers active legacy bookings. The $in
+      // operator matches any selected date. Unique indexes still protect
+      // simultaneous requests.
       const existingFamilyBooking = await Booking.exists({
         familyMemberId: request.user._id,
         status: {
@@ -191,10 +215,44 @@ export async function createBooking(request, response) {
         );
       }
 
-      const [booking] = await Booking.create([{ familyMemberId: request.user._id, caregiverId: input.caregiverId, elderlyProfileId: input.elderlyProfileId, bookingType: input.bookingType, serviceType: input.serviceType, startDate: input.startDate, endDate: input.endDate, timeSlot: input.occurrences[0].timeSlot, slots: input.slots, occurrences: input.occurrences, status: "pending", schemaVersion: 2, migrationStatus: "current" }], { session });
+      const bookingInput = {
+        familyMemberId: request.user._id,
+        caregiverId: input.caregiverId,
+        elderlyProfileId: input.elderlyProfileId,
+        bookingType: input.bookingType,
+        serviceType: input.serviceType,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        timeSlot: input.occurrences[0].timeSlot,
+        slots: input.slots,
+        occurrences: input.occurrences,
+        status: "pending",
+        schemaVersion: 2,
+        migrationStatus: "current",
+      };
+
+      // Mongoose create receives an array when a session is supplied, so it
+      // returns an array containing the new document.
+      const createdBookings = await Booking.create([bookingInput], {
+        session,
+      });
+      const booking = createdBookings[0];
       bookingId = booking._id;
-      const reservations = buildReservationDocuments({ bookingId, caregiverId: input.caregiverId, occurrences: input.occurrences });
-      await BookingReservation.insertMany(reservations, { ordered: true, session });
+
+      const reservationInput = {
+        bookingId,
+        caregiverId: input.caregiverId,
+        occurrences: input.occurrences,
+      };
+      const reservations = buildReservationDocuments(reservationInput);
+
+      // insertMany efficiently writes every occurrence reservation. ordered
+      // stops at the first conflict so the transaction can roll back.
+      await BookingReservation.insertMany(reservations, {
+        ordered: true,
+        session,
+      });
+
       const familyDateReservations = [];
 
       for (const occurrence of input.occurrences) {
@@ -209,6 +267,7 @@ export async function createBooking(request, response) {
         ordered: true,
         session,
       });
+
       await createBookingNotification({
         booking,
         recipientUserId: booking.caregiverId,
@@ -221,24 +280,68 @@ export async function createBooking(request, response) {
       });
     });
   } catch (error) {
-    if (error?.code === 11000 || error?.writeErrors?.some((entry) => entry.code === 11000)) throw new ApiError(409, "You or this caregiver already have a booking on one or more selected dates. Choose another schedule.");
+    let isDuplicateKeyError = error?.code === 11000;
+
+    // Bulk MongoDB failures may place the duplicate code in writeErrors.
+    if (!isDuplicateKeyError && error?.writeErrors) {
+      for (const writeError of error.writeErrors) {
+        if (writeError.code === 11000) {
+          isDuplicateKeyError = true;
+          break;
+        }
+      }
+    }
+
+    if (isDuplicateKeyError) {
+      throw new ApiError(
+        409,
+        "You or this caregiver already have a booking on one or more selected dates. Choose another schedule.",
+      );
+    }
+
     throw error;
   } finally {
     await session.endSession();
   }
-  const populated = await populateBooking(Booking.findById(bookingId));
-  response.status(201).json({ success: true, data: { message: "Booking request created successfully.", booking: formatBooking(populated) } });
+
+  const bookingQuery = Booking.findById(bookingId);
+  const populatedBooking = await populateBooking(bookingQuery);
+
+  response.status(201).json({
+    success: true,
+    data: {
+      message: "Booking request created successfully.",
+      booking: formatBooking(populatedBooking),
+    },
+  });
 }
 
+/**
+ * GET /api/bookings and GET /api/bookings/my-bookings
+ * Auth: authenticated Family account.
+ * Success 200: caller-owned bookings plus that family's review/complaint.
+ * Permission: familyMemberId always comes from request.user._id.
+ * @param {import("express").Request} request - Family list request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>} Resolves after returning the list.
+ * @sideEffects Reads bookings, reviews, and complaints.
+ */
 export async function listMyBookings(request, response) {
-  const bookings = await populateBooking(Booking.find({ familyMemberId: request.user._id }).sort({ createdAt: -1 }));
+  const ownershipFilter = {
+    familyMemberId: request.user._id,
+  };
+  const bookingQuery = Booking.find(ownershipFilter).sort({
+    createdAt: -1,
+  });
+  const bookings = await populateBooking(bookingQuery);
   const bookingIds = [];
 
   for (const booking of bookings) {
     bookingIds.push(booking._id);
   }
 
-  const [reviews, complaints] = await Promise.all([
+  // Promise.all starts both independent caller-owned queries together.
+  const feedbackResults = await Promise.all([
     CaregiverReview.find({
       familyMemberId: request.user._id,
       bookingId: {
@@ -252,11 +355,15 @@ export async function listMyBookings(request, response) {
       },
     }),
   ]);
+  const reviews = feedbackResults[0];
+  const complaints = feedbackResults[1];
   const reviewsByBookingId = {};
   const complaintsByBookingId = {};
 
   for (const review of reviews) {
-    reviewsByBookingId[review.bookingId.toString()] = {
+    const reviewBookingId = review.bookingId.toString();
+
+    reviewsByBookingId[reviewBookingId] = {
       id: review._id.toString(),
       rating: review.rating,
       feedback: review.feedback || "",
@@ -266,7 +373,9 @@ export async function listMyBookings(request, response) {
   }
 
   for (const complaint of complaints) {
-    complaintsByBookingId[complaint.bookingId.toString()] = {
+    const complaintBookingId = complaint.bookingId.toString();
+
+    complaintsByBookingId[complaintBookingId] = {
       id: complaint._id.toString(),
       category: complaint.category,
       description: complaint.description,
@@ -280,14 +389,11 @@ export async function listMyBookings(request, response) {
   const formattedBookings = [];
 
   for (const booking of bookings) {
-    const bookingId = booking._id.toString();
-    formattedBookings.push(
-      formatBooking(
-        booking,
-        reviewsByBookingId[bookingId] || null,
-        complaintsByBookingId[bookingId] || null,
-      ),
-    );
+    const bookingIdText = booking._id.toString();
+    const review = reviewsByBookingId[bookingIdText] || null;
+    const complaint = complaintsByBookingId[bookingIdText] || null;
+
+    formattedBookings.push(formatBooking(booking, review, complaint));
   }
 
   response.json({
@@ -299,17 +405,84 @@ export async function listMyBookings(request, response) {
   });
 }
 
+/**
+ * PATCH /api/bookings/:bookingId/cancel
+ * Auth: authenticated Family account that owns the booking.
+ * Success 200: cancelled booking. Failure 404: malformed ID. Failure 409:
+ * missing, other-family, terminal, or fully past booking.
+ * Transaction: status, reservations, assignment, and caregiver notification
+ * are changed together.
+ * @param {import("express").Request} request - Family cancellation request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>} Resolves after returning the cancellation.
+ * @sideEffects Updates booking-related records and creates a notification.
+ */
 export async function cancelMyBooking(request, response) {
-  if (!mongoose.isValidObjectId(request.params.bookingId)) throw new ApiError(404, "Booking not found.");
+  const bookingId = request.params.bookingId;
+
+  if (!mongoose.isValidObjectId(bookingId)) {
+    throw new ApiError(404, "Booking not found.");
+  }
+
   const now = new Date();
-  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const today = new Date(
+    Date.UTC(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ),
+  );
+  const cancellationReason = String(
+    request.body?.reason || "Cancelled by family",
+  ).slice(0, 500);
   const session = await mongoose.startSession();
   let booking;
-  await session.withTransaction(async () => {
-    booking = await Booking.findOneAndUpdate({ _id: request.params.bookingId, familyMemberId: request.user._id, status: { $in: ["pending", "accepted", "confirmed"] }, occurrences: { $elemMatch: { date: { $gte: today } } } }, { $set: { status: "cancelled", statusReason: String(request.body?.reason || "Cancelled by family").slice(0, 500), cancelledAt: now } }, { new: true, session });
-    if (booking) {
-      await BookingReservation.deleteMany({ bookingId: booking._id }).session(session);
-      await FamilyBookingReservation.deleteMany({ bookingId: booking._id }).session(session);
+
+  try {
+    await session.withTransaction(async () => {
+      const cancellableBookingFilter = {
+        _id: bookingId,
+        familyMemberId: request.user._id,
+        status: {
+          $in: ["pending", "accepted", "confirmed"],
+        },
+        occurrences: {
+          $elemMatch: {
+            date: {
+              $gte: today,
+            },
+          },
+        },
+      };
+      const cancellationUpdate = {
+        $set: {
+          status: "cancelled",
+          statusReason: cancellationReason,
+          cancelledAt: now,
+        },
+      };
+
+      // This atomic query combines ownership, allowed status, date, and update.
+      // new: true returns the updated document.
+      booking = await Booking.findOneAndUpdate(
+        cancellableBookingFilter,
+        cancellationUpdate,
+        {
+          new: true,
+          session,
+        },
+      );
+
+      if (!booking) {
+        return;
+      }
+
+      await BookingReservation.deleteMany({
+        bookingId: booking._id,
+      }).session(session);
+      await FamilyBookingReservation.deleteMany({
+        bookingId: booking._id,
+      }).session(session);
       await synchronizeBookingAssignment(booking, session);
       await createBookingNotification({
         booking,
@@ -321,14 +494,41 @@ export async function cancelMyBooking(request, response) {
         actionPath: "/caregiver/bookings",
         session,
       });
-    }
-  }).finally(() => session.endSession());
-  if (!booking) throw new ApiError(409, "This booking cannot be cancelled.");
-  response.json({ success: true, data: { message: "Booking cancelled.", booking: formatBooking(booking) } });
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  if (!booking) {
+    throw new ApiError(409, "This booking cannot be cancelled.");
+  }
+
+  response.json({
+    success: true,
+    data: {
+      message: "Booking cancelled.",
+      booking: formatBooking(booking),
+    },
+  });
 }
 
+/**
+ * GET /api/caregiver/bookings/mine
+ * Auth: authenticated caregiver with an approved application.
+ * Success 200: bookings assigned to request.user._id.
+ * @param {import("express").Request} request - Caregiver list request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>} Resolves after returning the list.
+ * @sideEffects Reads caller-owned Booking records.
+ */
 export async function listCaregiverBookings(request, response) {
-  const bookings = await populateBooking(Booking.find({ caregiverId: request.user._id }).sort({ createdAt: -1 }));
+  const ownershipFilter = {
+    caregiverId: request.user._id,
+  };
+  const bookingQuery = Booking.find(ownershipFilter).sort({
+    createdAt: -1,
+  });
+  const bookings = await populateBooking(bookingQuery);
   const formattedBookings = [];
 
   for (const booking of bookings) {
@@ -344,51 +544,186 @@ export async function listCaregiverBookings(request, response) {
   });
 }
 
+/**
+ * PATCH /api/caregiver/bookings/:bookingId/status
+ * Auth: authenticated caregiver with an approved application.
+ * Body: accepted, declined, or completed status and optional reason.
+ * Failure 404 conceals missing and other-caregiver bookings. Failure 409
+ * protects stale transitions and early completion when the demo override is
+ * disabled. Failure 422 covers invalid input.
+ * Transaction: booking status, reservations, assignment, and family
+ * notification are changed together.
+ * @param {import("express").Request} request - Caregiver status request.
+ * @param {import("express").Response} response - Express response writer.
+ * @returns {Promise<void>} Resolves after returning the booking.
+ * @sideEffects Updates booking records and creates a family notification.
+ */
 export async function updateCaregiverBookingStatus(request, response) {
-  if (!mongoose.isValidObjectId(request.params.bookingId)) throw new ApiError(404, "Booking not found.");
+  const bookingId = request.params.bookingId;
+
+  if (!mongoose.isValidObjectId(bookingId)) {
+    throw new ApiError(404, "Booking not found.");
+  }
+
   const status = String(request.body?.status || "");
-  const reason = String(request.body?.reason || "").trim().slice(0, 500);
-  if (!["accepted", "declined", "completed"].includes(status)) throw new ApiError(422, "Choose accepted, declined, or completed.");
-  if (status === "declined" && !reason) throw new ApiError(422, "Give the family a reason for declining.");
-  const existing = await Booking.findOne({ _id: request.params.bookingId, caregiverId: request.user._id });
-  if (!existing) throw new ApiError(404, "Booking not found.");
-  const allowedFrom = status === "completed" ? ["accepted", "confirmed"] : ["pending"];
-  if (!allowedFrom.includes(existing.status)) throw new ApiError(409, `A ${existing.status} booking cannot be marked ${status}.`);
+  const reason = String(request.body?.reason || "")
+    .trim()
+    .slice(0, 500);
+  const allowedStatuses = ["accepted", "declined", "completed"];
+
+  // includes clearly checks membership in this small allowed set.
+  if (!allowedStatuses.includes(status)) {
+    throw new ApiError(
+      422,
+      "Choose accepted, declined, or completed.",
+    );
+  }
+
+  if (status === "declined" && !reason) {
+    throw new ApiError(
+      422,
+      "Give the family a reason for declining.",
+    );
+  }
+
+  const ownershipFilter = {
+    _id: bookingId,
+    caregiverId: request.user._id,
+  };
+  const existingBooking = await Booking.findOne(ownershipFilter);
+
+  if (!existingBooking) {
+    // Missing and another caregiver's booking intentionally share this 404.
+    throw new ApiError(404, "Booking not found.");
+  }
+
+  let allowedPreviousStatuses = ["pending"];
+
+  if (status === "completed") {
+    allowedPreviousStatuses = ["accepted", "confirmed"];
+  }
+
+  if (!allowedPreviousStatuses.includes(existingBooking.status)) {
+    throw new ApiError(
+      409,
+      "A "
+        + existingBooking.status
+        + " booking cannot be marked "
+        + status
+        + ".",
+    );
+  }
+
   if (status === "completed" && !env.allowEarlyBookingCompletion) {
-    const finalOccurrence = existing.occurrences?.at(-1);
-    if (!finalOccurrence) throw new ApiError(409, "This legacy booking must be migrated before completion.");
+    // at(-1) reads the final item without calculating its index.
+    const finalOccurrence = existingBooking.occurrences?.at(-1);
+
+    if (!finalOccurrence) {
+      throw new ApiError(
+        409,
+        "This legacy booking must be migrated before completion.",
+      );
+    }
+
     const now = new Date();
-    const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const localToday = year + "-" + month + "-" + day;
+    const finalVisitDate = dateKey(finalOccurrence.date);
     const endMinutes = parseTimeSlot(finalOccurrence.timeSlot).end;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    if (dateKey(finalOccurrence.date) > localToday || (dateKey(finalOccurrence.date) === localToday && currentMinutes < endMinutes)) throw new ApiError(409, "A booking can be completed only after its final visit ends.");
+    const finalVisitIsInFuture = finalVisitDate > localToday;
+    const finalVisitIsToday = finalVisitDate === localToday;
+    const finalVisitHasNotEnded =
+      finalVisitIsToday && currentMinutes < endMinutes;
+
+    if (finalVisitIsInFuture || finalVisitHasNotEnded) {
+      throw new ApiError(
+        409,
+        "A booking can be completed only after its final visit ends.",
+      );
+    }
   }
+
   const session = await mongoose.startSession();
   let booking;
-  await session.withTransaction(async () => {
-    booking = await Booking.findOneAndUpdate({ _id: existing._id, caregiverId: request.user._id, status: { $in: allowedFrom } }, { $set: { status, statusReason: reason, reviewedAt: status === "completed" ? existing.reviewedAt : new Date(), ...(status === "completed" ? { completedAt: new Date() } : {}) } }, { new: true, session });
-    if (booking) {
-      if (["declined", "completed"].includes(status)) {
-        await BookingReservation.deleteMany({ bookingId: booking._id }).session(session);
-        await FamilyBookingReservation.deleteMany({ bookingId: booking._id }).session(session);
+
+  try {
+    await session.withTransaction(async () => {
+      const statusUpdate = {
+        status,
+        statusReason: reason,
+        reviewedAt: new Date(),
+      };
+
+      if (status === "completed") {
+        statusUpdate.reviewedAt = existingBooking.reviewedAt;
+        statusUpdate.completedAt = new Date();
+      }
+
+      const currentStateFilter = {
+        _id: existingBooking._id,
+        caregiverId: request.user._id,
+        status: {
+          $in: allowedPreviousStatuses,
+        },
+      };
+      const bookingUpdate = {
+        $set: statusUpdate,
+      };
+
+      // Rechecking the state atomically prevents conflicting transitions.
+      booking = await Booking.findOneAndUpdate(
+        currentStateFilter,
+        bookingUpdate,
+        {
+          new: true,
+          session,
+        },
+      );
+
+      if (!booking) {
+        return;
+      }
+
+      const releasesReservations =
+        status === "declined" || status === "completed";
+
+      if (releasesReservations) {
+        await BookingReservation.deleteMany({
+          bookingId: booking._id,
+        }).session(session);
+        await FamilyBookingReservation.deleteMany({
+          bookingId: booking._id,
+        }).session(session);
       }
 
       await synchronizeBookingAssignment(booking, session);
 
       let notificationTitle = "Booking accepted";
-      let notificationMessage = "A caregiver accepted your booking request.";
+      let notificationMessage =
+        "A caregiver accepted your booking request.";
       let notificationType = "booking-accepted";
 
       if (status === "declined") {
         notificationTitle = "Booking declined";
-        notificationMessage = "A caregiver declined your booking request.";
+        notificationMessage =
+          "A caregiver declined your booking request.";
         notificationType = "booking-declined";
       }
 
       if (status === "completed") {
         notificationTitle = "Care visit completed";
-        notificationMessage = "A caregiver marked your booking as completed.";
+        notificationMessage =
+          "A caregiver marked your booking as completed.";
         notificationType = "booking-completed";
+      }
+
+      let actionPath = "/bookings";
+
+      if (status === "completed") {
+        actionPath = "/bookings?review=" + booking._id;
       }
 
       await createBookingNotification({
@@ -398,13 +733,26 @@ export async function updateCaregiverBookingStatus(request, response) {
         type: notificationType,
         title: notificationTitle,
         message: notificationMessage,
-        actionPath: status === "completed"
-          ? "/bookings?review=" + booking._id
-          : "/bookings",
+        actionPath,
         session,
       });
-    }
-  }).finally(() => session.endSession());
-  if (!booking) throw new ApiError(409, "The booking status changed while it was being reviewed.");
-  response.json({ success: true, data: { message: `Booking ${status}.`, booking: formatBooking(booking) } });
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  if (!booking) {
+    throw new ApiError(
+      409,
+      "The booking status changed while it was being reviewed.",
+    );
+  }
+
+  response.json({
+    success: true,
+    data: {
+      message: "Booking " + status + ".",
+      booking: formatBooking(booking),
+    },
+  });
 }

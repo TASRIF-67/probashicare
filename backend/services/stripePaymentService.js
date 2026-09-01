@@ -88,7 +88,7 @@ function generateStripeTransactionReference() {
  * @param {string|import("mongoose").Types.ObjectId} familyUserId - Authenticated Family ID.
  * @param {string} familyEmail - Authenticated Family email for Checkout.
  * @param {string} planCode - Backend-controlled subscription plan code.
- * @returns {Promise<{payment: object, checkoutUrl: string, sessionId: string}>} Local payment and hosted Checkout details.
+ * @returns {Promise<object>} Local payment and hosted Checkout details.
  * @sideEffects Reads MongoDB, creates a payment, and calls Stripe's test API.
  */
 export async function createStripeCheckoutSession(

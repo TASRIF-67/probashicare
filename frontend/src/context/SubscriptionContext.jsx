@@ -116,7 +116,7 @@ export function SubscriptionProvider({ children }) {
 
 /**
  * Reads current Family subscription access and the shared refresh action.
- * @returns {{loading: boolean, data: object|null, error: string, refreshSubscription: () => Promise<object|null>}} Shared subscription state.
+ * @returns {object} Shared subscription state and refresh action.
  * @sideEffects None.
  */
 export function useSubscription() {

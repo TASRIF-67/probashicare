@@ -47,8 +47,12 @@ export async function familyHasActiveElderlyProfiles(familyUserId) {
 
 /**
  * Loads an elderly profile only when the family has the required active permission.
- * @param {{profileId: string, familyUserId: string|import("mongoose").Types.ObjectId, permissions?: string[], includeArchived?: boolean}} options - Profile, family, and access constraints.
- * @returns {Promise<{profile: import("../models/ElderlyProfile.js").ElderlyProfile, link: import("../models/ElderlyFamilyLink.js").ElderlyFamilyLink}>} Authorized documents.
+ * @param {object} options - Profile, family, and access constraints.
+ * @param {string} options.profileId - Requested elderly profile ID.
+ * @param {string|import("mongoose").Types.ObjectId} options.familyUserId - Family user ID.
+ * @param {string[]} [options.permissions] - Accepted link permissions.
+ * @param {boolean} [options.includeArchived] - Whether archived profiles are allowed.
+ * @returns {Promise<object>} Authorized profile and family-link documents.
  * @sideEffects Reads MongoDB; returns 404 for invalid IDs and unauthorized records to prevent disclosure.
  */
 export async function getAuthorizedElderlyProfile({
