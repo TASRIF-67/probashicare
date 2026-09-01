@@ -479,3 +479,65 @@ Remove-Item -Recurse on a broad directory
 ~~~
 
 Prefer exact file paths, inspect `git status`, and preview destructive actions first.
+
+## 17. VS Code and Copilot shortcuts
+
+These shortcuts reduce searching and typing time during a live modification test.
+
+| Shortcut | Purpose |
+| --- | --- |
+| `Ctrl+Shift+F` | Search for text, endpoint URLs, field names, or function names across the project. |
+| `Ctrl+P` | Open a file quickly by typing part of its filename. |
+| `Ctrl+Space` | Open normal JavaScript, React, import, and property suggestions. |
+| `Tab` | Accept the visible grey Copilot inline suggestion. |
+| `Esc` | Reject the current inline suggestion. |
+| `F12` | Go to the definition of a function, component, variable, or imported value. |
+| `Shift+F12` | Find every place where the selected function or value is used. |
+| `Alt+F12` | Preview a definition without leaving the current file. |
+| `F2` | Rename a variable or function and update its known references safely. |
+| `Ctrl+.` | Open available fixes, imports, and code actions for the current error. |
+| `Ctrl+Shift+Space` | Show the parameters expected by the current function call. |
+| `Shift+Alt+F` | Format the current file with its configured formatter. |
+| `Ctrl+S` | Save intentionally and trigger Vite or Nodemon only when ready. |
+| `Ctrl+Shift+M` | Open the Problems panel and inspect JavaScript, ESLint, and import errors. |
+| `F8` / `Shift+F8` | Move to the next or previous reported problem. |
+| <kbd>Ctrl</kbd> + <kbd>&#96;</kbd> | Open or close the integrated terminal. |
+| `Ctrl+Shift+V` | Open the rendered preview of the current Markdown guide. |
+| `Ctrl+K`, then `V` | Open Markdown source and rendered preview side by side. |
+
+Use Copilot as a syntax assistant, not as the source of truth. Before accepting a suggestion, verify that its model name, schema fields, imports, endpoint URL, request body, and response shape match this repository.
+
+Fast navigation for a frontend-only change:
+
+~~~text
+Search visible page text with Ctrl+Shift+F
+    -> open the matching React page
+    -> copy a nearby button or handler pattern
+    -> use F12 on imported components and service functions
+    -> use Ctrl+. to repair a missing import
+    -> save and inspect the browser console
+~~~
+
+Fast navigation for a full-stack change:
+
+~~~text
+React page or component
+    -> frontend service function
+    -> API endpoint URL
+    -> Express route
+    -> controller function
+    -> Mongoose model
+    -> MongoDB document
+~~~
+
+Search the endpoint URL or field name with `Ctrl+Shift+F` when you do not know which file to open first. Copy the structure of the closest existing feature, then change only the required fields and behavior.
+
+For a calmer test environment, consider disabling one-second auto-save and save manually:
+
+~~~json
+{
+  "files.autoSave": "off",
+  "editor.inlineSuggest.enabled": true,
+  "editor.inlayHints.enabled": "on"
+}
+~~~
