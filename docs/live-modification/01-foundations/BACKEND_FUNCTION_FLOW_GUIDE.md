@@ -245,6 +245,78 @@ if (!record) {
 
 In ProbashiCare, controllers commonly `throw new ApiError(...)` instead; `asyncHandler` forwards it to centralized error middleware. `next(error)` is the lower-level Express equivalent.
 
+### Designing the backend response contract
+
+The response shape is not random. First list what the frontend needs, give each result a stable name, and place successful results inside the project's `{ success, data }` envelope.
+
+Requirement:
+
+~~~text
+Show active subscription plans
++ tell the page which payment methods are enabled
+~~~
+
+Contract:
+
+~~~javascript
+response.json({
+  success: true,
+  data: {
+    plans,
+    paymentOptions: {
+      stripeEnabled,
+      prototypeEnabled,
+      stripeMode,
+    },
+  },
+});
+~~~
+
+`plans` is property shorthand for `plans: plans`. The outer `data` groups successful application results; it is separate from Axios's own `response.data` property on the frontend.
+
+Read the object by nesting level:
+
+~~~text
+HTTP body
+|- success
+`- data
+   |- plans
+   `- paymentOptions
+      |- stripeEnabled
+      |- prototypeEnabled
+      `- stripeMode
+~~~
+
+Choose names from the requirement:
+
+~~~javascript
+// One record
+data: { profile }
+
+// List and page metadata
+data: { payments, pagination }
+
+// Created record and provider information
+data: { payment, checkoutUrl, sessionId }
+
+// State change and readable confirmation
+data: { subscription, message }
+~~~
+
+Before coding, write the contract:
+
+~~~yaml
+Status: 200 or 201
+Data needed by page:
+- plans: array
+- paymentOptions: object
+Frontend names that must match:
+- planData.plans
+- planData.paymentOptions
+~~~
+
+Changing a backend property name requires changing every frontend consumer of that property.
+
 ## Flow for common controller types
 
 ### GET list

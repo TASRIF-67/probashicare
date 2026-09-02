@@ -333,6 +333,97 @@ const data = await exampleService.listRecords(profileId);
 
 After that line, data is the object returned by the service.
 
+### Backend JSON to Axios to service return value
+
+Assume the backend sends:
+
+~~~javascript
+response.json({
+  success: true,
+  data: {
+    plans,
+    paymentOptions,
+  },
+});
+~~~
+
+Axios wraps the complete HTTP result in its own response object:
+
+~~~javascript
+const response = await api.get('/subscriptions/plans');
+
+response.status; // 200
+response.data;   // Complete JSON body sent by Express.
+~~~
+
+Therefore the two `data` words have different owners:
+
+~~~text
+response.data.data
+         |    |
+         |    `- ProbashiCare's successful application payload
+         `- Axios's HTTP response body property
+~~~
+
+The exact values are:
+
+~~~javascript
+response.data = {
+  success: true,
+  data: {
+    plans: [],
+    paymentOptions: {},
+  },
+};
+
+response.data.data = {
+  plans: [],
+  paymentOptions: {},
+};
+~~~
+
+The service removes both transport wrappers and returns only the useful payload:
+
+~~~javascript
+async function listPlans() {
+  const response = await api.get('/subscriptions/plans');
+  return response.data.data;
+}
+~~~
+
+The page receives exactly what the service returned:
+
+~~~javascript
+const planData = await subscriptionService.listPlans();
+
+setState((currentState) => ({
+  ...currentState,
+  plans: planData.plans,
+  paymentOptions: planData.paymentOptions,
+}));
+~~~
+
+Trace it as one chain:
+
+~~~text
+controller response.json
+-> HTTP JSON body
+-> Axios response.data
+-> API payload response.data.data
+-> frontend service return
+-> page variable
+-> React state setter
+-> next render
+~~~
+
+If the backend sends `subscriptionPlans` but the page reads `planData.plans`, the result is `undefined`. Search both sides before renaming a response field:
+
+~~~powershell
+rg -n 'plans|paymentOptions' backend frontend/src
+~~~
+
+For each endpoint, confirm method, URL, request fields, success status, response names, and error statuses before writing the controller or page.
+
 ## Form state and input-handler flow
 
 ~~~javascript
