@@ -471,6 +471,9 @@ export function ElderlyWellnessPage() {
         const profileData = results[0];
         const reportData = results[1];
         // Step 3: Decide whether the Premium trend request is allowed.
+        // Optional chaining (`?.`) safely returns undefined while subscription
+        // data is missing. Boolean then normalizes the final value to exactly
+        // true or false, so this derived value is safe to use in an `if`.
         const hasPremium = Boolean(subscriptionData?.access?.isPremium);
         let points = [];
 

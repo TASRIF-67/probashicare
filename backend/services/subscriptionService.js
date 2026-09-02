@@ -16,15 +16,19 @@ const MILLISECONDS_PER_SECOND = 1000;
  * @throws {Error} Propagates unexpected MongoDB failures.
  */
 export async function getOrCreateFamilySubscription(familyUserId) {
+  // `findOne` returns the first matching subscription document or null.
+  // The authenticated family ID is the ownership boundary for this query.
   let subscription = await FamilySubscription.findOne({
     family: familyUserId,
   });
 
+  // Return early when the family's one subscription record already exists.
   if (subscription) {
     return subscription;
   }
 
   try {
+    // `create` validates, inserts, and returns the new Mongoose document.
     subscription = await FamilySubscription.create({
       family: familyUserId,
     });

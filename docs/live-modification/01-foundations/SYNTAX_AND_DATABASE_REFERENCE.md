@@ -199,6 +199,8 @@ async function loadProfile() {
 
 ## 9. Express request and response
 
+For the detailed meaning, types, conversion rules, and a complete mapped request, see [Backend Function Flow - Where request data comes from](BACKEND_FUNCTION_FLOW_GUIDE.md#where-request-data-comes-from).
+
 ~~~js
 const profileId = request.params.profileId;
 const status = request.query.status;

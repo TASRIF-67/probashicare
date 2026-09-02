@@ -134,7 +134,116 @@ Use this map:
 | request.body | Submitted JSON or form data | title, status, notes |
 | request.user | User attached by authentication middleware | role, user ID, email |
 
+These are properties of Express's `request` object; they are not functions and do not independently return values. Express and earlier middleware fill them before the controller runs.
+
+### One request mapped to all four sources
+
+Assume the route and incoming request are:
+
+~~~javascript
+router.patch('/:profileId', requireAuth, updateProfile);
+
+// PATCH /api/profiles/abc123?notify=true
+// JSON body: { name: 'Masnun', age: 68 }
+~~~
+
+The controller reads:
+
+~~~javascript
+const currentUser = request.user;
+const profileId = request.params.profileId;
+const notifyValue = request.query.notify;
+const submittedName = request.body.name;
+~~~
+
+Typical values are:
+
+~~~javascript
+request.user;   // Authenticated user/document attached by requireAuth.
+request.params; // { profileId: 'abc123' }
+request.query;  // { notify: 'true' }
+request.body;   // { name: 'Masnun', age: 68 }
+~~~
+
+Easy memory rule:
+
+~~~text
+user   = who sent the request
+params = which resource is named in the path
+query  = optional filters/settings after ?
+body   = submitted data
+~~~
+
+### Important types and safety rules
+
+- `request.user` is not built into Express. Authentication middleware verifies the token and assigns it. It may be a Mongoose document or a plain object, depending on that middleware.
+- `request.params` values are strings. The route name `:profileId` must match `request.params.profileId`.
+- `request.query` values normally arrive as strings. Convert numbers and booleans deliberately.
+- `request.body` contains parsed JSON only when middleware such as `express.json()` is configured. JSON can contain strings, numbers, booleans, arrays, and objects.
+- All client-controlled input must be validated before database use.
+
+~~~javascript
+const page = Number.parseInt(request.query.page, 10) || 1;
+const shouldNotify = request.query.notify === 'true';
+const title = String(request.body.title || '').trim();
+
+if (!mongoose.isValidObjectId(request.params.profileId)) {
+  throw new ApiError(404, 'Profile not found.');
+}
+~~~
+
+Destructuring is only shorter property access:
+
+~~~javascript
+const { profileId } = request.params;
+const { page = '1', status = 'all' } = request.query;
+const { name, age } = request.body;
+
+// Equivalent example:
+const sameProfileId = request.params.profileId;
+~~~
+
 Do not accept an owner ID from request.body when request.user already identifies the owner.
+
+### What the response object does
+
+Express passes `request` and `response` into the controller. The controller reads from `request` and sends the result through `response`.
+
+~~~javascript
+response.status(201).json({
+  success: true,
+  data: {
+    profile,
+  },
+});
+~~~
+
+Read it left to right:
+
+1. `status(201)` selects the HTTP status and returns the same response object.
+2. Because it returns that object, `.json(...)` can be chained.
+3. `json(...)` converts the JavaScript object into JSON and ends the response.
+
+Common forms:
+
+~~~javascript
+response.json(data);             // Default status 200.
+response.status(201).json(data); // A resource was created.
+response.status(204).end();      // Success with no response body.
+~~~
+
+Send only one response. If an early branch sends a response, return so later code cannot send another:
+
+~~~javascript
+if (!record) {
+  return response.status(404).json({
+    success: false,
+    error: { message: 'Record not found.' },
+  });
+}
+~~~
+
+In ProbashiCare, controllers commonly `throw new ApiError(...)` instead; `asyncHandler` forwards it to centralized error middleware. `next(error)` is the lower-level Express equivalent.
 
 ## Flow for common controller types
 

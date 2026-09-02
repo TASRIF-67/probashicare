@@ -230,10 +230,13 @@ export async function purchaseSubscription(request, response) {
  * @sideEffects Reads only caller-owned SubscriptionPayment documents.
  */
 export async function listMySubscriptionPayments(request, response) {
+  // Step 1: Convert abandoned prototype checkouts before showing history so
+  // the page never displays a stale pending state.
   await expireStalePrototypePayments({
     familyUserId: request.user._id,
   });
 
+  // Step 2: Convert optional query strings into safe bounded numbers.
   const page = readPositiveInteger(request.query.page, DEFAULT_PAGE);
   const limit = readPositiveInteger(
     request.query.limit,
@@ -241,9 +244,12 @@ export async function listMySubscriptionPayments(request, response) {
     MAXIMUM_LIMIT,
   );
   const filter = {
+    // Ownership always comes from the authenticated session, never the body.
     family: request.user._id,
   };
 
+  // Step 3: Build (but do not execute yet) the page and count queries.
+  // `skip` ignores every record belonging to earlier pages.
   const paymentsPromise = SubscriptionPayment.find(filter)
     .sort({
       createdAt: -1,
@@ -355,6 +361,9 @@ export async function cancelPrototypePayment(request, response) {
  * @sideEffects Cancels active access without deleting history or payments.
  */
 export async function cancelMySubscription(request, response) {
+  // This one atomic operation both verifies ownership/current state and writes
+  // the cancellation. `$in` permits trialing or active, while `$set` changes
+  // only the named fields. `new: true` returns the cancelled document.
   const subscription = await FamilySubscription.findOneAndUpdate(
     {
       family: request.user._id,

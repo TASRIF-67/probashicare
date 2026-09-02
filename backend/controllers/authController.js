@@ -828,6 +828,9 @@ export async function updateFamilyAccount(
   response,
 ) {
   // Password is hidden by default and selected only for this security check.
+  // `findById` is shorthand for finding `_id: request.user._id` and returns a
+  // document or null. `select('+password')` explicitly includes the schema
+  // field that is normally excluded from query results.
   // Step 1: Load the Family account with its hidden password.
   const account = await User.findById(
     request.user._id,
