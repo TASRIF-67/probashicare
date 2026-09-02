@@ -17,7 +17,7 @@ and supporting services.
 - **Live application:** [probashicare.vercel.app](https://probashicare.vercel.app/)
 - **API health:** [Render health endpoint](https://probashicare-tasrif67-api-2026.onrender.com/api/health)
 - **Status:** Final academic demonstration release
-- **Detailed local setup:** [LOCAL_SETUP.md](./LOCAL_SETUP.md)
+- **Environment template:** [`.env.example`](./.env.example)
 
 > This project handles educational/demo health information. Wellness insights
 > and alerts support care coordination and are not medical diagnoses.
@@ -48,7 +48,6 @@ platform without exposing one family's private information to another.
 - One-time, scheduled recurring, and long-term caregiver bookings
 - Family booking history/cancellation and caregiver accept/decline/complete workflow
 - Doctor appointment planning with caregiver escorts and optional Google Calendar sync
-  ([setup and troubleshooting](./GOOGLE_CALENDAR_INTEGRATION.md))
 - Caregiver daily wellness reports with mood, meals, medicine, observations, and vitals
 - Thirty-day vital trends, rule-based early alerts, and optional Gemini summaries
 - Deduplicated in-app notifications for booking and wellness events
@@ -194,8 +193,8 @@ probashicare/
 |  |- services/             reusable business/provider logic
 |  |- scripts/              seed, synchronization, and smoke-test commands
 |  `- test/                 focused Node test suites
-|- *.md                      setup, API, integration, and workflow guides
-|- LOCAL_SETUP.md            complete Windows/local setup guide
+|- README.md                 project overview, setup, and operating guide
+|- .env.example              backend and frontend environment template
 `- render.yaml               Render API blueprint
 ```
 
@@ -235,7 +234,7 @@ registration fields and verify their email.
 Cloudinary credentials are optional during initial development. With
 `REQUIRE_CAREGIVER_DOCUMENT=false`, drafts and final submission work without a
 document. The requirement can be enabled later alongside the three
-`CLOUDINARY_*` values described in [LOCAL_SETUP.md](./LOCAL_SETUP.md).
+`CLOUDINARY_*` values listed in `.env.example`.
 
 ## Elderly Profile Management
 
@@ -266,8 +265,8 @@ and rule-based early wellness alerts.
 
 Gemini can produce a concise wellness summary from sanitized, allow-listed values.
 If Gemini is unavailable, a deterministic local fallback is used. These summaries
-and alerts are informational coordination aids, not medical diagnoses. See
-[GEMINI_WELLNESS_INTEGRATION.md](./GEMINI_WELLNESS_INTEGRATION.md).
+and alerts are informational coordination aids, not medical diagnoses. Configure
+the optional Gemini key using `.env.example`.
 
 ```bash
 npm run test:wellness-reports --prefix backend
@@ -376,8 +375,8 @@ Yearly, with manual renewal only.
 Stripe-hosted Checkout is available in sandbox mode. Test transactions do not
 move money, and Premium is activated only after a signed Stripe webhook. The
 older prototype simulator remains an optional local fallback. Never enter real
-card information while using test keys. See FAMILY_SUBSCRIPTION_DOCUMENTATION.md
-for the required test keys and Stripe CLI command.
+card information while using test keys. Configure the Stripe test keys and
+webhook secret using `.env.example`.
 
 Families manage plans and paginated payment history from the Subscription page.
 The My account page remains focused on identity and security. Administrators can
@@ -471,17 +470,6 @@ Important hosted configuration:
 
 The public `/api/health` route confirms that the API process is available without
 exposing database or credential information.
-
-## Documentation map
-
-- [Local installation and troubleshooting](./LOCAL_SETUP.md)
-- [Elderly Profile API](./ELDERLY_PROFILE_API_DOCUMENTATION.md)
-- [Gemini wellness integration](./GEMINI_WELLNESS_INTEGRATION.md)
-- [Family subscriptions and Stripe](./FAMILY_SUBSCRIPTION_DOCUMENTATION.md)
-- [Google Calendar integration](./GOOGLE_CALENDAR_INTEGRATION.md)
-- [Git and team workflow](./GITHUB_TEAM_WORKFLOW.md)
-- [Complete Git workflow](./COMPLETE_GIT_WORKFLOW.md)
-- [Module 3 study guide](./MODULE_3_FEATURES_1_2_STUDY_GUIDE.md)
 
 ## Project media
 
