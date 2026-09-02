@@ -1,12 +1,36 @@
 # ProbashiCare
 
-A full-stack elderly-care coordination platform for families living away from
-their loved ones, verified local caregivers, and platform administrators.
+**Care across distance, coordinated in one secure workspace.**
 
-For complete Windows installation, environment, startup, testing, and
-troubleshooting instructions, see [LOCAL_SETUP.md](./LOCAL_SETUP.md).
+ProbashiCare is a full-stack elderly-care coordination platform designed for
+families living away from their loved ones in Bangladesh. It connects family
+accounts, verified local caregivers, and administrators through caregiver
+booking, health monitoring, care coordination, notifications, subscriptions,
+and supporting services.
 
-## Included
+[![React](https://img.shields.io/badge/React-19-149eca?logo=react)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-43853d?logo=node.js)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47a248?logo=mongodb)](https://www.mongodb.com/atlas)
+[![Express](https://img.shields.io/badge/Express-5-20232a?logo=express)](https://expressjs.com/)
+[![Stripe](https://img.shields.io/badge/Stripe-Sandbox-635bff?logo=stripe)](https://stripe.com/)
+
+- **Live application:** [probashicare.vercel.app](https://probashicare.vercel.app/)
+- **API health:** [Render health endpoint](https://probashicare-tasrif67-api-2026.onrender.com/api/health)
+- **Status:** Final academic demonstration release
+- **Detailed local setup:** [LOCAL_SETUP.md](./LOCAL_SETUP.md)
+
+> This project handles educational/demo health information. Wellness insights
+> and alerts support care coordination and are not medical diagnoses.
+
+## Why ProbashiCare
+
+Families abroad often coordinate elderly care across phone calls, messages,
+paper records, and separate payment channels. ProbashiCare brings those tasks
+into one role-aware system: families can maintain a trusted care record,
+caregivers can complete structured visits, and administrators can supervise the
+platform without exposing one family's private information to another.
+
+## Product capabilities
 
 - Family email/password signup with mandatory email verification
 - Family Google signup with server-side ID-token verification
@@ -37,6 +61,143 @@ troubleshooting instructions, see [LOCAL_SETUP.md](./LOCAL_SETUP.md).
 The elderly role remains reserved for a future authentication flow. Caregiver
 authentication is now active, but the operational dashboard remains locked until
 an administrator approves the initial professional application.
+
+## Project leadership and contribution
+
+### Lead developer and project integrator
+
+**Md. Imam Hasan** ([@TASRIF-67](https://github.com/TASRIF-67)) led the project architecture, core implementation, frontend
+experience, backend integration, debugging, testing, Git integration, and cloud
+deployment. The following assigned features were designed and implemented as
+primary contributions:
+
+1. **Elderly Health Profile Management** - linked family access, personal
+   information, medical history, allergies, medications, chronic diseases,
+   emergency contacts, authorization, and archive workflows.
+2. **Gemini Wellness Insights and Early Health Awareness** - allow-listed data
+   sanitization, Gemini summaries, deterministic fallback summaries, cache-aware
+   regeneration, vital trends, and rule-based early alerts.
+3. **In-app Notification System** - unread counts, paginated history,
+   mark-one/mark-all actions, deep links, polling, and idempotent event creation.
+4. **Family Subscription, Premium Access, and Payments** - Core/Premium
+   entitlements, free trials, prototype transactions, Stripe sandbox Checkout,
+   webhook verification, payment history, expiry synchronization, and admin
+   business analytics.
+5. **Family Account Management and Email Re-verification** - protected profile
+   updates, current-password confirmation, duplicate-email protection, session
+   invalidation, verification email delivery, and rollback on delivery failure.
+
+### Cross-feature implementation and team support
+
+In addition to the assigned features, the lead developer integrated, reviewed,
+debugged, or substantially improved team-owned workflows so the final application
+behaves as one consistent product. This work included:
+
+- caregiver registration, verification, approval, profile, and availability flows;
+- caregiver booking, schedule selection, check-in/check-out, completion, and history;
+- anonymous caregiver ratings, feedback, complaints, and admin moderation;
+- grocery/essential requests, cart-style item selection, purchase status, and
+  privacy-aware Leaflet/OpenStreetMap store discovery;
+- doctor-appointment planning, caregiver escorts, and Google Calendar integration;
+- family, caregiver, and administrator dashboards, navigation, responsive UI,
+  accessibility improvements, and shared loading/error/empty states;
+- authentication email delivery, Google sign-in, deployment configuration, merge
+  conflict resolution, smoke testing, and final branch integration.
+
+This contribution record distinguishes primary feature ownership from
+cross-feature integration while recognizing that the repository was completed as
+a team academic project.
+
+## Role-based feature map
+
+| Workspace | Main capabilities |
+| --- | --- |
+| **Family** | Manage elderly profiles, browse and book caregivers, review schedules and completed care, rate caregivers, coordinate groceries and doctor visits, read wellness reports/alerts, manage subscription access, and update account security. |
+| **Caregiver** | Register and verify an application, maintain professional availability, accept or decline bookings, check in/out, complete visits, submit step-based wellness reports, handle care tasks and grocery requests, and review anonymous feedback. |
+| **Administrator** | Verify caregivers, manage users, inspect booking history, moderate feedback/complaints, review subscription payments, and monitor platform/business analytics. |
+
+### Premium boundary
+
+Core access preserves family records and ongoing-care actions. Premium access
+unlocks new caregiver bookings and advanced wellness tools such as generated
+summaries, early alerts, and thirty-day vital trends. Entitlements are enforced
+by the backend; hiding a frontend button is never treated as authorization.
+
+## System architecture
+
+```mermaid
+flowchart LR
+    Browser[React + Vite client]
+    API[Express REST API]
+    Auth[JWT cookie + role middleware]
+    DB[(MongoDB Atlas)]
+    Services[Domain services]
+    External[Google, Gemini, Stripe, SMTP, Cloudinary, OSM]
+
+    Browser -->|Axios + credentials| API
+    API --> Auth
+    Auth --> Services
+    Services --> DB
+    Services --> External
+    API -->|Standard JSON response| Browser
+```
+
+The application follows a vertical request flow:
+
+```text
+React page/component
+-> frontend service
+-> Express route
+-> authentication/role/validation middleware
+-> controller
+-> domain service
+-> Mongoose model and MongoDB
+-> { success, data } response
+-> React state and rendered UI
+```
+
+## Technology and integrations
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 19, React Router, Vite, Axios, reusable CSS design system |
+| Backend | Node.js, Express 5, REST controllers, middleware, domain services |
+| Database | MongoDB Atlas and Mongoose schemas, indexes, aggregation, transactions |
+| Authentication | HTTP-only JWT cookies, bcrypt password hashing, Google Identity Services |
+| Maps | Leaflet with OpenStreetMap-based geocoding/store discovery |
+| AI assistance | Google Gemini with data minimization, timeout handling, and deterministic fallback |
+| Payments | Stripe sandbox Checkout/webhooks and optional local prototype payments |
+| Messaging | Nodemailer SMTP for verification, password reset, and account-security email |
+| Files | Private Cloudinary caregiver verification-document scaffold |
+| Calendar | Google Calendar service-account event integration with graceful fallback |
+| Deployment | Vercel frontend, Render API, MongoDB Atlas database |
+
+External providers are optional in local development where a fallback exists.
+Credentials stay in ignored environment files or deployment secrets and must
+never be committed.
+
+## Repository structure
+
+```text
+probashicare/
+|- frontend/
+|  |- src/components/       reusable UI and feature components
+|  |- src/context/          auth, theme, notification, and subscription state
+|  |- src/pages/            public, family, caregiver, and admin pages
+|  `- src/services/         Axios API contracts
+|- backend/
+|  |- config/               environment and provider configuration
+|  |- controllers/          HTTP request/response orchestration
+|  |- middleware/           authentication, roles, validation, and errors
+|  |- models/               Mongoose schemas and indexes
+|  |- routes/               REST endpoint definitions
+|  |- services/             reusable business/provider logic
+|  |- scripts/              seed, synchronization, and smoke-test commands
+|  `- test/                 focused Node test suites
+|- *.md                      setup, API, integration, and workflow guides
+|- LOCAL_SETUP.md            complete Windows/local setup guide
+`- render.yaml               Render API blueprint
+```
 
 ## Caregiver Booking Workflow
 
@@ -131,6 +292,30 @@ Test SMTP authentication and one real verification-style message with:
 npm run test:email --prefix backend
 ```
 
+## Coordinated care extensions
+
+- **Care visit tasks:** families attach prioritized instructions to an elderly
+  profile and caregivers update them during assigned visits.
+- **Ratings and complaints:** a completed booking can receive one anonymous
+  verified-family rating; caregivers see feedback without family identity and
+  administrators handle complaints separately.
+- **Essentials workflow:** caregivers build requests from a visual item catalog;
+  families approve, record purchases, and monitor fulfillment. Receipts remain
+  optional for realistic local purchasing.
+- **Nearby store discovery:** location sharing is deliberate and optional;
+  Leaflet displays OpenStreetMap results without automatically sending the
+  elderly profile address.
+- **Doctor visits:** families schedule external appointments, optionally assign
+  a caregiver escort, and can synchronize events to an authorized Google Calendar.
+
+## Administrator oversight
+
+The administrator workspace separates operational concerns into focused views:
+caregiver applications, users, bookings, ratings, complaints, payments, and
+business analytics. Authorization is enforced on backend routes, while summary
+queries use MongoDB aggregation and bounded pagination to avoid unmanageable
+dashboard responses.
+
 ## Local setup
 
 Requires Node.js 20+ and a MongoDB Atlas database.
@@ -147,7 +332,9 @@ Requires Node.js 20+ and a MongoDB Atlas database.
    npm run install:all
    ```
 
-3. Copy `.env.example` to `backend/.env` and `frontend/.env`. Keep only the relevant variables in each file and replace all placeholder values.
+3. Use the versioned root [`.env.example`](./.env.example) as the template.
+   Copy its backend section into `backend/.env` and its frontend section into
+   `frontend/.env`, then replace every placeholder used by your setup.
 
    Development environment files are included locally and ignored by Git. Replace
    the MongoDB Atlas placeholders before starting the backend. SMTP may remain empty
@@ -205,6 +392,45 @@ npm run test:stripe --prefix backend
 npm run test:subscriptions:integration --prefix backend
 ```
 
+## Verification commands
+
+Run the checks relevant to the feature you changed. Integration/smoke scripts
+may create temporary development records and require the API plus a test-safe
+MongoDB database.
+
+```bash
+# Frontend compilation
+npm run build --prefix frontend
+
+# Pure backend test suites
+npm run test:bookings --prefix backend
+npm run test:subscriptions --prefix backend
+npm run test:stripe --prefix backend
+npm run test:auth --prefix backend
+npm run test:calendar-service --prefix backend
+
+# API/database smoke checks
+npm run test:elderly-profiles --prefix backend
+npm run test:caregiver-applications --prefix backend
+npm run test:bookings:integration --prefix backend
+npm run test:caregiver-feedback --prefix backend
+npm run test:wellness-reports --prefix backend
+npm run test:wellness-insights --prefix backend
+npm run test:groceries --prefix backend
+npm run test:subscriptions:integration --prefix backend
+```
+
+Useful final checks before a commit:
+
+```bash
+node --check backend/server.js
+git diff --check
+git status
+```
+
+Do not run automatic dependency audit fixes immediately before a demonstration;
+review breaking-version changes deliberately on a separate branch.
+
 ## API response convention
 
 Successful endpoints return:
@@ -224,6 +450,52 @@ Failures pass through the shared error middleware:
   }
 }
 ```
+
+## Deployment
+
+The React application is deployed on Vercel and the Express API is deployed as
+a Render web service through [`render.yaml`](./render.yaml). Production data is
+stored in MongoDB Atlas.
+
+Important hosted configuration:
+
+- `CLIENT_URL` must exactly match the Vercel origin so credentialed CORS works.
+- `VITE_API_URL` must use the public Render URL ending in `/api`.
+- Google OAuth must list the deployed Vercel URL as an authorized JavaScript origin.
+- Stripe must send selected sandbox events to the public
+  `/api/subscriptions/stripe/webhook` endpoint and Render must store that
+  endpoint's signing secret.
+- Render's free service can sleep while inactive, so the frontend request timeout
+  may be increased through `VITE_API_TIMEOUT_MS` for demonstration use.
+- All provider keys belong in deployment environment settings, never in Git.
+
+The public `/api/health` route confirms that the API process is available without
+exposing database or credential information.
+
+## Documentation map
+
+- [Local installation and troubleshooting](./LOCAL_SETUP.md)
+- [Elderly Profile API](./ELDERLY_PROFILE_API_DOCUMENTATION.md)
+- [Gemini wellness integration](./GEMINI_WELLNESS_INTEGRATION.md)
+- [Family subscriptions and Stripe](./FAMILY_SUBSCRIPTION_DOCUMENTATION.md)
+- [Google Calendar integration](./GOOGLE_CALENDAR_INTEGRATION.md)
+- [Git and team workflow](./GITHUB_TEAM_WORKFLOW.md)
+- [Complete Git workflow](./COMPLETE_GIT_WORKFLOW.md)
+- [Module 3 study guide](./MODULE_3_FEATURES_1_2_STUDY_GUIDE.md)
+
+## Project media
+
+Screenshots and a short walkthrough video can be added here later as a
+documentation-only update. Recommended captures are the landing/authentication
+experience, family dashboard, caregiver workspace, wellness insights, Stripe
+test Checkout, and administrator analytics.
+
+<!--
+Example future screenshot path: docs/screenshots/family-dashboard.png
+
+Example future video link:
+[Watch the ProbashiCare walkthrough](https://example.com)
+-->
 
 ## Extending the project
 
