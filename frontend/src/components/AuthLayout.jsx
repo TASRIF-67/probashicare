@@ -1,84 +1,36 @@
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  ActivityIcon,
   ArrowLeftIcon,
-  ArrowRightIcon,
   BadgeCheckIcon,
-  BellIcon,
-  CalendarIcon,
-  CheckIcon,
-  ClockIcon,
+  HeartPulseIcon,
   ShieldCheckIcon,
+  UsersIcon,
 } from "./Icons.jsx";
 import { Logo } from "./Logo.jsx";
 import { ThemeToggle } from "./ThemeToggle.jsx";
 import "../styles/auth.css";
 import { createRevealMotion } from "../utils/motion.js";
 
-/**
- * Formats the current time for a local or named IANA time zone.
- * @param {string|undefined} timeZone - Optional IANA time-zone name such as Asia/Dhaka.
- * @returns {string} Current hour and minute in the requested zone.
- * @sideEffects Reads the browser's current time and locale.
- */
-function formatZoneTime(timeZone) {
-  const options = {
-    hour: "numeric",
-    minute: "2-digit",
-  };
-
-  if (timeZone) {
-    options.timeZone = timeZone;
-  }
-
-  return new Intl.DateTimeFormat(undefined, options).format(new Date());
-}
-
-/**
- * Provides the shared public authentication page shell.
- * @param {object} props - Authentication layout properties.
- * @param {import("react").ReactNode} props.children - Login, signup, or verification content.
- * @param {string} props.eyebrow - Short label shown above the page title.
- * @param {string} props.title - Main authentication page title.
- * @param {string} props.description - Supporting explanation for the selected account type.
- * @param {string[]} [props.trustItems] - Short privacy or trust statements.
- * @param {import("react").ReactNode} [props.headerAccessory] - Optional account-mode selector.
- * @param {"family"|"caregiver"} [props.variant] - Role-specific color treatment.
- * @param {string[]} [props.processItems] - Account journey labels shown in the side panel.
- * @param {number} [props.activeProcessIndex] - Current account journey step.
- * @returns {import("react").ReactElement} A responsive authentication workspace.
- * @sideEffects React Router links navigate when activated.
- */
+/** Shared account layout. Authentication actions stay in the page components. */
 export function AuthLayout({
   children,
-  eyebrow,
   title,
   description,
-  trustItems = ["Private by design", "Built for families abroad"],
   headerAccessory = null,
   variant = "family",
-  processItems = ["Secure access", "Verified identity", "Care workspace"],
-  activeProcessIndex = 0,
 }) {
   const reduceMotion = useReducedMotion();
-  let safeVariant = "family";
-
-  if (variant === "caregiver") {
-    safeVariant = "caregiver";
-  }
-
-  const localTime = formatZoneTime();
-  const dhakaTime = formatZoneTime("Asia/Dhaka");
+  const safeVariant = variant === "caregiver" ? "caregiver" : "family";
 
   return (
-    <main className={`auth-shell auth-shell--${safeVariant}`}>
+    <main className={`auth-shell auth-shell--refined auth-shell--${safeVariant}`}>
       <header className="auth-topbar">
         <Logo />
         <nav className="auth-header-actions" aria-label="Authentication navigation">
           <Link className="auth-home-link" to="/">
-            <ArrowLeftIcon size={16} />
-            Back to home
+            <ArrowLeftIcon size={16} aria-hidden="true" />
+            Home
           </Link>
           <ThemeToggle />
         </nav>
@@ -88,142 +40,50 @@ export function AuthLayout({
         <motion.section
           className="auth-story"
           aria-labelledby="auth-page-title"
-          {...createRevealMotion(reduceMotion, { distance: 16 })}
+          {...createRevealMotion(reduceMotion, { distance: 12 })}
         >
           <div className="auth-story__copy">
-            <span className="auth-eyebrow">{eyebrow}</span>
             <h1 id="auth-page-title">{title}</h1>
             <p>{description}</p>
           </div>
 
-          <div className="auth-time-bridge" aria-label="Connected local and Dhaka time">
-            <span>
-              <ClockIcon size={14} aria-hidden="true" />
-              <strong>{localTime}</strong>
-              Local
-            </span>
-            <ArrowRightIcon size={15} aria-hidden="true" />
-            <span>
-              <ClockIcon size={14} aria-hidden="true" />
-              <strong>{dhakaTime}</strong>
-              Dhaka
-            </span>
-          </div>
-
-          <div className="auth-connection-preview">
-            <div className="auth-care-route" aria-hidden="true">
-              <span>You</span>
-              <i />
+          <div className="auth-care-art" role="img" aria-label="Family, loved ones, and caregivers connected through care">
+            <div className="auth-care-art__orbit auth-care-art__orbit--outer" />
+            <div className="auth-care-art__orbit auth-care-art__orbit--inner" />
+            <div className="auth-care-art__center"><HeartPulseIcon size={44} strokeWidth={1.4} /></div>
+            <span className="auth-care-art__dot auth-care-art__dot--one" />
+            <span className="auth-care-art__dot auth-care-art__dot--two" />
+            <div className="auth-care-art__person auth-care-art__person--family">
+              <span><UsersIcon size={23} strokeWidth={1.6} /></span>
+              <div><strong>Family</strong><small>Near or far</small></div>
             </div>
-
-            <div className="auth-care-preview" aria-label="Example care workspace">
-              <div className="auth-care-preview__header">
-                <div>
-                  <span className="auth-care-preview__avatar" aria-hidden="true">
-                    M
-                  </span>
-                  <span>
-                    <strong>Masnun&apos;s care</strong>
-                    <small>Dhaka, Bangladesh</small>
-                  </span>
-                </div>
-                <span className="auth-care-preview__status">
-                  <BadgeCheckIcon size={14} />
-                  All well
-                </span>
-              </div>
-
-              <div className="auth-care-preview__grid">
-                <div>
-                  <CalendarIcon aria-hidden="true" />
-                  <span>
-                    <small>Next visit</small>
-                    <strong>Tomorrow, 9:00 AM</strong>
-                  </span>
-                </div>
-                <div>
-                  <ActivityIcon aria-hidden="true" />
-                  <span>
-                    <small>Latest update</small>
-                    <strong>Vitals recorded</strong>
-                  </span>
-                </div>
-                <div>
-                  <BellIcon aria-hidden="true" />
-                  <span>
-                    <small>Family status</small>
-                    <strong>Up to date</strong>
-                  </span>
-                </div>
-              </div>
+            <div className="auth-care-art__person auth-care-art__person--loved-one">
+              <span><HeartPulseIcon size={23} strokeWidth={1.6} /></span>
+              <div><strong>Your loved ones</strong><small>At the heart of it all</small></div>
+            </div>
+            <div className="auth-care-art__person auth-care-art__person--caregiver">
+              <span><BadgeCheckIcon size={23} strokeWidth={1.6} /></span>
+              <div><strong>Caregivers</strong><small>Here to help</small></div>
             </div>
           </div>
 
-          <div className="auth-story__footer">
-            <div className="auth-trust-list">
-              {trustItems.map((item) => (
-                <span key={item}>
-                  <CheckIcon size={14} />
-                  {item}
-                </span>
-              ))}
-            </div>
-
-            <ol className="auth-process" aria-label="Account process">
-              {processItems.map((item, index) => {
-                const isActive = index === activeProcessIndex;
-                let className = "";
-
-                if (isActive) {
-                  className = "auth-process__item--active";
-                }
-
-                return (
-                  <li
-                    key={item}
-                    className={className}
-                    aria-current={isActive ? "step" : undefined}
-                  >
-                    <small>0{index + 1}</small>
-                    <span>{item}</span>
-                  </li>
-                );
-              })}
-            </ol>
+          <div className="auth-story__caption">
+            <span className="auth-story__caption-icon"><ShieldCheckIcon size={20} strokeWidth={1.7} /></span>
+            <div><strong>Care is personal. We keep it that way.</strong><p>Shared only with the people involved in your care.</p></div>
           </div>
         </motion.section>
 
         <motion.section
           className="auth-access"
-          aria-label="Secure account access"
-          {...createRevealMotion(reduceMotion, {
-            delay: 0.08,
-            distance: 16,
-          })}
+          aria-label="Account access"
+          {...createRevealMotion(reduceMotion, { delay: 0.06, distance: 12 })}
         >
-          <div className="auth-access__security">
-            <span>
-              <ShieldCheckIcon size={16} />
-              Secure access
-            </span>
-            <small>Encrypted session</small>
-          </div>
-
-          {headerAccessory && (
-            <div className="auth-access__mode">
-              {headerAccessory}
-            </div>
-          )}
-
-          <div className="auth-access__body">
-            {children}
-          </div>
-
-          <p className="auth-access__privacy">
-            Your information is only shared with authorized care participants.
-          </p>
+          {headerAccessory && <div className="auth-access__mode">{headerAccessory}</div>}
+          <div className="auth-access__body">{children}</div>
+          <p className="auth-access__privacy"><ShieldCheckIcon size={15} aria-hidden="true" />Private access to your care space</p>
         </motion.section>
       </div>
+      <footer className="auth-page-footer">ProbashiCare<span>Care for the people you call home.</span></footer>
     </main>
   );
 }

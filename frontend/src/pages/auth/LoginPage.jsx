@@ -6,10 +6,7 @@ import { Button } from "../../components/Button.jsx";
 import { Card } from "../../components/Card.jsx";
 import {
   BadgeCheckIcon,
-  BriefcaseIcon,
   LogInIcon,
-  ShieldCheckIcon,
-  UsersIcon,
 } from "../../components/Icons.jsx";
 import { Input } from "../../components/Input.jsx";
 import { CaregiverTheme } from "../../components/caregiver/CaregiverTheme.jsx";
@@ -154,48 +151,20 @@ export function LoginPage() {
     setError("Google sign-in was not completed.");
   }
 
-  const accountLabel = isCaregiverMode
-    ? "Caregiver workspace"
-    : "Family workspace";
-  const accountDescription = isCaregiverMode
-    ? "Access assignments, care reports, and your professional profile."
-    : "Access care profiles, bookings, wellness updates, and alerts.";
-
   const content = (
     <AuthLayout
-      eyebrow={isCaregiverMode ? "Caregiver workspace" : "Family workspace"}
       title={isCaregiverMode
-        ? "Care work, organized in one dependable place."
-        : "Care that travels with you, wherever home is."}
+        ? "Your care makes a difference."
+        : "Feel closer to home."}
       description={isCaregiverMode
-        ? "Review assignments, record care, and keep families informed from one secure workspace."
-        : "Appointments, health updates, and family coordination stay together in one calm, secure space."}
-      trustItems={isCaregiverMode
-        ? ["Verified care network", "Private care records"]
-        : ["Authorized family access", "Private health context"]}
+        ? "Manage your visits, share updates, and support the families who count on you."
+        : "Stay connected to your loved ones, their caregivers, and the little things that matter."}
       variant={isCaregiverMode ? "caregiver" : "family"}
-      processItems={isCaregiverMode
-        ? ["Sign in", "Review assignments", "Share updates"]
-        : ["Sign in", "Open family space", "Coordinate care"]}
-      activeProcessIndex={0}
     >
       <Card className="auth-card auth-card--login">
-        <div className="auth-card__account">
-          <span aria-hidden="true">
-            {isCaregiverMode ? <BriefcaseIcon /> : <UsersIcon />}
-          </span>
-          <div>
-            <strong>{accountLabel}</strong>
-            <small>{accountDescription}</small>
-          </div>
-        </div>
-
         <div className="auth-card__heading">
-          <h2>
-            Sign in
-            <span className="auth-heading-emoji" aria-hidden="true">👋</span>
-          </h2>
-          <p>Enter the email and password connected to your account.</p>
+          <h2>Welcome back</h2>
+          <p>{isCaregiverMode ? "Sign in to your caregiver account." : "Sign in to your family account."}</p>
         </div>
 
         {verificationNotice && (
@@ -278,7 +247,7 @@ export function LoginPage() {
           </div>
           <Button type="submit" isLoading={isSubmitting}>
             <LogInIcon size={18} />
-            Sign in securely
+            Sign in
           </Button>
         </form>
 
@@ -322,10 +291,6 @@ export function LoginPage() {
           )}
         </div>
 
-        <div className="auth-card__assurance">
-          <ShieldCheckIcon size={15} />
-          Email verification is required for account security.
-        </div>
       </Card>
     </AuthLayout>
   );

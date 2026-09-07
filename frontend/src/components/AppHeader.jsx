@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button } from "./Button.jsx";
@@ -176,24 +177,30 @@ export function AppHeader() {
           <span>Family workspace</span>
         </div>
         <nav className="app-side-nav" aria-label="Family navigation">
-          <span className="app-side-nav__label">Workspace</span>
-          {navigationLinks.map((link) => {
+          <span className="app-side-nav__label">Your care space</span>
+          {navigationLinks.map((link, index) => {
             const LinkIcon = link.icon;
 
             return (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={getNavigationClassName(link, hasPremium)}
-              >
-                <LinkIcon size={17} />
-                <span>{link.label}</span>
-                {link.premiumValue && (
-                  <span className="app-side-nav__feature-tag">
-                    {hasPremium ? "Unlocked" : "Premium"}
+              <Fragment key={link.to}>
+                {index === FAMILY_PRIMARY_LINKS.length && (
+                  <span className="app-side-nav__label app-side-nav__label--section">
+                    Care & wellbeing
                   </span>
                 )}
-              </NavLink>
+                <NavLink
+                  to={link.to}
+                  className={getNavigationClassName(link, hasPremium)}
+                >
+                  <LinkIcon size={17} />
+                  <span>{link.label}</span>
+                  {link.premiumValue && (
+                    <span className="app-side-nav__feature-tag">
+                      {hasPremium ? "Unlocked" : "Premium"}
+                    </span>
+                  )}
+                </NavLink>
+              </Fragment>
             );
           })}
         </nav>

@@ -7,9 +7,7 @@ import { Card } from "../../components/Card.jsx";
 import {
   BadgeCheckIcon,
   BriefcaseIcon,
-  ShieldCheckIcon,
   UserPlusIcon,
-  UsersIcon,
 } from "../../components/Icons.jsx";
 import { Input } from "../../components/Input.jsx";
 import { SignupModeToggle } from "../../components/SignupModeToggle.jsx";
@@ -22,16 +20,12 @@ import { authService } from "../../services/authService.js";
 
 const SIGNUP_COPY = {
   family: {
-    eyebrow: "Create your care space",
-    title: "Bring your family care into one clear place.",
-    description: "Start with your account, verify your email, and add the people whose care you want to coordinate.",
-    trustItems: ["Authorized family access", "Private health context"],
+    title: "Care starts with connection.",
+    description: "Bring your family and their caregivers together. Start with an account, then make it your own.",
   },
   caregiver: {
-    eyebrow: "Join the care network",
-    title: "Make dependable care visible to families.",
+    title: "Make a difference, every day.",
     description: "Create your account first, then complete the professional profile reviewed by the ProbashiCare team.",
-    trustItems: ["Administrator review", "Verified care network"],
   },
 };
 
@@ -309,10 +303,6 @@ export function SignupPage({ initialMode = "family" }) {
     <AuthLayout
       {...copy}
       variant={mode}
-      processItems={isFamilyMode
-        ? ["Create account", "Verify email", "Add care recipient"]
-        : ["Create account", "Verify email", "Profile review"]}
-      activeProcessIndex={0}
       headerAccessory={(
         <SignupModeToggle
           value={mode}
@@ -321,25 +311,11 @@ export function SignupPage({ initialMode = "family" }) {
       )}
     >
       <Card className="auth-card auth-card--signup signup-card">
-        <div className="auth-card__account">
-          <span aria-hidden="true">
-            {isFamilyMode ? <UsersIcon /> : <BriefcaseIcon />}
-          </span>
-          <div>
-            <strong>{isFamilyMode ? "Family account" : "Caregiver account"}</strong>
-            <small>
-              {isFamilyMode
-                ? "Create a private workspace for your family."
-                : "Begin an administrator-reviewed application."}
-            </small>
-          </div>
-        </div>
-
         <div className="auth-card__heading">
-          <h2>{isFamilyMode ? "Create your account" : "Create caregiver account"}</h2>
+          <h2>{isFamilyMode ? "Create your account" : "Join as a caregiver"}</h2>
           <p>
             {isFamilyMode
-              ? "You can add elderly profiles after verifying your email."
+              ? "A few details to get your family started."
               : "You will add qualifications and availability after signing in."}
           </p>
         </div>
@@ -538,10 +514,6 @@ export function SignupPage({ initialMode = "family" }) {
               Already have an account? <Link to={loginPath}>Sign in</Link>
             </p>
 
-            <div className="auth-card__assurance">
-              <ShieldCheckIcon size={15} />
-              Verification protects access to private care information.
-            </div>
           </>
         )}
       </Card>

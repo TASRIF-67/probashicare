@@ -141,24 +141,21 @@ export function HomePage() {
               className="calm-hero__copy"
               {...createRevealMotion(reduceMotion, { distance: 22 })}
             >
-              <span className="calm-eyebrow">
-                Remote elderly care coordination
-              </span>
               <h1 id="public-hero-title">
-                Care for home, even when{" "}
+                Miles apart. Still{" "}
                 <span className="calm-hero__gradient-text">
-                  you are far away.
+                  there for them.
                 </span>
               </h1>
               <p>
-                Keep your family, loved one, and trusted local caregiver in one
-                clear care space for bookings, wellness updates, and important
-                health context.
+                Give your loved ones the care they deserve, wherever life takes you.
+                Connect with local caregivers, plan visits, and stay close to
+                the everyday moments that matter.
               </p>
 
               <div className="calm-hero__actions">
                 <Link className="button calm-primary-action" to="/signup">
-                  Create your family space
+                  Start caring together
                   <ArrowRightIcon aria-hidden="true" />
                 </Link>
                 <Link className="calm-secondary-action" to="/caregiver/signup">
@@ -178,67 +175,71 @@ export function HomePage() {
               </div>
             </motion.div>
 
-            <motion.aside
-              className="care-today"
-              aria-label="Example daily care overview"
-              {...createRevealMotion(reduceMotion, {
-                delay: 0.12,
-                distance: 26,
-              })}
-            >
-              <header className="care-today__header">
-                <div>
-                  <small>Today&apos;s care</small>
-                  <h2>Everything is on track</h2>
+            <div className="home-care-scene">
+              <div className="home-care-scene__heading"><span><HeartPulseIcon size={18} /> A circle of care</span><small>Made for your family</small></div>
+              <motion.aside
+                className="care-today"
+                aria-label="Example daily care overview"
+                {...createRevealMotion(reduceMotion, {
+                  delay: 0.12,
+                  distance: 26,
+                })}
+              >
+                <header className="care-today__header">
+                  <div>
+                    <small>Example care overview</small>
+                    <h2>Everything is on track</h2>
+                  </div>
+                  <span className="care-today__status">
+                    <i className="care-today__live-dot" aria-hidden="true" />
+                    All well
+                  </span>
+                </header>
+
+                <div className="care-today__person">
+                  <span className="care-today__avatar" aria-hidden="true">
+                    M
+                  </span>
+                  <div>
+                    <strong>Masnun&apos;s care space</strong>
+                    <span>Dhaka, Bangladesh</span>
+                  </div>
                 </div>
-                <span className="care-today__status">
-                  <i className="care-today__live-dot" aria-hidden="true" />
-                  All well
-                </span>
-              </header>
 
-              <div className="care-today__person">
-                <span className="care-today__avatar" aria-hidden="true">
-                  M
-                </span>
-                <div>
-                  <strong>Masnun&apos;s care space</strong>
-                  <span>Dhaka, Bangladesh</span>
-                </div>
-              </div>
+                <ol className="care-today__timeline">
+                  <li>
+                    <time>09:00</time>
+                    <BadgeCheckIcon aria-hidden="true" />
+                    <span>
+                      <strong>Caregiver checked in</strong>
+                      Morning visit started
+                    </span>
+                  </li>
+                  <li>
+                    <time>12:15</time>
+                    <ClipboardListIcon aria-hidden="true" />
+                    <span>
+                      <strong>Wellness report shared</strong>
+                      Daily observations recorded
+                    </span>
+                  </li>
+                  <li>
+                    <time>12:16</time>
+                    <BellIcon aria-hidden="true" />
+                    <span>
+                      <strong>Family notified</strong>
+                      Update delivered securely
+                    </span>
+                  </li>
+                </ol>
 
-              <ol className="care-today__timeline">
-                <li>
-                  <time>09:00</time>
-                  <BadgeCheckIcon aria-hidden="true" />
-                  <span>
-                    <strong>Caregiver checked in</strong>
-                    Morning visit started
-                  </span>
-                </li>
-                <li>
-                  <time>12:15</time>
-                  <ClipboardListIcon aria-hidden="true" />
-                  <span>
-                    <strong>Wellness report shared</strong>
-                    Daily observations recorded
-                  </span>
-                </li>
-                <li>
-                  <time>12:16</time>
-                  <BellIcon aria-hidden="true" />
-                  <span>
-                    <strong>Family notified</strong>
-                    Update delivered securely
-                  </span>
-                </li>
-              </ol>
-
-              <footer className="care-today__footer">
-                <ActivityIcon aria-hidden="true" />
-                One simple view of the day&apos;s care
-              </footer>
-            </motion.aside>
+                <footer className="care-today__footer">
+                  <ActivityIcon aria-hidden="true" />
+                  One simple view of the day&apos;s care
+                </footer>
+              </motion.aside>
+              <div className="home-care-scene__note"><span><ShieldCheckIcon size={21} /></span><div><strong>Peace of mind, wherever you are.</strong><p>Your family. Your care team. One shared space.</p></div></div>
+            </div>
           </div>
         </section>
 
@@ -264,9 +265,8 @@ export function HomePage() {
               className="calm-section-heading"
               {...createRevealMotion(reduceMotion)}
             >
-              <span className="calm-eyebrow">The platform</span>
               <h2 id="platform-title">
-                The essentials of care, clearly connected.
+                Less worry. More connection.
               </h2>
               <p>
                 ProbashiCare brings the information and people involved in care
@@ -307,8 +307,7 @@ export function HomePage() {
               className="calm-network__copy"
               {...createRevealMotion(reduceMotion)}
             >
-              <span className="calm-eyebrow">Care network</span>
-              <h2 id="network-title">The right update reaches the right person.</h2>
+              <h2 id="network-title">Keep everyone involved in care.</h2>
               <p>
                 Family members stay informed, caregivers receive clear assignments,
                 and elderly health information remains protected by authorized access.
@@ -356,8 +355,7 @@ export function HomePage() {
               className="calm-section-heading calm-section-heading--left"
               {...createRevealMotion(reduceMotion)}
             >
-              <span className="calm-eyebrow">How it works</span>
-              <h2 id="process-title">A straightforward path to better coordination.</h2>
+              <h2 id="process-title">Good care starts with a few simple steps.</h2>
             </motion.header>
 
             <div className="calm-process__steps">
@@ -394,17 +392,16 @@ export function HomePage() {
               {...createRevealMotion(reduceMotion)}
             >
               <div>
-                <span className="calm-eyebrow">Premium options</span>
-                <h2 id="offers-title">More care tools, only when you need them.</h2>
+                <h2 id="offers-title">Choose your plan</h2>
               </div>
               <div>
                 <p>
-                  Every paid plan includes the same Premium caregiver coordination
-                  and wellness intelligence tools. You only choose how long you need access.
+                  All plans include caregiver bookings, wellness reports, and health
+                  alerts. Choose the duration that suits your family.
                 </p>
                 <span className="calm-offers__trial">
                   <CheckIcon aria-hidden="true" />
-                  Eligible Family accounts can begin with a seven-day trial.
+                  Eligible family accounts get a 7-day trial.
                 </span>
               </div>
             </motion.div>
@@ -414,14 +411,14 @@ export function HomePage() {
                 name="Day Pass"
                 price="BDT 199"
                 period="24 hours"
-                description="Useful when you need Premium tools for a focused day of care."
+                description="Premium access for 24 hours."
                 delay={0.02}
               />
               <PublicPlanOffer
                 name="Monthly"
                 price="BDT 1,499"
                 period="1 month"
-                description="A practical choice for ongoing family care coordination."
+                description="A month of care planning and updates."
                 featured
                 delay={0.09}
               />
@@ -429,7 +426,7 @@ export function HomePage() {
                 name="Yearly"
                 price="BDT 14,999"
                 period="1 year"
-                description="Longer Premium access at the current prototype discount."
+                description="A full year of Premium access."
                 delay={0.16}
               />
             </div>

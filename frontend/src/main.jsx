@@ -17,6 +17,7 @@ import "./styles/doctor-appointments.css";
 import "./styles/notifications.css";
 import "./styles/experience.css";
 import "./styles/product-polish.css";
+import "./styles/ui-refresh.css";
 
 /**
  * Mounts the React application with its global providers.
